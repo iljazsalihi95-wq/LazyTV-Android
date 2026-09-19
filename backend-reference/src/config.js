@@ -1,0 +1,3 @@
+const path=require('path');
+function bool(v,d=false){ if(v==null)return d; return ['1','true','yes','on'].includes(String(v).toLowerCase());}
+module.exports={env:process.env.NODE_ENV||'development',port:Number(process.env.PORT||8080),databasePath:path.resolve(process.env.DATABASE_PATH||path.join(__dirname,'..','data','lazytv.sqlite')),sessionSecret:process.env.SESSION_SECRET||'',sessionSecure:bool(process.env.SESSION_SECURE,process.env.NODE_ENV==='production'),trustProxy:Number(process.env.TRUST_PROXY||0),inactiveMessage:process.env.PUBLIC_INACTIVE_MESSAGE||'Waiting for activation.'};

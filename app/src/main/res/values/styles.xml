@@ -1,0 +1,4 @@
+<resources>
+<style name="Theme.LazyTVPRO" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:windowActionModeOverlay">true</item><item name="android:colorAccent">#55B8FF</item><item name="android:navigationBarColor">@color/lazytv_background</item><item name="android:statusBarColor">@color/lazytv_background</item></style>
+<style name="LazyInput" parent="android:style/Widget.Material.EditText"><item name="android:layout_width">match_parent</item><item name="android:layout_height">52dp</item><item name="android:layout_marginTop">12dp</item><item name="android:paddingLeft">12dp</item><item name="android:paddingRight">12dp</item><item name="android:textColor">#FFFFFF</item><item name="android:textColorHint">#8EA8BE</item><item name="android:background">@drawable/bg_input</item><item name="android:singleLine">true</item></style>
+</resources>

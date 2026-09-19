@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<uses-permission android:name="android.permission.INTERNET"/>
+<application android:allowBackup="false" android:label="LazyTV PRO" android:theme="@style/Theme.LazyTVPRO" android:usesCleartextTraffic="true">
+<activity android:name=".player.PlayerActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
+<activity android:name=".catalog.CatalogActivity" android:exported="false"/>
+<activity android:name=".catalog.SeriesDetailActivity" android:exported="false"/>
+<activity android:name=".playlist.PlaylistEditorActivity" android:exported="false"/>
+<activity android:name=".playlist.PlaylistManagerActivity" android:exported="false"/>
+<activity android:name=".activation.ActivationActivity" android:exported="false"/>
+<activity android:name=".activation.ActivationGateActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
+<activity android:name=".MainActivity" android:exported="false"/>
+</application></manifest>

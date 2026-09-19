@@ -1,0 +1,3 @@
+package de.lazytv.pro.catalog;
+import java.util.Map;
+public class Episode extends StreamItem { public final String seriesId,extension,duration; public final int seasonNumber,episodeNumber; public final Map<String,String> metadata; public Episode(String id,String title,String seriesId,String category,String image,String url,String ext,String duration,int season,int episode,Map<String,String> metadata){super(id,title,category,image,url,"",CatalogType.SERIES);this.seriesId=seriesId;this.extension=ext;this.duration=duration;this.seasonNumber=season;this.episodeNumber=episode;this.metadata=metadata;} }

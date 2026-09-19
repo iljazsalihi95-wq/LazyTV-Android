@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/player_root" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000" android:keepScreenOn="true">
+    <androidx.media3.ui.PlayerView android:id="@+id/player_view" android:layout_width="match_parent" android:layout_height="match_parent"
+        app:use_controller="true" app:show_buffering="always" app:resize_mode="fit"/>
+    <LinearLayout android:id="@+id/info_overlay" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_gravity="top"
+        android:orientation="horizontal" android:gravity="center_vertical" android:padding="18dp" android:background="#B0000000" android:visibility="gone">
+        <ImageView android:id="@+id/player_logo" android:layout_width="72dp" android:layout_height="54dp" android:scaleType="centerInside" android:contentDescription=""/>
+        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="12dp">
+            <TextView android:id="@+id/player_title" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/player_meta" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="#DDFFFFFF" android:textSize="14sp"/>
+        </LinearLayout>
+    </LinearLayout>
+    <ProgressBar android:id="@+id/player_loading" android:layout_width="56dp" android:layout_height="56dp" android:layout_gravity="center"/>
+    <LinearLayout android:id="@+id/player_actions" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="bottom|center_horizontal"
+        android:orientation="horizontal" android:gravity="center" android:padding="14dp" android:background="#99000000">
+        <Button android:id="@+id/btn_prev" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="◀ PREV" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true"/>
+        <Button android:id="@+id/btn_aspect" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginHorizontal="8dp" android:text="FIT" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true"/>
+        <Button android:id="@+id/btn_audio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="AUDIO" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true"/>
+        <Button android:id="@+id/btn_subtitles" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginHorizontal="8dp" android:text="SUBTITLES" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true"/>
+        <Button android:id="@+id/btn_retry" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RETRY" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true" android:visibility="gone"/>
+        <Button android:id="@+id/btn_next" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="NEXT ▶" android:background="@drawable/bg_player_button" android:textColor="#FFFFFF" android:focusable="true"/>
+    </LinearLayout>
+    <TextView android:id="@+id/player_error" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_horizontal|bottom" android:layout_marginBottom="88dp"
+        android:padding="12dp" android:background="#CC7A1010" android:textColor="#FFFFFF" android:visibility="gone"/>
+</FrameLayout>

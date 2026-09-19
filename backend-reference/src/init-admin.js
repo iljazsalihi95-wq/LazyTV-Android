@@ -1,0 +1,3 @@
+const bcrypt=require('bcryptjs'); const {migrate}=require('./migrate');
+async function initAdmin(db=migrate()){const u=process.env.ADMIN_USERNAME,p=process.env.ADMIN_PASSWORD;if(!u||!p||p.length<12) throw new Error('Set ADMIN_USERNAME and ADMIN_PASSWORD (minimum 12 characters).');const hash=await bcrypt.hash(p,12),t=new Date().toISOString();db.prepare(`INSERT INTO admins(username,password_hash,created_at,updated_at) VALUES(?,?,?,?) ON CONFLICT(username) DO UPDATE SET password_hash=excluded.password_hash,updated_at=excluded.updated_at`).run(u,hash,t,t);console.log('Admin initialized:',u); return db;}
+if(require.main===module)initAdmin().then(db=>db.close()).catch(e=>{console.error(e.message);process.exit(1)});module.exports={initAdmin};

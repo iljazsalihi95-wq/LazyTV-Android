@@ -1,0 +1,1 @@
+package de.lazytv.pro.catalog; public enum CatalogType { LIVE, MOVIES, SERIES }

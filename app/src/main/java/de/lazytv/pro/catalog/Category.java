@@ -1,0 +1,1 @@
+package de.lazytv.pro.catalog; public class Category { public final String id,name; public final CatalogType type; public Category(String id,String name,CatalogType type){this.id=id;this.name=name;this.type=type;} }

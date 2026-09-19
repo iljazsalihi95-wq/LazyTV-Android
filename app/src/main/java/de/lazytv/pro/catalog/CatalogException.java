@@ -1,0 +1,1 @@
+package de.lazytv.pro.catalog; public class CatalogException extends Exception { public CatalogException(String m){super(m);} public CatalogException(String m,Throwable t){super(m,t);} }

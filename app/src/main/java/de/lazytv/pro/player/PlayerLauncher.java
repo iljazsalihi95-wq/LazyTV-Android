@@ -1,0 +1,3 @@
+package de.lazytv.pro.player;
+import android.app.Activity;import android.content.Intent;import de.lazytv.pro.catalog.ResolvedStream;import de.lazytv.pro.catalog.StreamItem;
+public final class PlayerLauncher {private PlayerLauncher(){}public static void open(Activity a,String playlistId,StreamItem item,ResolvedStream resolved,String categoryName){Intent x=new Intent(a,PlayerActivity.class);x.putExtra(PlayerActivity.EXTRA_PLAYLIST_ID,playlistId);x.putExtra(PlayerActivity.EXTRA_ITEM,item);x.putExtra(PlayerActivity.EXTRA_RESOLVED,resolved);x.putExtra(PlayerActivity.EXTRA_CATEGORY_NAME,categoryName==null?"":categoryName);a.startActivity(x);}}
