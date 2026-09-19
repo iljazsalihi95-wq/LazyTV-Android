@@ -1,0 +1,22 @@
+name: Activation Endpoint Probe
+on:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/activation-endpoint-probe.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe existing LazyTV Apps Script GET
+        env:
+          APPS_SCRIPT_URL: https://script.google.com/macros/s/AKfycbw9JaO_WG1U8YiGYFNA5bhagGD4FQg0wxgMVss76bmsxYyseCocXmacknnLpNz69UEF0A/exec
+        run: |
+          set -o pipefail
+          curl -sS -L -D /tmp/headers.txt --max-time 30 "$APPS_SCRIPT_URL" -o /tmp/body.txt
+          echo "=== HTTP HEADERS ==="
+          cat /tmp/headers.txt
+          echo "=== BODY ==="
+          cat /tmp/body.txt
