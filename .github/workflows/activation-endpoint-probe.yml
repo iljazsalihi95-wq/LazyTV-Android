@@ -20,3 +20,5 @@ jobs:
           cat /tmp/headers.txt
           echo "=== BODY ==="
           cat /tmp/body.txt
+          echo "=== SAFE EMPTY POST ==="
+          curl -sS -L --max-time 30 -H "Content-Type: application/json" --data "{}" "$APPS_SCRIPT_URL"
