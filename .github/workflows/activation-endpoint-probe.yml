@@ -22,3 +22,6 @@ jobs:
           cat /tmp/body.txt
           echo "=== SAFE EMPTY POST ==="
           curl -sS -L --max-time 30 -H "Content-Type: application/json" --data "{}" "$APPS_SCRIPT_URL"
+
+          echo "=== TEST DEVICE AUTH POST ==="
+          curl -sS -L --max-time 30 -H "Content-Type: application/json" --data '{"action":"auth","device_id":"LTV-GITHUB-CI-TEST-20260919","serial":"LTV-CI00-0000-0001","lazytv_id":"CI:00:00:00:00:01","app_version":"1.0"}' "$APPS_SCRIPT_URL"
