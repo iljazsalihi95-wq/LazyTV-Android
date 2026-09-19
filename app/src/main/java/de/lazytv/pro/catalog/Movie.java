@@ -1,0 +1,1 @@
+package de.lazytv.pro.catalog; public class Movie extends StreamItem { public Movie(String id,String name,String categoryId,String logo,String url,String tvgId){super(id,name,categoryId,logo,url,tvgId,CatalogType.MOVIES);} }

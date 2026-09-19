@@ -1,0 +1,2 @@
+package de.lazytv.pro.catalog;
+import java.util.*; public class ResolvedStream implements java.io.Serializable { public final String url,streamType,title,artwork,epgId; public final Map<String,String> headers,metadata; public ResolvedStream(String u,String t,String n,String a,String e,Map<String,String> h,Map<String,String> m){url=u;streamType=t;title=n;artwork=a;epgId=e;headers=h==null?Collections.emptyMap():Collections.unmodifiableMap(new LinkedHashMap<>(h));metadata=m==null?Collections.emptyMap():Collections.unmodifiableMap(new LinkedHashMap<>(m));} }
