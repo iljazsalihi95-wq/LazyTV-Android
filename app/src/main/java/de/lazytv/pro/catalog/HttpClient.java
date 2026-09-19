@@ -1,5 +1,5 @@
 package de.lazytv.pro.catalog;
-import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.*;import javax.net.ssl.SSLException;
+import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.*;import java.util.zip.GZIPInputStream;import javax.net.ssl.SSLException;import android.util.Log;
 public final class HttpClient {
  private HttpClient(){}
  public static String get(String u,Map<String,String> headers)throws CatalogException{
@@ -15,12 +15,13 @@ public final class HttpClient {
     c.setRequestProperty("Accept-Encoding","identity");
     c.setRequestProperty("Connection","close");
     if(headers!=null)for(Map.Entry<String,String>e:headers.entrySet())if(e.getKey()!=null&&e.getValue()!=null)c.setRequestProperty(e.getKey(),e.getValue());
-    int code=c.getResponseCode();
+    int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
     if(code==301||code==302||code==303||code==307||code==308){
      String loc=c.getHeaderField("Location");if(loc==null||loc.trim().isEmpty())throw new CatalogException("Redirect pa Location (HTTP "+code+")");
      url=new URL(url,loc);continue;
     }
     InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();
+    if(in!=null&&"gzip".equalsIgnoreCase(c.getContentEncoding()))in=new GZIPInputStream(in);
     String body=read(in);
     if(code==401||code==403)throw new CatalogException("Credentials/refuzim nga serveri (HTTP "+code+")");
     if(code<200||code>=300)throw new CatalogException("Serveri ktheu HTTP "+code);
