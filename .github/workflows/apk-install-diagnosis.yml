@@ -1,5 +1,8 @@
 name: APK Installability Diagnosis
 on:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/apk-install-diagnosis.yml' ]
   workflow_dispatch:
 permissions:
   contents: read
