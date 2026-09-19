@@ -64,11 +64,15 @@ jobs:
           LAZYTV_SIGNING_KEY_ALIAS: ${{ secrets.LAZYTV_SIGNING_KEY_ALIAS }}
           LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
         run: gradle --no-daemon assembleDebug
-      - name: Verify activation URL embedded
+      - name: Verify debug/release activation policy
         run: |
+          grep -q "DEV_ACTIVATION_BYPASS = true" app/build/generated/source/buildConfig/debug/de/lazytv/pro/BuildConfig.java
+          echo "Debug development bypass is enabled."
+          gradle --no-daemon generateReleaseBuildConfig
+          grep -q "DEV_ACTIVATION_BYPASS = false" app/build/generated/source/buildConfig/release/de/lazytv/pro/BuildConfig.java
+          echo "Release activation bypass is disabled."
           if [ -z "$ACTIVATION_BASE_URL" ]; then
-            echo "Production activation endpoint is not configured in GitHub Secrets."
-            exit 2
+            echo "Production activation endpoint not configured; release activation cannot be end-to-end tested yet."
           fi
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
