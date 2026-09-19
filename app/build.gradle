@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
 }
 
+def activationBaseUrl = (project.findProperty("ACTIVATION_BASE_URL") ?: System.getenv("ACTIVATION_BASE_URL") ?: "").toString()
+def escBuildConfig = { String v -> '"' + v.replace('\\','\\\\').replace('"','\\"') + '"' }
+def signingStoreFile = System.getenv("LAZYTV_SIGNING_STORE_FILE")
+def signingStorePassword = System.getenv("LAZYTV_SIGNING_STORE_PASSWORD")
+def signingKeyAlias = System.getenv("LAZYTV_SIGNING_KEY_ALIAS")
+def signingKeyPassword = System.getenv("LAZYTV_SIGNING_KEY_PASSWORD")
+def hasStableSigning = signingStoreFile && signingStorePassword && signingKeyAlias && signingKeyPassword
+
 android {
     buildFeatures { buildConfig true }
     namespace 'de.lazytv.pro'
@@ -13,7 +21,27 @@ android {
         targetSdk 35
         versionCode 1
         versionName '1.0'
-        buildConfigField 'String', 'ACTIVATION_BASE_URL', '""'
+        buildConfigField 'String', 'ACTIVATION_BASE_URL', escBuildConfig(activationBaseUrl)
+    }
+
+    signingConfigs {
+        if (hasStableSigning) {
+            lazytvStable {
+                storeFile file(signingStoreFile)
+                storePassword signingStorePassword
+                keyAlias signingKeyAlias
+                keyPassword signingKeyPassword
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            if (hasStableSigning) signingConfig signingConfigs.lazytvStable
+        }
+        release {
+            if (hasStableSigning) signingConfig signingConfigs.lazytvStable
+        }
     }
 
     compileOptions {
