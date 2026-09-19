@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:gravity="center" android:padding="28dp" android:background="@color/lazytv_background">
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/app_name" android:textColor="@android:color/white" android:textSize="32sp" android:textStyle="bold"/>
-<TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="Playlist Management" android:textColor="@color/lazytv_muted" android:textSize="16sp"/>
-<Button android:id="@+id/manage_playlists" android:layout_width="260dp" android:layout_height="wrap_content" android:layout_marginTop="28dp" android:text="Menaxho Playlistat" android:textAllCaps="false"/>
-</LinearLayout>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:background="@color/lazytv_background">
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center_horizontal" android:padding="20dp">
+ <ImageView android:id="@+id/home_logo" android:layout_width="260dp" android:layout_height="260dp" android:scaleType="centerInside" android:contentDescription="LazyTV PRO"/>
+ <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="LIVE TV  •  MOVIES  •  SERIES" android:textColor="@color/lazytv_muted" android:textSize="16sp" android:letterSpacing=".16"/>
+ <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:orientation="horizontal" android:layout_marginTop="18dp">
+  <LinearLayout android:id="@+id/manage_playlists" android:layout_width="300dp" android:layout_height="wrap_content" android:orientation="vertical" android:gravity="center" android:padding="14dp" android:background="@drawable/bg_card" android:focusable="true" android:clickable="true">
+   <ImageView android:id="@+id/playlist_art" android:layout_width="170dp" android:layout_height="170dp" android:scaleType="centerCrop" android:contentDescription="Playlists"/>
+   <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="PLAYLISTS / SERVERS" android:textColor="#FFFFFF" android:textSize="19sp" android:textStyle="bold" android:paddingTop="10dp"/>
+   <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:text="Xtream • M3U • Stalker" android:textColor="@color/lazytv_accent" android:textSize="13sp"/>
+  </LinearLayout>
+ </LinearLayout>
+</LinearLayout></ScrollView>
