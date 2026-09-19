@@ -22,6 +22,7 @@ android {
         versionCode 1
         versionName '1.0'
         buildConfigField 'String', 'ACTIVATION_BASE_URL', escBuildConfig(activationBaseUrl)
+        buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'false'
     }
 
     signingConfigs {
@@ -37,9 +38,11 @@ android {
 
     buildTypes {
         debug {
+            buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'true'
             if (hasStableSigning) signingConfig signingConfigs.lazytvStable
         }
         release {
+            buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'false'
             if (hasStableSigning) signingConfig signingConfigs.lazytvStable
         }
     }
