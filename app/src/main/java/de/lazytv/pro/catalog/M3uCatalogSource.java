@@ -4,12 +4,19 @@ public class M3uCatalogSource {
  public Catalog load(Context ctx,Playlist p)throws CatalogException{
   try{
    if(p.getType()==PlaylistType.M3U_URL){
-    String body=HttpClient.get(p.getUrl(),Collections.emptyMap());
-    if(body==null)throw new CatalogException("Remote M3U response është bosh");
-    String normalized=stripBom(body);
-    if(!normalized.trim().startsWith("#EXTM3U"))throw new CatalogException("Remote URL nuk ktheu M3U (#EXTM3U mungon)");
-    Log.d("LazyTV-M3U","REMOTE_DOWNLOAD OK host="+host(p.getUrl())+" bytes="+normalized.getBytes(StandardCharsets.UTF_8).length+" extm3u=true");
-    return parseM3u(new ByteArrayInputStream(normalized.getBytes(StandardCharsets.UTF_8)));
+    try{
+     RemoteM3uDownloader.Result dl=RemoteM3uDownloader.download(p.getUrl());
+     String normalized=stripBom(dl.body);
+     if(!normalized.trim().startsWith("#EXTM3U"))throw new CatalogException("Remote URL nuk ktheu M3U (#EXTM3U mungon)");
+     Log.d("LazyTV-M3U","REMOTE_DOWNLOAD OK host="+dl.host+" bytes="+normalized.getBytes(StandardCharsets.UTF_8).length+" extm3u=true");
+     return parseM3u(new ByteArrayInputStream(normalized.getBytes(StandardCharsets.UTF_8)));
+    }catch(RemoteM3uDownloader.RemoteHttpException e){
+     if(e.status!=884)throw e;
+     Log.w("LazyTV-M3U","REMOTE get.php blocked HTTP 884 host="+e.host+"; trying verified API fallback");
+     InputStream generated=M3u884Fallback.tryBuild(p.getUrl());
+     if(generated==null)throw e;
+     return parseM3u(generated);
+    }
    }
    InputStream in=ctx.getContentResolver().openInputStream(Uri.parse(p.getUrl()));
    if(in==null)throw new CatalogException("Skedari M3U nuk mund të hapet");
