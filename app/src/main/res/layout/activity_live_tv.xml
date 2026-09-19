@@ -4,9 +4,9 @@
   <LinearLayout android:id="@+id/live_left_panel" android:layout_width="0dp" android:layout_weight="22" android:layout_height="match_parent" android:orientation="vertical" android:background="#071522">
    <TextView android:text="LIVE TV" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:padding="10dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
    <TextView android:text="COUNTRIES" android:textColor="@color/lazytv_accent" android:textStyle="bold" android:padding="8dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-   <ListView android:id="@+id/live_countries" android:listSelector="@drawable/bg_live_row" android:dividerHeight="0dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="40"/>
+   <Spinner android:id="@+id/live_country_spinner" android:focusable="true" android:clickable="true" android:spinnerMode="dropdown" android:background="@drawable/bg_input" android:padding="6dp" android:layout_width="match_parent" android:layout_height="48dp"/>
    <TextView android:text="CATEGORIES" android:textColor="@color/lazytv_accent" android:textStyle="bold" android:padding="8dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-   <ListView android:id="@+id/live_categories" android:listSelector="@drawable/bg_live_row" android:dividerHeight="0dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="60"/>
+   <ListView android:id="@+id/live_categories" android:listSelector="@drawable/bg_live_row" android:dividerHeight="0dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
   </LinearLayout>
   <LinearLayout android:id="@+id/live_channel_panel" android:layout_width="0dp" android:layout_weight="23" android:layout_height="match_parent" android:orientation="vertical" android:background="#0A1B2B" android:layout_marginStart="5dp">
    <EditText android:id="@+id/live_search" android:hint="Search channels…" android:singleLine="true" android:textColor="#FFFFFF" android:textColorHint="#8198AB" android:background="@drawable/bg_input" android:padding="9dp" android:layout_width="match_parent" android:layout_height="44dp"/>
