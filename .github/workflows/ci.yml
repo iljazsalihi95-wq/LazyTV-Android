@@ -43,8 +43,33 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+      - name: Check production activation/signing configuration
+        env:
+          ACTIVATION_BASE_URL: ${{ secrets.ACTIVATION_BASE_URL }}
+          SIGNING_KEYSTORE_B64: ${{ secrets.LAZYTV_SIGNING_KEYSTORE_B64 }}
+          LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
+          LAZYTV_SIGNING_KEY_ALIAS: ${{ secrets.LAZYTV_SIGNING_KEY_ALIAS }}
+          LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
+        run: |
+          [ -n "$ACTIVATION_BASE_URL" ] && echo "ACTIVATION_BASE_URL=CONFIGURED" || echo "ACTIVATION_BASE_URL=NOT_CONFIGURED"
+          [ -n "$SIGNING_KEYSTORE_B64" ] && echo "SIGNING_KEYSTORE=CONFIGURED" || echo "SIGNING_KEYSTORE=NOT_CONFIGURED"
+          if [ -n "$SIGNING_KEYSTORE_B64" ]; then
+            echo "$SIGNING_KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/lazytv-signing.jks"
+            echo "LAZYTV_SIGNING_STORE_FILE=$RUNNER_TEMP/lazytv-signing.jks" >> "$GITHUB_ENV"
+          fi
+          echo "ACTIVATION_BASE_URL=$ACTIVATION_BASE_URL" >> "$GITHUB_ENV"
       - name: Assemble debug APK
+        env:
+          LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
+          LAZYTV_SIGNING_KEY_ALIAS: ${{ secrets.LAZYTV_SIGNING_KEY_ALIAS }}
+          LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
         run: gradle --no-daemon assembleDebug
+      - name: Verify activation URL embedded
+        run: |
+          if [ -z "$ACTIVATION_BASE_URL" ]; then
+            echo "Production activation endpoint is not configured in GitHub Secrets."
+            exit 2
+          fi
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
