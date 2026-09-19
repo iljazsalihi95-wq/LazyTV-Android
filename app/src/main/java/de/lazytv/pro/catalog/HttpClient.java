@@ -1,5 +1,5 @@
 package de.lazytv.pro.catalog;
-import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.*;import javax.net.ssl.HttpsURLConnection;
+import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.*;import javax.net.ssl.SSLException;
 public final class HttpClient {
  private HttpClient(){}
  public static String get(String u,Map<String,String> headers)throws CatalogException{
