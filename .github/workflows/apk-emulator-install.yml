@@ -1,0 +1,33 @@
+name: APK Emulator Install Test
+on:
+  push:
+    branches: [ main ]
+    paths: [ '.github/workflows/apk-emulator-install.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Build APK
+        run: gradle --no-daemon assembleDebug
+      - name: Install APK on clean Android 35 emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: |
+            adb shell pm list packages | grep de.lazytv.pro || true
+            adb install app/build/outputs/apk/debug/app-debug.apk
+            adb shell pm path de.lazytv.pro
