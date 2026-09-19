@@ -37,8 +37,8 @@ jobs:
           java-version: '17'
       - name: Install Android SDK 35
         run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null || true
+          /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Setup Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
         with:
