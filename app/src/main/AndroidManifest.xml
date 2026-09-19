@@ -3,7 +3,7 @@
 <uses-permission android:name="android.permission.INTERNET"/>
 <uses-feature android:name="android.software.leanback" android:required="false"/>
 <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
-<application android:allowBackup="false" android:label="LazyTV PRO" android:theme="@style/Theme.LazyTVPRO" android:usesCleartextTraffic="true" android:icon="@drawable/ic_lazytv_launcher" android:roundIcon="@drawable/ic_lazytv_launcher" android:banner="@drawable/lazytv_tv_banner">
+<application android:allowBackup="false" android:label="LazyTV PRO" android:theme="@style/Theme.LazyTVPRO" android:usesCleartextTraffic="true" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:banner="@drawable/lazytv_tv_banner">
 <activity android:name=".live.LiveTvActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".player.PlayerActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".catalog.CatalogActivity" android:exported="false"/>
