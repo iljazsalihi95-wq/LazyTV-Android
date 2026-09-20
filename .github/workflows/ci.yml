@@ -58,6 +58,24 @@ jobs:
             echo "LAZYTV_SIGNING_STORE_FILE=$RUNNER_TEMP/lazytv-signing.jks" >> "$GITHUB_ENV"
           fi
           echo "ACTIVATION_BASE_URL=$ACTIVATION_BASE_URL" >> "$GITHUB_ENV"
+      - name: Diagnose euiptv port 8080 transport (no credentials)
+        shell: bash
+        run: |
+          set +e
+          echo "DNS:"
+          getent ahostsv4 euiptv.live | head -5 || true
+          echo "TCP_8080:"
+          timeout 10 bash -c 'echo > /dev/tcp/euiptv.live/8080'
+          echo "TCP_RC=$?"
+          echo "TLS_8080:"
+          timeout 12 openssl s_client -connect euiptv.live:8080 -servername euiptv.live -brief </dev/null 2>&1 | head -20
+          echo "TLS_RC=${PIPESTATUS[0]}"
+          echo "HTTP_8080_GETPHP:"
+          curl -sv --connect-timeout 10 --max-time 20 -o /dev/null http://euiptv.live:8080/get.php 2>&1 | head -35
+          echo "HTTP_RC=${PIPESTATUS[0]}"
+          echo "HTTPS_8080_GETPHP:"
+          curl -skv --connect-timeout 10 --max-time 20 -o /dev/null https://euiptv.live:8080/get.php 2>&1 | head -35
+          echo "HTTPS_RC=${PIPESTATUS[0]}"
       - name: Assemble debug APK
         env:
           LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
