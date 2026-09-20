@@ -1,6 +1,5 @@
 name: Remote M3U Network Diagnostic
-on:
-  workflow_dispatch:
+on:\n  push:\n    branches: [ main ]\n  workflow_dispatch:
 jobs:
   diagnose:
     runs-on: ubuntu-latest
