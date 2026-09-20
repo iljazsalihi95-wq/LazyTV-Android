@@ -25,7 +25,7 @@ public class M3uCatalogSource {
    boolean ext=probe.startsWith("#EXTM3U");
    Log.d("LazyTV-M3U","REMOTE_BODY host="+res.request().url().host()+" bytes="+data.length+" extm3u="+ext);
    if(!ext)throw new CatalogException("Remote URL nuk ktheu M3U (#EXTM3U mungon)");
-   return parseM3u(new ByteArrayInputStream(data,off,data.length-off));
+   try{return parseM3u(new ByteArrayInputStream(data,off,data.length-off));}catch(CatalogException e){throw e;}catch(Exception e){throw new CatalogException("Remote M3U parse: "+safe(e),e);}
   }catch(javax.net.ssl.SSLException e){Log.e("LazyTV-M3U","REMOTE_TLS host="+host(exactUrl)+" reason="+safe(e));throw new CatalogException("TLS/SSL: "+safe(e),e);}
    catch(IOException e){Log.e("LazyTV-M3U","REMOTE_IO host="+host(exactUrl)+" reason="+safe(e));throw new CatalogException("Remote M3U network: "+safe(e),e);}
  }
