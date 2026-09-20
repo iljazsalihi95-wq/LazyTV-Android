@@ -8,9 +8,9 @@ public class MainActivity extends Activity {
   findViewById(R.id.home_activate).setOnClickListener(v->startActivity(new Intent(this,ActivationActivity.class)));
   findViewById(R.id.manage_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.home_live).setOnClickListener(v->openLive());
-  View.OnClickListener catalog=v->openCatalog();findViewById(R.id.home_movies).setOnClickListener(catalog);findViewById(R.id.home_series).setOnClickListener(catalog);findViewById(R.id.home_favorites).setOnClickListener(catalog);findViewById(R.id.home_search).setOnClickListener(catalog);
+  findViewById(R.id.home_movies).setOnClickListener(v->openCatalog("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openCatalog("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openCatalog(null));findViewById(R.id.home_search).setOnClickListener(v->openCatalog(null));
   findViewById(R.id.home_settings).setOnClickListener(v->Toast.makeText(this,"Settings",Toast.LENGTH_SHORT).show());findViewById(R.id.home_live).requestFocus();
  }
  private void openLive(){Playlist p=active();if(p==null){startActivity(new Intent(this,PlaylistManagerActivity.class));return;}Intent i=new Intent(this,de.lazytv.pro.live.LiveTvActivity.class);i.putExtra("playlist_id",p.getId());startActivity(i);}
- private void openCatalog(){Playlist p=active();if(p==null){startActivity(new Intent(this,PlaylistManagerActivity.class));return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());startActivity(i);}
+ private void openCatalog(String type){Playlist p=active();if(p==null){startActivity(new Intent(this,PlaylistManagerActivity.class));return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}
 }
