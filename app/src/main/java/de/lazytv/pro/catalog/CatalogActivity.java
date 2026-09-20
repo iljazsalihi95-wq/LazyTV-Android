@@ -19,5 +19,5 @@ public class CatalogActivity extends Activity{
  private String categoryName(String id){if(catalog==null||id==null)return"";for(Category c:catalog.categories)if(id.equals(c.id)&&c.type==type)return c.name;return"";}
  private void focusList(){if(list.getCount()>0){list.setSelection(0);list.requestFocus();}}
  @Override public void onBackPressed(){if(!search.getText().toString().isEmpty()){search.setText("");return;}if(favoritesMode){showType(type);return;}if(level==2&&country!=null){showCategories(country);return;}if(level==1){showCountries();return;}super.onBackPressed();}
- protected void onDestroy(){pool.shutdownNow();engine.close();super.onDestroy();}
+ @Override public boolean dispatchKeyEvent(KeyEvent e){if(e.getAction()==KeyEvent.ACTION_DOWN&&e.getRepeatCount()==0){int k=e.getKeyCode();if(k==KeyEvent.KEYCODE_MENU||k==KeyEvent.KEYCODE_SEARCH){search.requestFocus();return true;}if(k==KeyEvent.KEYCODE_DPAD_LEFT&&list.hasFocus()&&level>0){onBackPressed();return true;}}return super.dispatchKeyEvent(e);} protected void onDestroy(){adapter.close();pool.shutdownNow();engine.close();super.onDestroy();}
 }
