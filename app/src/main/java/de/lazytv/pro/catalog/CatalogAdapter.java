@@ -1,8 +1,11 @@
-package de.lazytv.pro.catalog;import android.view.*;import android.widget.*;import java.util.*;import de.lazytv.pro.R;
+package de.lazytv.pro.catalog;
+import android.graphics.*;import android.view.*;import android.widget.*;import java.net.*;import java.util.*;import java.util.concurrent.*;import de.lazytv.pro.R;
 public class CatalogAdapter extends BaseAdapter{
- private final List<StreamItem>x=new ArrayList<>();private final List<String>labels=new ArrayList<>();private boolean labelMode;
+ private final List<StreamItem>x=new ArrayList<>();private final List<String>labels=new ArrayList<>();private boolean labelMode;private final ExecutorService images=Executors.newFixedThreadPool(3);private final Map<String,Bitmap> cache=Collections.synchronizedMap(new LinkedHashMap<String,Bitmap>(64,.75f,true){protected boolean removeEldestEntry(Map.Entry<String,Bitmap>e){return size()>100;}});
  public void set(List<StreamItem>a){labelMode=false;x.clear();labels.clear();x.addAll(a);notifyDataSetChanged();}
  public void setLabels(List<String>a){labelMode=true;x.clear();labels.clear();labels.addAll(a);notifyDataSetChanged();}
  public int getCount(){return labelMode?labels.size():x.size();}public StreamItem getItem(int p){return labelMode?null:x.get(p);}public long getItemId(int p){return p;}
- public View getView(int p,View v,ViewGroup g){if(v==null)v=LayoutInflater.from(g.getContext()).inflate(R.layout.item_catalog_stream,g,false);TextView n=v.findViewById(R.id.stream_name),m=v.findViewById(R.id.stream_meta);if(labelMode){n.setText(labels.get(p));m.setText("");}else{StreamItem i=x.get(p);n.setText(i.name);m.setText(i.tvgId==null||i.tvgId.isEmpty()?i.type.name():i.type.name()+" • "+i.tvgId);}v.setFocusable(false);return v;}
+ public View getView(int p,View v,ViewGroup g){if(v==null)v=LayoutInflater.from(g.getContext()).inflate(R.layout.item_catalog_stream,g,false);TextView n=v.findViewById(R.id.stream_name),m=v.findViewById(R.id.stream_meta);ImageView logo=v.findViewById(R.id.stream_logo);logo.setImageDrawable(null);logo.setVisibility(labelMode?View.GONE:View.VISIBLE);if(labelMode){n.setText(labels.get(p));m.setText("");}else{StreamItem i=x.get(p);n.setText(i.name);m.setText(i.type.name());if(i.logo!=null&&!i.logo.trim().isEmpty())load(logo,i.logo);else logo.setImageResource(R.drawable.ic_lazytv_launcher);}v.setFocusable(false);return v;}
+ private void load(ImageView view,String url){view.setTag(url);Bitmap hit=cache.get(url);if(hit!=null){view.setImageBitmap(hit);return;}images.execute(()->{try{URLConnection c=new URL(url).openConnection();c.setConnectTimeout(5000);c.setReadTimeout(6000);Bitmap b=BitmapFactory.decodeStream(c.getInputStream());if(b!=null){cache.put(url,b);view.post(()->{if(url.equals(view.getTag()))view.setImageBitmap(b);});}}catch(Exception ignored){}});}
+ public void close(){images.shutdownNow();}
 }
