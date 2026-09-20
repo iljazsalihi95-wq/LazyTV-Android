@@ -10,12 +10,12 @@ public final class HttpClient {
     c=(HttpURLConnection)url.openConnection();
     c.setConnectTimeout(20000);c.setReadTimeout(45000);c.setInstanceFollowRedirects(false);
     c.setRequestMethod("GET");c.setUseCaches(false);c.setDoInput(true);
-    c.setRequestProperty("User-Agent","VLC/3.0.20 LibVLC/3.0.20");
+    c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
     c.setRequestProperty("Accept","*/*");
     c.setRequestProperty("Accept-Encoding","identity");
     c.setRequestProperty("Connection","close");
     if(headers!=null)for(Map.Entry<String,String>e:headers.entrySet())if(e.getKey()!=null&&e.getValue()!=null)c.setRequestProperty(e.getKey(),e.getValue());
-    int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
+    String statusLine=c.getHeaderField(0);int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" statusLine="+safeStatus(statusLine)+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
     if(code==301||code==302||code==303||code==307||code==308){
      String loc=c.getHeaderField("Location");if(loc==null||loc.trim().isEmpty())throw new CatalogException("Redirect pa Location (HTTP "+code+")");
      url=new URL(url,loc);continue;
@@ -28,7 +28,7 @@ public final class HttpClient {
     return body;
    }catch(SocketTimeoutException e){throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
    catch(CatalogException e){throw e;}
-   catch(SSLException e){throw new CatalogException("Lidhja TLS/SSL dështoi: "+e.getClass().getSimpleName(),e);}
+   catch(SSLException e){String m=e.getMessage();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost()+" reason="+(m==null?e.getClass().getSimpleName():m));throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
    catch(Exception e){throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
    finally{if(c!=null)c.disconnect();}
   }
@@ -42,5 +42,6 @@ public final class HttpClient {
    return new String(data,off,data.length-off,StandardCharsets.UTF_8);
   }
  }
+ private static String safeStatus(String s){if(s==null)return"null";return s.length()>120?s.substring(0,120):s;}
  public static String enc(String s){try{return URLEncoder.encode(s==null?"":s,"UTF-8");}catch(Exception e){return"";}}
 }
