@@ -1,0 +1,26 @@
+name: Remote M3U Network Diagnostic
+on:
+  workflow_dispatch:
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: DNS TCP TLS HTTP diagnostics
+        shell: bash
+        run: |
+          set +e
+          HOST="euiptv.live"
+          PORT="8080"
+          echo "=== DNS ==="
+          getent ahostsv4 "$HOST" | head -5
+          echo "=== TCP $HOST:$PORT ==="
+          timeout 10 bash -c "</dev/tcp/$HOST/$PORT" && echo "TCP_PASS" || echo "TCP_FAIL rc=$?"
+          echo "=== TLS handshake $HOST:$PORT ==="
+          timeout 12 openssl s_client -connect "$HOST:$PORT" -servername "$HOST" -brief </dev/null 2>&1 | sed -n '1,25p'
+          echo "TLS_RC=${PIPESTATUS[0]}"
+          echo "=== HTTPS /get.php (no credentials) ==="
+          curl -vkI --connect-timeout 10 --max-time 20 "https://$HOST:$PORT/get.php" 2>&1 | sed -n '1,45p'
+          echo "HTTPS_RC=${PIPESTATUS[0]}"
+          echo "=== HTTP /get.php (no credentials) ==="
+          curl -vI --connect-timeout 10 --max-time 20 "http://$HOST:$PORT/get.php" 2>&1 | sed -n '1,45p'
+          echo "HTTP_RC=${PIPESTATUS[0]}"
