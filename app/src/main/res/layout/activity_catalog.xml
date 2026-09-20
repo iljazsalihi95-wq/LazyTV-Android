@@ -11,7 +11,7 @@
   <Button android:id="@+id/tab_favorites" android:text="★ FAVORITES" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
  </LinearLayout>
  <TextView android:id="@+id/catalog_breadcrumb" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="9dp" android:textColor="@color/lazytv_accent" android:textStyle="bold"/>
- <ProgressBar android:id="@+id/catalog_progress" android:layout_gravity="center" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+ <ImageView android:id="@+id/catalog_progress" android:layout_gravity="center" android:layout_width="120dp" android:layout_height="120dp" android:scaleType="fitCenter"/>
  <TextView android:id="@+id/catalog_status" android:textColor="@color/lazytv_muted" android:padding="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
  <ListView android:id="@+id/catalog_list" android:divider="@android:color/transparent" android:dividerHeight="8dp" android:layout_weight="1" android:layout_width="match_parent" android:layout_height="0dp" android:focusable="true"/>
 </LinearLayout>
