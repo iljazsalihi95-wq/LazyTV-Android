@@ -1,86 +1,18 @@
-const PAYPAL_SANDBOX = "https://api-m.sandbox.paypal.com";
-const PAYPAL_LIVE = "https://api-m.paypal.com";
-
-function env(name) {
-  const v = process.env[name];
-  if (!v) throw new Error(`Missing environment variable: ${name}`);
-  return v;
-}
-
-function paypalBase() {
-  return String(process.env.PAYPAL_ENV || "sandbox").toLowerCase() === "live"
-    ? PAYPAL_LIVE : PAYPAL_SANDBOX;
-}
-
-async function accessToken() {
-  const id = env("PAYPAL_CLIENT_ID");
-  const secret = env("PAYPAL_CLIENT_SECRET");
-  const auth = Buffer.from(`${id}:${secret}`).toString("base64");
-  const r = await fetch(`${paypalBase()}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
-  if (!r.ok) throw new Error(`PayPal OAuth failed: ${r.status}`);
-  return (await r.json()).access_token;
-}
-
-async function verifyPayPal(rawEvent, headers) {
-  const token = await accessToken();
-  const event = JSON.parse(rawEvent);
-  const payload = {
-    auth_algo: headers.get("paypal-auth-algo"),
-    cert_url: headers.get("paypal-cert-url"),
-    transmission_id: headers.get("paypal-transmission-id"),
-    transmission_sig: headers.get("paypal-transmission-sig"),
-    transmission_time: headers.get("paypal-transmission-time"),
-    webhook_id: env("PAYPAL_WEBHOOK_ID"),
-    webhook_event: event
-  };
-  const r = await fetch(`${paypalBase()}/v1/notifications/verify-webhook-signature`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(payload)
-  });
-  if (!r.ok) throw new Error(`PayPal verify failed: ${r.status}`);
-  const j = await r.json();
-  return { verified: j.verification_status === "SUCCESS", event };
-}
-
-async function forwardToAppsScript(event) {
-  const gsUrl = env("LAZYTV_GS_URL");
-  const secret = env("LAZYTV_INTERNAL_SECRET");
-  const sep = gsUrl.includes("?") ? "&" : "?";
-  const r = await fetch(`${gsUrl}${sep}action=paypalverified`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({action:"paypalverified", internal_secret:secret, event})
-  });
-  const txt = await r.text();
-  if (!r.ok) throw new Error(`Apps Script forward failed: ${r.status} ${txt.slice(0,200)}`);
-  return txt;
-}
-
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return {statusCode:405, body:JSON.stringify({ok:false,error:"METHOD_NOT_ALLOWED"})};
-  }
-  try {
-    const headers = new Headers(event.headers || {});
-    const raw = event.body || "";
-    const {verified, event:paypalEvent} = await verifyPayPal(raw, headers);
-    if (!verified) {
-      return {statusCode:400, body:JSON.stringify({ok:false,error:"INVALID_PAYPAL_SIGNATURE"})};
-    }
-    await forwardToAppsScript(paypalEvent);
-    return {statusCode:200, body:JSON.stringify({ok:true,verified:true,event_id:paypalEvent.id,event_type:paypalEvent.event_type})};
-  } catch (e) {
-    return {statusCode:500, body:JSON.stringify({ok:false,error:String(e.message || e)})};
-  }
-};
+"use strict";
+const PAYPAL_SANDBOX="https://api-m.sandbox.paypal.com",PAYPAL_LIVE="https://api-m.paypal.com",DEFAULT_TIMEOUT_MS=12000,MAX_BODY_BYTES=1024*1024;
+class HttpError extends Error{constructor(statusCode,code,message=code){super(message);this.statusCode=statusCode;this.code=code}}
+function env(name){const value=String(process.env[name]||"").trim();if(!value)throw new HttpError(500,"SERVER_NOT_CONFIGURED",`Missing environment variable: ${name}`);return value}
+function paypalBase(){const mode=String(process.env.PAYPAL_ENV||"sandbox").trim().toLowerCase();if(mode!=="sandbox"&&mode!=="live")throw new HttpError(500,"SERVER_NOT_CONFIGURED","PAYPAL_ENV must be sandbox or live");return mode==="live"?PAYPAL_LIVE:PAYPAL_SANDBOX}
+function timeoutMs(){const value=Number(process.env.PAYPAL_HTTP_TIMEOUT_MS||DEFAULT_TIMEOUT_MS);return Number.isFinite(value)&&value>=1000&&value<=30000?value:DEFAULT_TIMEOUT_MS}
+async function fetchWithTimeout(url,options){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeoutMs());try{return await fetch(url,{...options,signal:controller.signal})}catch(error){if(error&&error.name==="AbortError")throw new HttpError(504,"UPSTREAM_TIMEOUT","Upstream request timed out");throw error}finally{clearTimeout(timer)}}
+function header(event,name){const target=name.toLowerCase();for(const[key,value]of Object.entries(event.headers||{}))if(key.toLowerCase()===target)return String(value||"").trim();return""}
+function rawBody(event){const body=String(event.body||"");const raw=event.isBase64Encoded?Buffer.from(body,"base64").toString("utf8"):body;if(!raw)throw new HttpError(400,"EMPTY_BODY");if(Buffer.byteLength(raw,"utf8")>MAX_BODY_BYTES)throw new HttpError(413,"BODY_TOO_LARGE");return raw}
+function parseEvent(raw){let event;try{event=JSON.parse(raw)}catch(_){throw new HttpError(400,"INVALID_JSON")}if(!event||typeof event!=="object"||!event.id||!event.event_type)throw new HttpError(400,"INVALID_PAYPAL_EVENT");return event}
+function transmission(event){const fields={auth_algo:header(event,"paypal-auth-algo"),cert_url:header(event,"paypal-cert-url"),transmission_id:header(event,"paypal-transmission-id"),transmission_sig:header(event,"paypal-transmission-sig"),transmission_time:header(event,"paypal-transmission-time")};if(Object.values(fields).some(value=>!value))throw new HttpError(400,"MISSING_PAYPAL_HEADERS");return fields}
+async function accessToken(){const id=env("PAYPAL_CLIENT_ID"),secret=env("PAYPAL_CLIENT_SECRET"),auth=Buffer.from(`${id}:${secret}`).toString("base64");const response=await fetchWithTimeout(`${paypalBase()}/v1/oauth2/token`,{method:"POST",headers:{Authorization:`Basic ${auth}`,"Content-Type":"application/x-www-form-urlencoded"},body:"grant_type=client_credentials"});if(!response.ok)throw new HttpError(502,"PAYPAL_OAUTH_FAILED",`PayPal OAuth failed: ${response.status}`);const json=await response.json();if(!json.access_token)throw new HttpError(502,"PAYPAL_OAUTH_FAILED","PayPal OAuth response has no token");return json.access_token}
+async function verifyPayPal(paypalEvent,transmissionFields){const token=await accessToken();const response=await fetchWithTimeout(`${paypalBase()}/v1/notifications/verify-webhook-signature`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({...transmissionFields,webhook_id:env("PAYPAL_WEBHOOK_ID"),webhook_event:paypalEvent})});if(!response.ok)throw new HttpError(502,"PAYPAL_VERIFY_FAILED",`PayPal verify failed: ${response.status}`);const json=await response.json();return json.verification_status==="SUCCESS"}
+async function forwardToAppsScript(paypalEvent){const gsUrl=env("LAZYTV_GS_URL"),secret=env("LAZYTV_INTERNAL_SECRET");let url;try{url=new URL(gsUrl)}catch(_){throw new HttpError(500,"SERVER_NOT_CONFIGURED","LAZYTV_GS_URL is invalid")}url.searchParams.set("action","paypalverified");const response=await fetchWithTimeout(url.toString(),{method:"POST",redirect:"follow",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"paypalverified",internal_secret:secret,event:paypalEvent})});const text=await response.text();if(!response.ok)throw new HttpError(502,"APPS_SCRIPT_FORWARD_FAILED",`Apps Script forward failed: ${response.status}`);let result;try{result=JSON.parse(text)}catch(_){throw new HttpError(502,"APPS_SCRIPT_INVALID_RESPONSE","Apps Script returned non-JSON response")}if(!result||result.ok!==true)throw new HttpError(502,"APPS_SCRIPT_REJECTED_EVENT","Apps Script did not acknowledge the event");return result}
+function jsonResponse(statusCode,body){return{statusCode,headers:{"Content-Type":"application/json","Cache-Control":"no-store"},body:JSON.stringify(body)}}
+async function handler(event){if(event.httpMethod!=="POST")return jsonResponse(405,{ok:false,error:"METHOD_NOT_ALLOWED"});let paypalEvent;try{paypalEvent=parseEvent(rawBody(event));const verified=await verifyPayPal(paypalEvent,transmission(event));if(!verified)return jsonResponse(400,{ok:false,error:"INVALID_PAYPAL_SIGNATURE"});const backend=await forwardToAppsScript(paypalEvent);console.log(JSON.stringify({message:"paypal_webhook_processed",event_id:paypalEvent.id,event_type:paypalEvent.event_type}));return jsonResponse(200,{ok:true,verified:true,forwarded:true,event_id:paypalEvent.id,event_type:paypalEvent.event_type,backend_event_id:backend.event_id||null})}catch(error){const statusCode=error instanceof HttpError?error.statusCode:500,code=error instanceof HttpError?error.code:"INTERNAL_ERROR";console.error(JSON.stringify({message:"paypal_webhook_failed",error:code,event_id:paypalEvent&&paypalEvent.id||null}));return jsonResponse(statusCode,{ok:false,error:code})}}
+exports.handler=handler;
+exports._test={header,rawBody,parseEvent,transmission,verifyPayPal,forwardToAppsScript};
