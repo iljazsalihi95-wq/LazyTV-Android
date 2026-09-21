@@ -5,7 +5,7 @@
 
  <LinearLayout android:id="@+id/live_root" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
 
-  <LinearLayout android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:background="#071426">
+  <LinearLayout android:id="@+id/live_top_bar" android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:background="#071426">
    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="LAZYTV PRO" android:textColor="#FF7A18" android:textSize="24sp" android:textStyle="bold"/>
    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="28dp" android:text="● LIVE TV" android:textColor="#19D7FF" android:textSize="16sp" android:textStyle="bold"/>
    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="24dp" android:text="MOVIES" android:textColor="#AAB7CA" android:textSize="15sp" android:textStyle="bold"/>
@@ -14,7 +14,7 @@
    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SERVER 05" android:textColor="#FF9A2F" android:textStyle="bold" android:textSize="14sp"/>
   </LinearLayout>
 
-  <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
+  <LinearLayout android:id="@+id/live_content_row" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
 
    <LinearLayout android:id="@+id/live_left_panel" android:layout_width="0dp" android:layout_weight="22" android:layout_height="match_parent" android:orientation="vertical" android:background="#071522" android:padding="8dp">
     <TextView android:text="COUNTRIES" android:textColor="#18D7FF" android:textStyle="bold" android:textSize="13sp" android:paddingBottom="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
@@ -46,7 +46,7 @@
    </FrameLayout>
   </LinearLayout>
 
-  <TextView android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES  •  SERVER 05" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
+  <TextView android:id="@+id/live_bottom_bar" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES  •  SERVER 05" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
  </LinearLayout>
 
  <LinearLayout android:id="@+id/live_overlay" android:visibility="gone" android:layout_width="560dp" android:layout_height="match_parent" android:layout_gravity="start" android:orientation="horizontal" android:padding="8dp" android:background="#F007121D">
