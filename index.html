@@ -19,7 +19,7 @@ function renderCountries(){let m={};all.forEach(x=>{let k=x.country_code||x.coun
 function filter(){let q=search.value.toLowerCase();shown=all.filter(x=>(!country||(x.country_code||x.country)===country)&&(!q||String(x.name||'').toLowerCase().includes(q)));channels.innerHTML=shown.map((x,i)=>'<div class="row" data-i="'+i+'">'+String(i+1).padStart(3,'0')+' &nbsp; '+esc(x.name)+'</div>').join('');channels.querySelectorAll('.row').forEach(r=>r.onclick=()=>play(shown[+r.dataset.i]))}
 async function play(x){let u=x.stream_url||x.url||'';if(!u||u.includes('localhost/ch/')){alert('Ky kanal kërkon resolver-in e Server 05.');return}empty.style.display='none';video.src=u;video.play().catch(()=>{});if(video.requestFullscreen)video.requestFullscreen().catch(()=>{})}
 search.oninput=filter;
-async function boot(){try{let r=await fetch('/api/server05');if(!r.ok)throw 0;let j=await r.json();all=j.channels||j||[];renderCountries();filter()}catch(e){channels.innerHTML='<div class="row">Server 05 API nuk është lidhur ende.</div>'}}
+async function boot(){try{let r=await fetch('/data/server05.json',{cache:'no-store'});if(!r.ok)throw 0;let j=await r.json();all=j.channels||j||[];renderCountries();filter()}catch(e){channels.innerHTML='<div class="row">Katalogu Server 05 nuk është ngarkuar.</div>'}}
 boot();
 async function forceLandscape(){try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}}
 document.addEventListener('click',forceLandscape,{once:true});
