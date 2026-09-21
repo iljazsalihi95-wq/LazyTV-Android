@@ -40,7 +40,7 @@
      <TextView android:id="@+id/live_epg" android:text="SERVER 05 • EPG" android:maxLines="3" android:ellipsize="end" android:textColor="#AFC6D8" android:layout_width="match_parent" android:layout_height="wrap_content"/>
      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
       <Button android:id="@+id/live_favorite" android:text="☆ Favorite" android:textAllCaps="false" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
-      <Button android:id="@+id/live_fullscreen" android:text="⛶ Fullscreen" android:textAllCaps="false" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+      
      </LinearLayout>
     </LinearLayout>
    </FrameLayout>
