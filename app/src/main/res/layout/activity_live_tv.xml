@@ -7,9 +7,9 @@
 
   <LinearLayout android:id="@+id/live_top_bar" android:layout_width="match_parent" android:layout_height="62dp" android:gravity="center_vertical" android:paddingStart="18dp" android:paddingEnd="18dp" android:background="#071426">
    <ImageView android:id="@+id/live_brand_logo" android:layout_width="150dp" android:layout_height="54dp" android:scaleType="fitCenter"/>
-   <Button android:id="@+id/live_nav_live" android:layout_width="150dp" android:layout_height="52dp" android:layout_marginStart="20dp" android:text="▣  LIVE TV" android:textColor="#19D7FF" android:textSize="17sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
-   <Button android:id="@+id/live_nav_movies" android:layout_width="145dp" android:layout_height="52dp" android:layout_marginStart="10dp" android:text="🎬  MOVIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
-   <Button android:id="@+id/live_nav_series" android:layout_width="145dp" android:layout_height="52dp" android:layout_marginStart="10dp" android:text="◉  SERIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
+   <Button android:id="@+id/live_nav_live" android:layout_width="175dp" android:layout_height="56dp" android:layout_marginStart="20dp" android:text="▣  LIVE TV" android:textColor="#19D7FF" android:textSize="17sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
+   <Button android:id="@+id/live_nav_movies" android:layout_width="170dp" android:layout_height="56dp" android:layout_marginStart="10dp" android:text="🎬  MOVIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
+   <Button android:id="@+id/live_nav_series" android:layout_width="170dp" android:layout_height="56dp" android:layout_marginStart="10dp" android:text="◉  SERIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
    <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SERVER 05" android:textColor="#FF9A2F" android:textStyle="bold" android:textSize="14sp"/>
   </LinearLayout>
