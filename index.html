@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="sq"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<html lang="sq"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="screen-orientation" content="landscape"><meta name="x5-orientation" content="landscape">
 <title>LazyTV PRO</title><style>
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#030914;color:#fff}button,input{font:inherit}
 .top{height:86px;display:flex;align-items:center;gap:42px;padding:0 32px;background:#071528;border-bottom:1px solid #17324d}.logo{font-size:31px;font-weight:900;color:#ff7a25}.nav{display:flex;gap:34px;font-size:21px;font-weight:800}.nav b{color:#29d4ff}.server{margin-left:auto;color:#ff8a2b;font-weight:900;font-size:20px}
 .app{display:grid;grid-template-columns:260px 360px 1fr;gap:10px;height:calc(100vh - 126px);padding:10px}.panel{background:#071426;border:1px solid #183653;border-radius:14px;overflow:hidden}.head{padding:13px 15px;font-weight:900;color:#31d6ff;border-bottom:1px solid #173653}.countries,.channels{height:calc(100% - 50px);overflow:auto}.row{padding:12px 14px;border-bottom:1px solid #132b43;cursor:pointer}.row:hover,.row.on{background:#10365a}.search{width:calc(100% - 20px);margin:10px;padding:11px;border:1px solid #24527d;border-radius:9px;background:#03101f;color:white}.player{background:#000;display:flex;flex-direction:column}.player video{width:100%;height:100%;object-fit:contain;background:#000}.empty{margin:auto;color:#74869b;font-size:22px}.foot{height:40px;padding:10px 25px;color:#7589a0;background:#071528}
-@media(max-width:900px){.app{grid-template-columns:190px 260px 1fr}.nav{gap:12px;font-size:16px}.logo{font-size:23px}}
+@media(max-width:900px) and (orientation:landscape){.app{grid-template-columns:22vw 30vw 1fr}.nav{gap:12px;font-size:16px}.logo{font-size:23px}} @media(orientation:portrait){body:before{content:"Ktheje pajisjen horizontalisht / Landscape";position:fixed;z-index:99999;inset:0;background:#030914;color:#31d6ff;display:flex;align-items:center;justify-content:center;text-align:center;font-size:24px;font-weight:900;padding:30px}.top,.app,.foot{visibility:hidden}}
 </style></head><body>
 <header class="top"><div class="logo">LAZYTV PRO</div><div class="nav"><b>● LIVE TV</b><span>MOVIES</span><span>SERIES</span></div><div class="server">SERVER 05</div></header>
 <main class="app"><section class="panel"><div class="head">COUNTRIES / SHTETET</div><div id="countries" class="countries"></div></section>
@@ -21,4 +21,6 @@ async function play(x){let u=x.stream_url||x.url||'';if(!u||u.includes('localhos
 search.oninput=filter;
 async function boot(){try{let r=await fetch('/api/server05');if(!r.ok)throw 0;let j=await r.json();all=j.channels||j||[];renderCountries();filter()}catch(e){channels.innerHTML='<div class="row">Server 05 API nuk është lidhur ende.</div>'}}
 boot();
+async function forceLandscape(){try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape');}catch(e){}}
+document.addEventListener('click',forceLandscape,{once:true});
 </script></body></html>
