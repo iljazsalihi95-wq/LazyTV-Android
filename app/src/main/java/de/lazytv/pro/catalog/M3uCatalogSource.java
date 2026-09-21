@@ -14,7 +14,7 @@ public class M3uCatalogSource {
   String original=source.getUrl();
   HttpUrl u=parseUrl(original);
   diag("INPUT",u,null);
-  try{Catalog direct=downloadAndParse(original);if(hasXtreamCredentials(u)&&isCollapsed(direct)){Log.w("LazyTV-M3U","M3U categories collapsed -> Xtream metadata fallback");return xtreamFromM3u(source,u);}return direct;}
+  try{Catalog direct=downloadAndParse(original);if(hasXtreamCredentials(u)&&needsXtreamMetadata(direct)){Log.w("LazyTV-M3U","M3U categories collapsed -> Xtream metadata fallback");return xtreamFromM3u(source,u);}return direct;}
   catch(CatalogException first){
    if(isHttp884(first)){Log.w("LazyTV-M3U","HTTP_884 host="+u.host()+" port="+u.port()+" -> Xtream fallback");return xtreamFromM3u(source,u);}
    if("https".equalsIgnoreCase(u.scheme())&&u.port()!=443&&isTlsFailure(first)){
@@ -65,7 +65,7 @@ public class M3uCatalogSource {
    throw e;
   }
  }
- private boolean isCollapsed(Catalog c){java.util.List<Category> cats=c.categories(CatalogType.LIVE);if(cats.size()!=1)return false;Category only=cats.get(0);String n=only.name==null?"":only.name.trim();return ("Të tjera".equalsIgnoreCase(n)||"Other".equalsIgnoreCase(n)||"Uncategorized".equalsIgnoreCase(n))&&c.items(CatalogType.LIVE,only.id).size()>100;}
+ private boolean needsXtreamMetadata(Catalog c){java.util.List<Category> cats=c.categories(CatalogType.LIVE);int total=0,other=0;for(Category z:cats){int n=c.items(CatalogType.LIVE,z.id).size();total+=n;String s=z.name==null?"":z.name.trim();if("Të tjera".equalsIgnoreCase(s)||"Other".equalsIgnoreCase(s)||"Uncategorized".equalsIgnoreCase(s))other+=n;}return total>100&&other>0&&(cats.size()==1||other*100/Math.max(1,total)>=35);}
  private CatalogException network(String stage,HttpUrl u,Exception e){String cause=e.getCause()==null?"none":e.getCause().getClass().getSimpleName()+":"+msg(e.getCause());String m="NETWORK_ERROR stage="+stage+" exception="+e.getClass().getSimpleName()+" cause="+cause+" scheme="+u.scheme()+" host="+u.host()+" port="+u.port()+" path="+u.encodedPath();Log.e("LazyTV-M3U",m,e);return new CatalogException(m,e);}
  private void diag(String stage,HttpUrl u,Exception e){Log.d("LazyTV-M3U","REMOTE_M3U "+stage+" scheme="+u.scheme()+" host="+u.host()+" port="+u.port()+" path="+u.encodedPath()+" query_present="+(u.querySize()>0));}
  private HttpUrl parseUrl(String s)throws CatalogException{HttpUrl u=HttpUrl.parse(s);if(u==null)throw new CatalogException("URL M3U nuk është valide");return u;}
