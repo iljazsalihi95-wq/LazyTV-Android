@@ -9,7 +9,7 @@ public class MainActivity extends Activity {
   findViewById(R.id.home_activate).setOnClickListener(v->startActivity(new Intent(this,ActivationActivity.class)));
   findViewById(R.id.manage_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.home_live).setOnClickListener(v->openLive());
-  findViewById(R.id.home_movies).setOnClickListener(v->openBuiltIn("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openBuiltIn("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openCatalog(null));findViewById(R.id.home_search).setOnClickListener(v->openCatalog(null));
+  findViewById(R.id.home_movies).setOnClickListener(v->openBuiltIn("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openBuiltIn("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openBuiltIn("FAVORITES"));findViewById(R.id.home_search).setOnClickListener(v->openBuiltIn("SEARCH"));
   findViewById(R.id.home_settings).setOnClickListener(v->Toast.makeText(this,"Settings",Toast.LENGTH_SHORT).show());findViewById(R.id.home_live).requestFocus();
  }
  private void openLive(){Intent i=new Intent(this,de.lazytv.pro.live.LiveTvActivity.class);i.putExtra("builtin_live",true);startActivity(i);}
