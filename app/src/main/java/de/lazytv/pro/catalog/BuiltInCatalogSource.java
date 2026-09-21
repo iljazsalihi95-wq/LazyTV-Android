@@ -8,7 +8,7 @@ public final class BuiltInCatalogSource{
    JSONArray a=new JSONObject(b.toString(StandardCharsets.UTF_8.name())).getJSONArray("channels");
    for(int i=0;i<a.length();i++){JSONObject x=a.getJSONObject(i);String url=x.optString("url","").trim();if(url.isEmpty())continue;
     String country=x.optString("country","XX"),cn=x.optString("category","Tjera"),cid=country+"|"+cn;
-    if(!cats.containsKey(cid)){Category cat=new Category(cid,country+" • "+cn,CatalogType.LIVE);cats.put(cid,cat);out.categories.add(cat);}
+    if(!cats.containsKey(cid)){Category cat=new Category(cid,cn,CatalogType.LIVE,country);cats.put(cid,cat);out.categories.add(cat);}
     out.items.add(new StreamItem(x.optString("id",String.valueOf(i)),x.optString("name","Channel"),cid,x.optString("logo",""),url,"",CatalogType.LIVE));
    }
   }catch(Exception e){throw new CatalogException("LazyTV built-in catalog error: "+e.getMessage());}
