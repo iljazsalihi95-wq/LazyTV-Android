@@ -11,7 +11,6 @@
    <Button android:id="@+id/live_nav_movies" android:layout_width="170dp" android:layout_height="56dp" android:layout_marginStart="10dp" android:text="🎬  MOVIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
    <Button android:id="@+id/live_nav_series" android:layout_width="170dp" android:layout_height="56dp" android:layout_marginStart="10dp" android:text="◉  SERIES" android:textColor="#FFFFFF" android:textSize="16sp" android:textStyle="bold" android:background="@drawable/bg_home_tile"/>
    <Space android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1"/>
-   <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SERVER 05" android:textColor="#FF9A2F" android:textStyle="bold" android:textSize="14sp"/>
   </LinearLayout>
 
   <LinearLayout android:id="@+id/live_content_row" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
@@ -37,7 +36,7 @@
     </LinearLayout>
     <LinearLayout android:id="@+id/live_info" android:layout_gravity="bottom" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:background="#D0000814">
      <TextView android:id="@+id/live_title" android:text="LazyTV PRO • LIVE TV" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-     <TextView android:id="@+id/live_epg" android:text="SERVER 05 • EPG" android:maxLines="3" android:ellipsize="end" android:textColor="#AFC6D8" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+     <TextView android:id="@+id/live_epg" android:text="EPG" android:maxLines="3" android:ellipsize="end" android:textColor="#AFC6D8" android:layout_width="match_parent" android:layout_height="wrap_content"/>
      <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
       <Button android:id="@+id/live_favorite" android:text="☆ Favorite" android:textAllCaps="false" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
       
@@ -46,7 +45,7 @@
    </FrameLayout>
   </LinearLayout>
 
-  <TextView android:id="@+id/live_bottom_bar" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES  •  SERVER 05" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
+  <TextView android:id="@+id/live_bottom_bar" android:layout_width="match_parent" android:layout_height="32dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
  </LinearLayout>
 
  <LinearLayout android:id="@+id/live_overlay" android:visibility="gone" android:layout_width="560dp" android:layout_height="match_parent" android:layout_gravity="start" android:orientation="horizontal" android:padding="8dp" android:background="#F007121D">
