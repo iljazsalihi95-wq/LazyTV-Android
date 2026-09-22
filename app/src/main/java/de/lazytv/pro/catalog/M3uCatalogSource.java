@@ -31,7 +31,7 @@ public class M3uCatalogSource {
   }
  }
  private Catalog downloadAndParse(String exactUrl)throws CatalogException{
-  HttpUrl u=parseUrl(exactUrl);Request req=new Request.Builder().url(u).header("User-Agent","VLC/3.0.20 LibVLC/3.0.20").header("Accept","*/*").get().build();
+  HttpUrl u=parseUrl(exactUrl);Request req=new Request.Builder().url(u).header("User-Agent","VLC/3.0.20 LibVLC/3.0.20").header("Accept","application/x-mpegURL,application/vnd.apple.mpegurl,text/plain,*/*").header("Connection","close").get().build();
   try(Response res=REMOTE.newCall(req).execute()){
    int code=res.code();String ct=res.header("Content-Type","");int redirects=redirectCount(res);
    Log.d("LazyTV-M3U","HTTP_RESPONSE scheme="+res.request().url().scheme()+" host="+res.request().url().host()+" port="+res.request().url().port()+" path="+res.request().url().encodedPath()+" status="+code+" redirects="+redirects+" contentType="+ct);
