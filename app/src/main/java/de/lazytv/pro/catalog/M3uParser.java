@@ -8,7 +8,7 @@ public final class M3uParser{
    else if(info!=null&&line.startsWith("#EXTVLCOPT:")){option(pending,line.substring(11));}
    else if(info!=null&&line.startsWith("#KODIPROP:")){option(pending,line.substring(10));}
    else if(info!=null&&line.startsWith("#EXTHTTP:")){extHttp(pending,line.substring(9));}
-   else if(info!=null&&!line.isEmpty()&&!line.startsWith("#")){Map<String,String>m=new HashMap<>();Matcher x=A.matcher(info);while(x.find())m.put(x.group(1).toLowerCase(Locale.US),x.group(2));int comma=info.lastIndexOf(',');String name=m.get("tvg-name");if(name==null||name.isEmpty())name=comma>=0?info.substring(comma+1).trim():"Stream";String group=m.get("group-title");if(group==null||group.isEmpty())group=inferGroup(name,m);CatalogType type=type(group,line,m);String country=CountryResolver.key(group);String key=type.name()+"|"+country+"|"+group;if(!cats.containsKey(key)){String id="m3u-"+Integer.toHexString(key.hashCode());cats.put(key,id);c.categories.add(new Category(id,group,type,"OTHER".equals(country)?"":country));}
+   else if(info!=null&&!line.isEmpty()&&!line.startsWith("#")){Map<String,String>m=new HashMap<>();Matcher x=A.matcher(info);while(x.find())m.put(x.group(1).toLowerCase(Locale.US),x.group(2));int comma=info.lastIndexOf(',');String name=m.get("tvg-name");if(name==null||name.isEmpty())name=comma>=0?info.substring(comma+1).trim():"Stream";String group=m.get("group-title");if(group==null||group.isEmpty())group=inferGroup(name,m);CatalogType type=type(group,line,m);String country=country(m,group);String key=type.name()+"|"+country+"|"+group;if(!cats.containsKey(key)){String id="m3u-"+Integer.toHexString(key.hashCode());cats.put(key,id);c.categories.add(new Category(id,group,type,"OTHER".equals(country)?"":country));}
     String url=line;int pipe=url.indexOf('|');if(pipe>0){pipeHeaders(pending,url.substring(pipe+1));url=url.substring(0,pipe);}String id="m3u-"+Integer.toHexString((name+url).hashCode());c.items.add(new M3uStreamItem(id,name,cats.get(key),m.get("tvg-logo"),url,m.get("tvg-id"),type,pending));info=null;pending=new LinkedHashMap<>();
    }
   }if(c.items.isEmpty())throw new CatalogException("Playlist M3U është bosh ose e pavlefshme");return c;
@@ -18,11 +18,12 @@ public final class M3uParser{
  private static void extHttp(Map<String,String>h,String s){try{JSONObject j=new JSONObject(s.trim());Iterator<String>it=j.keys();while(it.hasNext()){String k=it.next();String v=j.optString(k,"");if(!v.isEmpty())h.put(header(k),v);}}catch(Exception ignored){}}
  private static void pipeHeaders(Map<String,String>h,String s){for(String p:s.split("&")){int q=p.indexOf('=');if(q<1)continue;try{h.put(header(URLDecoder.decode(p.substring(0,q),"UTF-8")),URLDecoder.decode(p.substring(q+1),"UTF-8"));}catch(Exception ignored){}}}
  private static String header(String k){String x=k.trim();if(x.equalsIgnoreCase("user-agent"))return"User-Agent";if(x.equalsIgnoreCase("referer")||x.equalsIgnoreCase("referrer"))return"Referer";if(x.equalsIgnoreCase("cookie"))return"Cookie";if(x.equalsIgnoreCase("origin"))return"Origin";return x;}
+ private static String country(Map<String,String>m,String group){String x=m.get("tvg-country");if(x==null||x.trim().isEmpty())x=m.get("country");if(x==null||x.trim().isEmpty())x=m.get("country-code");String k=CountryResolver.key(x);return "OTHER".equals(k)?CountryResolver.key(group):k;}
  private static CatalogType type(String g,String u,Map<String,String>m){
   String s=(g==null?"":g).toLowerCase(Locale.US),url=(u==null?"":u).toLowerCase(Locale.US);
   String meta=(m.get("type")+" "+m.get("content-type")+" "+m.get("stream-type")+" "+m.get("media-type")).toLowerCase(Locale.US);
-  if(meta.contains("series")||meta.contains("episode")||s.contains("series")||s.contains("serial")||s.contains("episode")||url.contains("/series/"))return CatalogType.SERIES;
-  if(meta.contains("movie")||meta.contains("vod")||s.contains("movie")||s.contains("vod")||s.contains("film")||url.contains("/movie/"))return CatalogType.MOVIES;
+  if(meta.contains("series")||meta.contains("episode")||url.contains("/series/"))return CatalogType.SERIES;
+  if(meta.contains("movie")||meta.contains("vod")||url.contains("/movie/"))return CatalogType.MOVIES;
   return CatalogType.LIVE;
  }
 }
