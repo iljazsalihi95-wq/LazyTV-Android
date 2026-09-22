@@ -7,7 +7,11 @@ public final class CountryResolver{
  private static void alias(String code,String...xs){for(String x:xs)NAMES.put(x,code);}
  private CountryResolver(){}
  public static String key(Category c){if(c!=null&&c.country!=null&&!c.country.trim().isEmpty())return normalize(c.country);return key(c==null?null:c.name);}
- public static String key(String name){if(name==null)return"OTHER";String raw=name.trim(),u=raw.toUpperCase(Locale.ROOT);if(u.contains("EXYU")||u.contains("EX-YU")||u.contains("EX YU"))return"EXYU";for(Pattern p:P){Matcher m=p.matcher(raw);if(m.matches())return normalize(m.group(1));}String direct=NAMES.get(u);return direct==null?"OTHER":direct;}
+ public static String key(String name){if(name==null)return"OTHER";String raw=name.trim(),u=raw.toUpperCase(Locale.ROOT);if(u.contains("EXYU")||u.contains("EX-YU")||u.contains("EX YU"))return"EXYU";for(Pattern p:P){Matcher m=p.matcher(raw);if(m.matches())return normalize(m.group(1));}String direct=NAMES.get(u);if(direct!=null)return direct;
+ String padded=" "+u.replace('_',' ').replace('-',' ').replace('|',' ').replace(':',' ')+" ";
+ String best=null;int bestLen=0;
+ for(Map.Entry<String,String> e:NAMES.entrySet()){String n=e.getKey();if(n.length()<4)continue;if(padded.contains(" "+n+" ")&&n.length()>bestLen){best=e.getValue();bestLen=n.length();}}
+ return best==null?"OTHER":best;}
  private static String normalize(String raw){if(raw==null)return"OTHER";String k=raw.trim().toUpperCase(Locale.ROOT);if(k.contains("EXYU")||k.equals("EX-YU")||k.equals("EX YU"))return"EXYU";String n=NAMES.get(k);if(n!=null)return n;if(k.length()==2){for(String x:Locale.getISOCountries())if(x.equalsIgnoreCase(k))return x.toUpperCase(Locale.ROOT);}String a=A3.get(k);return a==null?"OTHER":a;}
  public static String categoryLabel(String name){if(name==null)return"";for(Pattern p:P){Matcher m=p.matcher(name);if(m.matches()&&!m.group(2).trim().isEmpty())return m.group(2).trim();}return name.trim();}
  private static String flag(String k){if(k==null||k.length()!=2)return"🌐";int a=Character.codePointAt(k,0)-'A'+0x1F1E6,b=Character.codePointAt(k,1)-'A'+0x1F1E6;return new String(Character.toChars(a))+new String(Character.toChars(b));}
