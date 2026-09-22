@@ -14,7 +14,7 @@ public class M3uCatalogSource {
   String original=source.getUrl();
   HttpUrl u=parseUrl(original);
   diag("INPUT",u,null);
-  try{Catalog direct=downloadAndParse(original);if(hasXtreamCredentials(u)&&needsXtreamMetadata(direct)){Log.w("LazyTV-M3U","M3U categories collapsed -> Xtream metadata fallback");return xtreamFromM3u(source,u);}return direct;}
+  try{Catalog direct=downloadAndParse(u.toString());if(hasXtreamCredentials(u)&&needsXtreamMetadata(direct)){Log.w("LazyTV-M3U","M3U categories collapsed -> Xtream metadata fallback");return xtreamFromM3u(source,u);}return direct;}
   catch(CatalogException first){
    if(isHttp884(first)){Log.w("LazyTV-M3U","HTTP_884 host="+u.host()+" port="+u.port()+" -> Xtream fallback");return xtreamFromM3u(source,u);}
    if("https".equalsIgnoreCase(u.scheme())&&u.port()!=443&&isTlsFailure(first)){
@@ -41,7 +41,11 @@ public class M3uCatalogSource {
    int off=data.length>=3&&(data[0]&255)==0xEF&&(data[1]&255)==0xBB&&(data[2]&255)==0xBF?3:0;
    String probe=new String(data,off,Math.min(data.length-off,4096),StandardCharsets.UTF_8).trim();
    boolean ext=probe.startsWith("#EXTM3U");Log.d("LazyTV-M3U","BODY host="+u.host()+" bytes="+data.length+" extm3u="+ext);
-   if(!ext)throw new CatalogException("HTTP_RESPONSE_ERROR body_not_m3u");
+   if(!ext){
+    // Some providers return a bare list of stream URLs instead of EXTINF records.
+    if(looksLikeUrlList(probe)) data=promoteUrlList(data,off);
+    else throw new CatalogException("HTTP_RESPONSE_ERROR body_not_m3u");
+   }
    try{return parseM3u(new ByteArrayInputStream(data,off,data.length-off));}catch(CatalogException e){throw e;}catch(Exception e){throw new CatalogException("Remote M3U parse: "+safe(e),e);}
   }catch(javax.net.ssl.SSLException e){throw network("TLS",u,e);}
    catch(java.net.UnknownHostException e){throw network("DNS",u,e);}
@@ -50,6 +54,8 @@ public class M3uCatalogSource {
    catch(java.net.ProtocolException e){throw network("PROTOCOL",u,e);}
    catch(IOException e){throw network("IO",u,e);}
  }
+ private boolean looksLikeUrlList(String probe){String[] ls=probe.split("\\r?\\n");int n=0;for(String s:ls){s=s.trim();if(s.startsWith("http://")||s.startsWith("https://"))n++;}return n>0;}
+ private byte[] promoteUrlList(byte[] data,int off){String raw=new String(data,off,data.length-off,StandardCharsets.UTF_8);StringBuilder b=new StringBuilder("#EXTM3U\\n");int n=1;for(String s:raw.split("\\r?\\n")){s=s.trim();if(!(s.startsWith("http://")||s.startsWith("https://")))continue;b.append("#EXTINF:-1 group-title=\\\"Të tjera\\\",Stream ").append(n++).append("\\n").append(s).append("\\n");}return b.toString().getBytes(StandardCharsets.UTF_8);}
  private Catalog xtreamFromM3u(Playlist source,HttpUrl u)throws CatalogException{
   String user=u.queryParameter("username"),pass=u.queryParameter("password");
   if(user==null||user.isEmpty()||pass==null||pass.isEmpty())throw new CatalogException("Fallback Xtream nuk mund të përdoret: credentials mungojnë në M3U URL");
