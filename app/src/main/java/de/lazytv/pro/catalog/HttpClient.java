@@ -3,7 +3,7 @@ import java.io.*;import java.net.*;import java.nio.charset.StandardCharsets;impo
 public final class HttpClient {
  private HttpClient(){}
  public static String get(String u,Map<String,String> headers)throws CatalogException{
-  URL url;try{url=new URL(u);}catch(Exception e){throw new CatalogException("URL nuk është valide",e);}
+  URL url;try{String raw=u==null?"":u.trim().replace("&amp;","&").replace(" ","%20");url=new URL(raw);}catch(Exception e){throw new CatalogException("URL nuk është valide",e);}
   for(int redirect=0;redirect<=8;redirect++){
    HttpURLConnection c=null;
    try{
@@ -28,7 +28,7 @@ public final class HttpClient {
     return body;
    }catch(SocketTimeoutException e){throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
    catch(CatalogException e){throw e;}
-   catch(SSLException e){String m=e.getMessage();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost()+" reason="+(m==null?e.getClass().getSimpleName():m));throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
+   catch(SSLException e){String m=e.getMessage();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost()+" reason="+(m==null?e.getClass().getSimpleName():m));if("https".equalsIgnoreCase(url.getProtocol())&&url.getPort()>0&&url.getPort()!=443){try{URL retry=new URL("http",url.getHost(),url.getPort(),url.getFile());Log.w("LazyTV-HTTP","Retrying custom-port provider over HTTP host="+url.getHost()+" port="+url.getPort());url=retry;continue;}catch(Exception ignored){}}throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
    catch(Exception e){throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
    finally{if(c!=null)c.disconnect();}
   }
