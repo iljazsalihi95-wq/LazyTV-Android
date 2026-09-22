@@ -60,3 +60,17 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.5.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 }
+
+
+def officialLogoB64 = file("src/main/assets/lazytv_official_logo.png.b64")
+def generatedLogoDir = file("src/main/res/drawable-nodpi")
+def generatedLogo = file("src/main/res/drawable-nodpi/lazytv_official_logo.png")
+tasks.register("prepareOfficialLazyTvLogo") {
+    inputs.file(officialLogoB64)
+    outputs.file(generatedLogo)
+    doLast {
+        generatedLogoDir.mkdirs()
+        generatedLogo.bytes = officialLogoB64.text.trim().decodeBase64()
+    }
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn("prepareOfficialLazyTvLogo") }
