@@ -68,7 +68,15 @@ public class M3uCatalogSource {
  private boolean needsXtreamMetadata(Catalog c){java.util.List<Category> cats=c.categories(CatalogType.LIVE);int total=0,other=0;for(Category z:cats){int n=c.items(CatalogType.LIVE,z.id).size();total+=n;String s=z.name==null?"":z.name.trim();if("Të tjera".equalsIgnoreCase(s)||"Other".equalsIgnoreCase(s)||"Uncategorized".equalsIgnoreCase(s))other+=n;}return total>100&&other>0&&(cats.size()==1||other*100/Math.max(1,total)>=35);}
  private CatalogException network(String stage,HttpUrl u,Exception e){String cause=e.getCause()==null?"none":e.getCause().getClass().getSimpleName()+":"+msg(e.getCause());String m="NETWORK_ERROR stage="+stage+" exception="+e.getClass().getSimpleName()+" cause="+cause+" scheme="+u.scheme()+" host="+u.host()+" port="+u.port()+" path="+u.encodedPath();Log.e("LazyTV-M3U",m,e);return new CatalogException(m,e);}
  private void diag(String stage,HttpUrl u,Exception e){Log.d("LazyTV-M3U","REMOTE_M3U "+stage+" scheme="+u.scheme()+" host="+u.host()+" port="+u.port()+" path="+u.encodedPath()+" query_present="+(u.querySize()>0));}
- private HttpUrl parseUrl(String s)throws CatalogException{HttpUrl u=HttpUrl.parse(s);if(u==null)throw new CatalogException("URL M3U nuk është valide");return u;}
+ private HttpUrl parseUrl(String s)throws CatalogException{
+  if(s==null)throw new CatalogException("URL M3U nuk është valide");
+  String raw=s.trim();
+  // IPTV links are often pasted from chats/web forms with spaces or HTML escaped query separators.
+  raw=raw.replace("&amp;","&").replace(" ","%20");
+  HttpUrl u=HttpUrl.parse(raw);
+  if(u==null)throw new CatalogException("URL M3U nuk është valide");
+  return u;
+ }
  private boolean hasXtreamCredentials(HttpUrl u){return u.queryParameter("username")!=null&&u.queryParameter("password")!=null;}
  private boolean isHttp884(CatalogException e){return e.getMessage()!=null&&e.getMessage().contains("status=884");}
  private boolean isTlsFailure(CatalogException e){String m=e.getMessage();return m!=null&&m.contains("stage=TLS");}
