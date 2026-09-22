@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="18dp" android:background="@color/lazytv_background">
 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal"><TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Playlistat / Serverat" android:textColor="@android:color/white" android:textSize="26sp" android:textStyle="bold"/><Button android:id="@+id/add_playlist" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="+ Shto" android:textAllCaps="false"/></LinearLayout>
+<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="14dp" android:paddingBottom="8dp">
+<Button android:id="@+id/add_m3u" android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:text="M3U PLAYLIST" android:textAllCaps="false"/>
+<Button android:id="@+id/add_xtream" android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:layout_marginStart="10dp" android:text="XTREAM CODES" android:textAllCaps="false"/>
+<Button android:id="@+id/add_stalker" android:layout_width="0dp" android:layout_height="58dp" android:layout_weight="1" android:layout_marginStart="10dp" android:text="STALKER PORTAL" android:textAllCaps="false"/>
+</LinearLayout>
 <TextView android:id="@+id/empty_text" android:layout_width="match_parent" android:layout_height="wrap_content" android:padding="28dp" android:gravity="center" android:text="Nuk ka ende playlista. Shtyp + Shto." android:textColor="@color/lazytv_muted"/>
 <ListView android:id="@+id/playlist_list" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:divider="@android:color/transparent" android:dividerHeight="10dp" android:paddingTop="12dp"/>
 </LinearLayout>
