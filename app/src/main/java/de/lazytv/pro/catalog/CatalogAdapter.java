@@ -14,10 +14,10 @@ public class CatalogAdapter extends BaseAdapter{
   else{
    StreamItem i=x.get(p);boolean poster=i.type==CatalogType.MOVIES||i.type==CatalogType.SERIES;
    row.setOrientation(poster?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER);
-   row.getLayoutParams().height=(int)((poster?300:72)*d);
+   row.getLayoutParams().height=(int)((poster?340:72)*d);
    LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)logo.getLayoutParams();
-   lp.width=poster?LinearLayout.LayoutParams.MATCH_PARENT:(int)(52*d);lp.height=(int)((poster?225:52)*d);if(poster){lp.setMargins((int)(7*d),(int)(7*d),(int)(7*d),(int)(4*d));}
-   logo.setLayoutParams(lp);logo.setScaleType(poster?ImageView.ScaleType.CENTER_CROP:ImageView.ScaleType.CENTER_INSIDE);
+   lp.width=poster?LinearLayout.LayoutParams.MATCH_PARENT:(int)(52*d);lp.height=(int)((poster?260:52)*d);if(poster){lp.setMargins((int)(7*d),(int)(7*d),(int)(7*d),(int)(4*d));}
+   logo.setLayoutParams(lp);logo.setAdjustViewBounds(true);logo.setScaleType(poster?ImageView.ScaleType.FIT_CENTER:ImageView.ScaleType.CENTER_INSIDE);
    n.setGravity(poster?Gravity.CENTER:Gravity.START);n.setText(i.name);n.setMaxLines(poster?2:1);n.setTextSize(poster?15:17);
    m.setGravity(poster?Gravity.CENTER:Gravity.START);m.setText(i.type==CatalogType.MOVIES?"MOVIE":i.type==CatalogType.SERIES?"SERIES":"LIVE");
    if(i.logo!=null&&!i.logo.trim().isEmpty())load(logo,i.logo);else logo.setImageResource(R.drawable.ic_lazytv_launcher);
