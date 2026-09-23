@@ -3,6 +3,7 @@ import android.content.Context;
 import java.io.*;
 public final class CatalogDiskCache {
  private static final long TTL_MS=30L*60L*1000L;
+ private static final String CACHE_VERSION="v2";
  private CatalogDiskCache(){}
  private static File file(Context c,String key){return new File(c.getCacheDir(),"catalog_"+Integer.toHexString(key.hashCode())+".bin");}
  public static Catalog get(Context c,String key){
@@ -13,5 +14,5 @@ public final class CatalogDiskCache {
   if(catalog==null)return;File f=file(c,key),tmp=new File(f.getPath()+".tmp");
   try(ObjectOutputStream out=new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(tmp)))){out.writeObject(catalog);out.flush();if(f.exists())f.delete();tmp.renameTo(f);}catch(Exception e){tmp.delete();}
  }
- public static String key(String playlistId,CatalogType type){return (playlistId==null?"":playlistId)+"|"+type.name();}
+ public static String key(String playlistId,CatalogType type){return CACHE_VERSION+"|"+(playlistId==null?"":playlistId)+"|"+type.name();}
 }
