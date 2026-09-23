@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 <uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 <uses-feature android:name="android.software.leanback" android:required="false"/>
 <uses-feature android:name="android.hardware.touchscreen" android:required="false"/>
-<application android:allowBackup="false" android:label="LazyTV PRO" android:theme="@style/Theme.LazyTVPRO" android:usesCleartextTraffic="true" android:icon="@drawable/lazytv_official_logo" android:roundIcon="@drawable/lazytv_official_logo" android:banner="@drawable/lazytv_tv_banner">
+<application android:networkSecurityConfig="@xml/network_security_config" android:allowBackup="false" android:label="LazyTV PRO" android:theme="@style/Theme.LazyTVPRO" android:usesCleartextTraffic="true" android:icon="@drawable/lazytv_official_logo" android:roundIcon="@drawable/lazytv_official_logo" android:banner="@drawable/lazytv_tv_banner">
 <activity android:name=".live.LiveTvActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".player.PlayerActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".catalog.CatalogActivity" android:exported="false"/>
-<activity android:name=".cms.IslamicHubActivity" android:exported="false" android:screenOrientation="landscape"/>\n<activity android:name=".cms.IslamicCatalogActivity" android:exported="false"/>
+<activity android:name=".cms.IslamicHubActivity" android:exported="false" android:screenOrientation="landscape"/>
+<activity android:name=".cms.IslamicCatalogActivity" android:exported="false"/>
 <activity android:name=".cms.EmbeddedWebActivity" android:exported="false"/>
 <activity android:name=".catalog.SeriesDetailActivity" android:exported="false"/>
 <activity android:name=".playlist.PlaylistEditorActivity" android:exported="false"/>
