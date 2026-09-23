@@ -9,6 +9,7 @@ public class MainActivity extends Activity {
   findViewById(R.id.home_activate).setOnClickListener(v->startActivity(new Intent(this,ActivationActivity.class)));
   findViewById(R.id.manage_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.home_live).setOnClickListener(v->openLive());
+  findViewById(R.id.playlist_art).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.home_movies).setOnClickListener(v->openCatalog("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openCatalog("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openCatalog(null));findViewById(R.id.home_search).setOnClickListener(v->openFreePlayer());
   findViewById(R.id.home_settings).setOnClickListener(v->Toast.makeText(this,"Settings",Toast.LENGTH_SHORT).show());
   findViewById(R.id.home_islam_films).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.cms.IslamicHubActivity.class)));
