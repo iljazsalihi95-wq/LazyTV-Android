@@ -5,9 +5,9 @@
   <EditText android:id="@+id/catalog_search" android:layout_width="260dp" android:layout_height="48dp" android:hint="Search…" android:singleLine="true" android:textColor="#FFFFFF" android:textColorHint="#8298AA" android:background="@drawable/bg_input" android:paddingHorizontal="14dp" android:focusable="true"/>
  </LinearLayout>
  <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp">
-  <Button android:id="@+id/tab_live" android:text="LIVE TV" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
-  <Button android:id="@+id/tab_movies" android:text="MOVIES" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
-  <Button android:id="@+id/tab_series" android:text="SERIES" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
+  <ImageButton android:id="@+id/tab_live" android:contentDescription="LIVE TV" android:scaleType="fitCenter" android:background="@drawable/bg_home_tile" android:layout_weight="1" android:layout_width="0dp" android:layout_height="82dp" android:focusable="true"/>
+  <ImageButton android:id="@+id/tab_movies" android:contentDescription="MOVIES" android:scaleType="fitCenter" android:background="@drawable/bg_home_tile" android:layout_weight="1" android:layout_width="0dp" android:layout_height="82dp" android:focusable="true"/>
+  <ImageButton android:id="@+id/tab_series" android:contentDescription="SERIES" android:scaleType="fitCenter" android:background="@drawable/bg_home_tile" android:layout_weight="1" android:layout_width="0dp" android:layout_height="82dp" android:focusable="true"/>
   <Button android:id="@+id/tab_favorites" android:text="★ FAVORITES" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
  </LinearLayout>
  <TextView android:id="@+id/catalog_breadcrumb" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="9dp" android:textColor="@color/lazytv_accent" android:textStyle="bold"/>
