@@ -5,7 +5,7 @@ public class M3uCatalogSource {
  public Catalog load(Context ctx,Playlist p)throws CatalogException{
   try{
    if(p.getType()==PlaylistType.M3U_URL)return loadRemote(p);
-   InputStream in=ctx.getContentResolver().openInputStream(Uri.parse(p.getUrl()));
+   Uri fileUri=Uri.parse(p.getUrl());InputStream in=ctx.getContentResolver().openInputStream(fileUri);
    if(in==null)throw new CatalogException("Skedari M3U nuk mund të hapet");
    return parseM3u(in);
   }catch(CatalogException e){throw e;}catch(Exception e){throw new CatalogException("M3U nuk mund të lexohet: "+safe(e),e);}
@@ -31,7 +31,7 @@ public class M3uCatalogSource {
   }
  }
  private Catalog downloadAndParse(String exactUrl)throws CatalogException{
-  HttpUrl u=parseUrl(exactUrl);Request req=new Request.Builder().url(u).header("User-Agent","VLC/3.0.20 LibVLC/3.0.20").header("Accept","application/x-mpegURL,application/vnd.apple.mpegurl,text/plain,*/*").header("Connection","close").get().build();
+  HttpUrl u=parseUrl(exactUrl);Request req=new Request.Builder().url(u).header("User-Agent","VLC/3.0.20 LibVLC/3.0.20").header("Accept","application/x-mpegURL,application/vnd.apple.mpegurl,text/plain,*/*").header("Accept-Encoding","identity").header("Connection","keep-alive").get().build();
   try(Response res=REMOTE.newCall(req).execute()){
    int code=res.code();String ct=res.header("Content-Type","");int redirects=redirectCount(res);
    Log.d("LazyTV-M3U","HTTP_RESPONSE scheme="+res.request().url().scheme()+" host="+res.request().url().host()+" port="+res.request().url().port()+" path="+res.request().url().encodedPath()+" status="+code+" redirects="+redirects+" contentType="+ct);
