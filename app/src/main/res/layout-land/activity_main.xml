@@ -23,4 +23,11 @@
   <Space style="@style/HomeGap"/>
   <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:padding="8dp" android:background="@drawable/bg_card" android:gravity="center_vertical"><ImageView android:id="@+id/playlist_art" android:layout_width="56dp" android:layout_height="56dp" android:scaleType="centerCrop"/><TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:paddingStart="8dp" android:text="M3U URL/File • Xtream Codes • Stalker Portal" android:textColor="@color/lazytv_muted" android:textSize="12sp"/></LinearLayout>
  </LinearLayout>
+ <LinearLayout android:layout_width="match_parent" android:layout_height="64dp" android:orientation="horizontal" android:layout_marginTop="8dp">
+  <Button android:id="@+id/home_islam_films" style="@style/HomeTileLandscape" android:text="FILMA ISLAM"/><Space style="@style/HomeGap"/>
+  <Button android:id="@+id/home_islam_series" style="@style/HomeTileLandscape" android:text="FILMA SERIK ISLAM"/><Space style="@style/HomeGap"/>
+  <Button android:id="@+id/home_lectures" style="@style/HomeTileLandscape" android:text="LIGJËRATA"/><Space style="@style/HomeGap"/>
+  <Button android:id="@+id/home_docs" style="@style/HomeTileLandscape" android:text="DOKUMENTARE"/><Space style="@style/HomeGap"/>
+  <Button android:id="@+id/home_kids" style="@style/HomeTileLandscape" android:text="VIZATIMOR ISLAM"/>
+ </LinearLayout>
 </LinearLayout>
