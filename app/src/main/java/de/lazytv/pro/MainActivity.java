@@ -11,11 +11,11 @@ public class MainActivity extends Activity {
   findViewById(R.id.home_live).setOnClickListener(v->openLive());
   findViewById(R.id.home_movies).setOnClickListener(v->openCatalog("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openCatalog("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openCatalog(null));findViewById(R.id.home_search).setOnClickListener(v->openFreePlayer());
   findViewById(R.id.home_settings).setOnClickListener(v->Toast.makeText(this,"Settings",Toast.LENGTH_SHORT).show());
-  findViewById(R.id.home_islam_films).setOnClickListener(v->openIslamic(de.lazytv.pro.cms.IslamicCmsConfig.FILMS));
-  findViewById(R.id.home_islam_series).setOnClickListener(v->openIslamic(de.lazytv.pro.cms.IslamicCmsConfig.SERIES));
-  findViewById(R.id.home_lectures).setOnClickListener(v->openIslamic(de.lazytv.pro.cms.IslamicCmsConfig.LECTURES));
-  findViewById(R.id.home_docs).setOnClickListener(v->openIslamic(de.lazytv.pro.cms.IslamicCmsConfig.DOCUMENTARIES));
-  findViewById(R.id.home_kids).setOnClickListener(v->openIslamic(de.lazytv.pro.cms.IslamicCmsConfig.KIDS));findViewById(R.id.home_live).requestFocus();
+  findViewById(R.id.home_islam_films).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.cms.IslamicHubActivity.class)));
+  
+  
+  
+  findViewById(R.id.home_live).requestFocus();
  }
  private void loadHomeTiles(){try{InputStream in=getAssets().open("home_tiles.jpg.b64");ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;while((n=in.read(buf))>0)out.write(buf,0,n);in.close();byte[] raw=Base64.decode(out.toString("UTF-8").trim(),Base64.DEFAULT);Bitmap sheet=BitmapFactory.decodeByteArray(raw,0,raw.length);if(sheet==null)return;int cw=sheet.getWidth()/4,ch=sheet.getHeight()/2;int[] ids={R.id.home_live,R.id.home_movies,R.id.home_series,R.id.home_islam_films,R.id.home_islam_series,R.id.home_lectures,R.id.home_docs,R.id.home_kids};for(int i=0;i<ids.length;i++){Bitmap tile=Bitmap.createBitmap(sheet,(i%4)*cw,(i/4)*ch,cw,ch);((ImageView)findViewById(ids[i])).setImageBitmap(tile);}}catch(Exception ignored){}}
  private void openIslamic(String c){Intent i=new Intent(this,de.lazytv.pro.cms.IslamicCatalogActivity.class);i.putExtra(de.lazytv.pro.cms.IslamicCatalogActivity.EXTRA_CATEGORY,c);startActivity(i);}
