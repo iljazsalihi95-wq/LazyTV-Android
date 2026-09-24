@@ -60,6 +60,10 @@ dependencies {
     implementation 'androidx.media3:media3-ui:1.5.1'
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
     implementation 'org.videolan.android:libvlc-all:3.6.0'
+    // Third playback engine for provider streams that fail in Media3/LibVLC.
+    implementation 'tv.danmaku.ijk.media:ijkplayer-java:0.8.8'
+    implementation 'tv.danmaku.ijk.media:ijkplayer-armv7a:0.8.8'
+    implementation 'tv.danmaku.ijk.media:ijkplayer-arm64:0.8.8'
 }
 
 
