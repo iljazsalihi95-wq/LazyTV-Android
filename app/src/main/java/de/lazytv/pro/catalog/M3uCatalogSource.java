@@ -14,6 +14,12 @@ public class M3uCatalogSource {
   String original=source.getUrl();
   HttpUrl u=parseUrl(original);
   diag("INPUT",u,null);
+  // Xtream-style get.php URLs are handled through player_api.php first, matching the IBO reference flow.
+  // This avoids waiting for a very large M3U before categories and channels can be shown.
+  if(hasXtreamCredentials(u) && u.encodedPath()!=null && u.encodedPath().toLowerCase(java.util.Locale.US).endsWith("/get.php")){
+   try{Log.d("LazyTV-M3U","GET_PHP detected -> Xtream API first");return xtreamFromM3u(source,u);}
+   catch(CatalogException apiError){Log.w("LazyTV-M3U","Xtream API first failed -> direct M3U fallback: "+safe(apiError));}
+  }
   try{Catalog direct=downloadAndParse(u.toString());if(hasXtreamCredentials(u)&&needsXtreamMetadata(direct)){Log.w("LazyTV-M3U","M3U categories collapsed -> Xtream metadata fallback");return xtreamFromM3u(source,u);}return direct;}
   catch(CatalogException first){
    if(isHttp884(first)){Log.w("LazyTV-M3U","HTTP_884 host="+u.host()+" port="+u.port()+" -> Xtream fallback");return xtreamFromM3u(source,u);}
