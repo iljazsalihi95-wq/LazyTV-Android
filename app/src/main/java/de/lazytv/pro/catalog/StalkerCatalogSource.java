@@ -1,7 +1,7 @@
 package de.lazytv.pro.catalog;
 import org.json.*;import java.util.*;import android.util.Log;import de.lazytv.pro.playlist.Playlist;
 public class StalkerCatalogSource {
- private String endpoint="",mac="",token=""; private boolean legacyLoadPhp=false; private Map<String,String> headers=new LinkedHashMap<>(); private long sessionAt=0; private static final long SESSION_MS=20*60*1000L;
+ private String endpoint="",mac="",token=""; private boolean legacyLoadPhp=false; private Map<String,String> headers=new LinkedHashMap<>(); private long sessionAt=0; private static final long SESSION_MS=20*60*1000L; private static final Map<String,String> ENDPOINT_CACHE=new java.util.concurrent.ConcurrentHashMap<>();
  public static class LinkResult{public final String url;public final Map<String,String> headers;LinkResult(String u,Map<String,String>h){url=u;headers=h;}}
  public synchronized void clear(){token="";sessionAt=0;headers.clear();}
  private synchronized void ensure(Playlist p)throws CatalogException{String ep=normalize(p.getUrl()),m=p.getMacAddress().trim();if(!token.isEmpty()&&ep.equals(endpoint)&&m.equals(mac)&&System.currentTimeMillis()-sessionAt<SESSION_MS)return;endpoint=ep;mac=m;headers=new LinkedHashMap<>();headers.put("Cookie","mac="+mac+"; stb_lang=en; timezone=Europe%2FBerlin;");headers.put("X-User-Agent","Model: MAG254; Link: Ethernet");headers.put("Referer",portalReferer(endpoint));headers.put("Origin",portalOrigin(endpoint));headers.put("Accept","*/*");handshake();}
@@ -10,13 +10,13 @@ public class StalkerCatalogSource {
  private String raw(String q)throws CatalogException{
   CatalogException last=null;
   for(String ep:endpoints(endpoint)){
-   try{String body=HttpClient.get(ep+"?"+q,headers);if(body!=null&&!body.trim().isEmpty()){endpoint=ep;return body;}}
+   try{String body=HttpClient.get(ep+"?"+q,headers);if(body!=null&&!body.trim().isEmpty()){endpoint=ep;ENDPOINT_CACHE.put(portalOrigin(ep),ep);return body;}}
    catch(CatalogException e){last=e;}
   }
   throw last==null?new CatalogException("Stalker portal nuk u përgjigj"):last;
  }
  private java.util.List<String> endpoints(String ep){
-  java.util.LinkedHashSet<String> x=new java.util.LinkedHashSet<>();x.add(ep);
+  java.util.LinkedHashSet<String> x=new java.util.LinkedHashSet<>();String cached=ENDPOINT_CACHE.get(portalOrigin(ep));if(cached!=null&&!cached.isEmpty())x.add(cached);x.add(ep);
   String base=ep.replaceAll("/(portal\\.php|server/load\\.php)$","");
   x.add(base+"/portal.php");x.add(base+"/server/load.php");x.add(base+"/stalker_portal/server/load.php");x.add(base+"/stalker_portal/portal.php");x.add(base+"/c/portal.php");
   return new java.util.ArrayList<>(x);
