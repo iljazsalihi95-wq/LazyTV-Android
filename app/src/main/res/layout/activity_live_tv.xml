@@ -27,22 +27,26 @@
     <ListView android:id="@+id/live_channels" android:listSelector="@drawable/bg_live_row" android:divider="#173047" android:dividerHeight="1dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
    </LinearLayout>
 
-   <FrameLayout android:id="@+id/live_player_panel" android:layout_width="0dp" android:layout_weight="49" android:layout_height="match_parent" android:layout_marginStart="18dp" android:layout_marginEnd="8dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" android:background="#000000" android:clipChildren="true" android:clipToPadding="true">
+   <LinearLayout android:id="@+id/live_player_column" android:layout_width="0dp" android:layout_weight="49" android:layout_height="match_parent" android:layout_marginStart="18dp" android:layout_marginEnd="8dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" android:orientation="vertical" android:background="#000000">
+    <FrameLayout android:id="@+id/live_player_panel" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#000000" android:clipChildren="true" android:clipToPadding="true">
+
     <androidx.media3.ui.PlayerView android:id="@+id/live_player" android:layout_width="match_parent" android:layout_height="match_parent" android:focusable="true" app:resize_mode="fit" app:surface_type="surface_view" app:use_controller="false" app:show_buffering="never"/>
     <ImageView android:id="@+id/live_loading_logo" android:layout_width="130dp" android:layout_height="130dp" android:layout_gravity="center" android:scaleType="fitCenter" android:visibility="gone"/>
     <LinearLayout android:id="@+id/live_idle" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
      <ImageView android:id="@+id/live_idle_logo" android:layout_width="190dp" android:layout_height="190dp" android:scaleType="fitCenter"/>
      <TextView android:text="Zgjidh një kanal" android:textColor="#DDE7F0" android:textSize="18sp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
     </LinearLayout>
-    <LinearLayout android:id="@+id/live_info" android:layout_gravity="bottom" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="12dp" android:background="#D0000814">
-     <TextView android:id="@+id/live_title" android:text="LazyTV PRO • LIVE TV" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-     <TextView android:id="@+id/live_epg" android:text="EPG" android:maxLines="3" android:ellipsize="end" android:textColor="#AFC6D8" android:layout_width="match_parent" android:layout_height="wrap_content"/>
-     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content">
-      <Button android:id="@+id/live_prev" android:text="◀ CH−" android:textAllCaps="false" android:focusable="true" android:layout_width="100dp" android:layout_height="wrap_content"/>\n      <Button android:id="@+id/live_favorite" android:text="☆ Favorite" android:textAllCaps="false" android:focusable="true" android:layout_marginStart="6dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>\n      <Button android:id="@+id/live_next" android:text="CH+ ▶" android:textAllCaps="false" android:focusable="true" android:layout_marginStart="6dp" android:layout_width="100dp" android:layout_height="wrap_content"/>
-      
+    </FrameLayout>
+    <LinearLayout android:id="@+id/live_info" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="10dp" android:background="#071522">
+     <TextView android:id="@+id/live_title" android:text="LazyTV PRO • LIVE TV" android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+     <TextView android:id="@+id/live_epg" android:text="EPG" android:maxLines="2" android:ellipsize="end" android:textColor="#AFC6D8" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center">
+      <Button android:id="@+id/live_prev" android:text="◀ CH−" android:textAllCaps="false" android:focusable="true" android:layout_width="100dp" android:layout_height="wrap_content"/>
+      <Button android:id="@+id/live_favorite" android:text="☆ Favorite" android:textAllCaps="false" android:focusable="true" android:layout_marginStart="6dp" android:layout_width="wrap_content" android:layout_height="wrap_content"/>
+      <Button android:id="@+id/live_next" android:text="CH+ ▶" android:textAllCaps="false" android:focusable="true" android:layout_marginStart="6dp" android:layout_width="100dp" android:layout_height="wrap_content"/>
      </LinearLayout>
     </LinearLayout>
-   </FrameLayout>
+   </LinearLayout>
   </LinearLayout>
 
   <TextView android:id="@+id/live_bottom_bar" android:layout_width="match_parent" android:layout_height="38dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES  •  ISLAM" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
