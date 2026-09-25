@@ -27,7 +27,7 @@
     <ListView android:id="@+id/live_channels" android:listSelector="@drawable/bg_live_row" android:divider="#173047" android:dividerHeight="1dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
    </LinearLayout>
 
-   <FrameLayout android:id="@+id/live_player_panel" android:layout_width="0dp" android:layout_weight="49" android:layout_height="match_parent" android:layout_marginStart="18dp" android:background="#000000">
+   <FrameLayout android:id="@+id/live_player_panel" android:layout_width="0dp" android:layout_weight="49" android:layout_height="match_parent" android:layout_marginStart="18dp" android:layout_marginEnd="8dp" android:layout_marginTop="8dp" android:layout_marginBottom="8dp" android:background="#000000" android:clipChildren="true" android:clipToPadding="true">
     <androidx.media3.ui.PlayerView android:id="@+id/live_player" android:layout_width="match_parent" android:layout_height="match_parent" android:focusable="true" app:resize_mode="fit" app:surface_type="surface_view" app:use_controller="false" app:show_buffering="never"/>
     <ImageView android:id="@+id/live_loading_logo" android:layout_width="130dp" android:layout_height="130dp" android:layout_gravity="center" android:scaleType="fitCenter" android:visibility="gone"/>
     <LinearLayout android:id="@+id/live_idle" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical">
