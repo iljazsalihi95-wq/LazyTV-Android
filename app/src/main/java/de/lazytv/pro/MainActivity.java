@@ -11,6 +11,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import de.lazytv.pro.live.LiveTvActivity;
 import de.lazytv.pro.playlist.PlaylistManagerActivity;
+import de.lazytv.pro.playlist.PlaylistStorage;
+import de.lazytv.pro.playlist.Playlist;
 
 /**
  * Lightweight Fire TV first-frame shell.
@@ -68,9 +70,9 @@ public class MainActivity extends Activity {
    startActivity(i);
   });
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
-  movies.setOnClickListener(v->openPlaylists());
-  series.setOnClickListener(v->openPlaylists());
-  favorites.setOnClickListener(v->openPlaylists());
+  movies.setOnClickListener(v->openCatalog("MOVIES"));
+  series.setOnClickListener(v->openCatalog("SERIES"));
+  favorites.setOnClickListener(v->openCatalog(null));
   settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));
   reload.setOnClickListener(v->recreate());
   exit.setOnClickListener(v->finish());
@@ -80,6 +82,8 @@ public class MainActivity extends Activity {
  }
 
  private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
+ private Playlist active(){PlaylistStorage store=new PlaylistStorage(this);String id=store.getActiveId();return id==null?null:store.get(id);}
+ private void openCatalog(String type){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}
  private Button tile(String text){
   Button b=new Button(this);
   b.setText(text);
