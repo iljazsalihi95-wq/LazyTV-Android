@@ -48,6 +48,19 @@ public class MainActivity extends Activity {
   row.addView(series,tileParams());
   row.addView(playlists,tileParams());
 
+  LinearLayout row2=new LinearLayout(this);
+  row2.setOrientation(LinearLayout.HORIZONTAL);
+  row2.setGravity(Gravity.CENTER);
+  root.addView(row2,new LinearLayout.LayoutParams(-1,dp(92)));
+  Button favorites=tile("★ FAVORITES");
+  Button settings=tile("⚙ SETTINGS");
+  Button reload=tile("↻ RELOAD");
+  Button exit=tile("EXIT");
+  row2.addView(favorites,tileParams());
+  row2.addView(settings,tileParams());
+  row2.addView(reload,tileParams());
+  row2.addView(exit,tileParams());
+
   live.setOnClickListener(v->{
    Intent i=new Intent(this,LiveTvActivity.class);
    i.putExtra("builtin_live",true);
@@ -57,6 +70,10 @@ public class MainActivity extends Activity {
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   movies.setOnClickListener(v->openPlaylists());
   series.setOnClickListener(v->openPlaylists());
+  favorites.setOnClickListener(v->openPlaylists());
+  settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));
+  reload.setOnClickListener(v->recreate());
+  exit.setOnClickListener(v->finish());
 
   live.requestFocus();
   setContentView(root);
