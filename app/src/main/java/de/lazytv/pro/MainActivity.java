@@ -81,7 +81,8 @@ public class MainActivity extends Activity {
   setContentView(root);
  }
 
- private void reloadPortal(){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");i.putExtra("force_reload",true);startActivity(i);}\n private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
+ private void reloadPortal(){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");i.putExtra("force_reload",true);startActivity(i);}
+ private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
  private Playlist active(){PlaylistStorage store=new PlaylistStorage(this);String id=store.getActiveId();return id==null?null:store.get(id);}
  private void openCatalog(String type){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}
  private Button tile(String text){
