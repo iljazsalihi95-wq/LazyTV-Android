@@ -17,6 +17,9 @@ android {
 
     defaultConfig {
         applicationId 'de.lazytv.pro'
+        // Fire TV/Android TV production target: package only ARM ABIs used by TV/mobile devices.
+        // This removes unused x86/x86_64 LibVLC payload from the APK.
+        ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
         minSdk 23
         targetSdk 35
         versionCode 3
