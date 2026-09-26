@@ -4,7 +4,7 @@ public class MainActivity extends Activity {
  private Playlist active(){String id=new PlaylistStorage(this).getActiveId();return id==null?null:new PlaylistStorage(this).get(id);}
  private void openBuiltIn(String type){Intent i=new Intent(this,de.lazytv.pro.live.LiveTvActivity.class);i.putExtra("builtin_live",true);if(type!=null)i.putExtra("catalog_type",type);startActivity(i);}
  @Override protected void onCreate(Bundle b){super.onCreate(b);if(!ActivationGuard.enforce(this))return;setContentView(R.layout.activity_main);
-  ((ImageView)findViewById(R.id.home_logo)).setImageResource(R.drawable.lazytv_official_logo);Base64AssetImage.load(this,(ImageView)findViewById(R.id.playlist_art),"lazytv_playlist.webp.b64");loadHomeTiles();
+  ((ImageView)findViewById(R.id.home_logo)).setImageResource(R.drawable.lazytv_official_logo);findViewById(android.R.id.content).post(()->{if(isFinishing()||(Build.VERSION.SDK_INT>=17&&isDestroyed()))return;try{Base64AssetImage.load(this,(ImageView)findViewById(R.id.playlist_art),"lazytv_playlist.webp.b64");loadHomeTiles();}catch(Throwable t){android.util.Log.e("LazyTV-Startup","Deferred home artwork failed",t);}});
   DeviceIdentityManager d=new DeviceIdentityManager(this);((TextView)findViewById(R.id.home_device)).setText("Device ID  "+d.getLazyTvId());((TextView)findViewById(R.id.home_serial)).setText("Serial  "+d.getSerial());
   findViewById(R.id.home_activate).setOnClickListener(v->startActivity(new Intent(this,ActivationActivity.class)));
   findViewById(R.id.manage_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
