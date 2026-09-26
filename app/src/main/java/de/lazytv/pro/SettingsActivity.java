@@ -5,7 +5,14 @@ public class SettingsActivity extends Activity{
   refreshActivePlaylist();
   findViewById(R.id.settings_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.settings_activation).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.activation.ActivationActivity.class)));
+  findViewById(R.id.settings_player).setOnClickListener(v->showPlayerSettings());
   findViewById(R.id.settings_back).setOnClickListener(v->finish());
+ }
+ private void showPlayerSettings(){
+  final String[] modes={"FIT — entire picture","ZOOM — fill screen","FILL — stretch"};
+  final android.content.SharedPreferences p=getSharedPreferences("lazytv_player_settings",MODE_PRIVATE);
+  int selected=p.getInt("aspect_mode",0);
+  new AlertDialog.Builder(this).setTitle("Player Settings • Screen format").setSingleChoiceItems(modes,selected,(d,which)->{p.edit().putInt("aspect_mode",which).apply();d.dismiss();Toast.makeText(this,"Player format saved",Toast.LENGTH_SHORT).show();}).setNegativeButton("Cancel",null).show();
  }
  @Override protected void onResume(){super.onResume();refreshActivePlaylist();}
  private void refreshActivePlaylist(){
