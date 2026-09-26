@@ -1,26 +1,87 @@
 package de.lazytv.pro;
-import de.lazytv.pro.activation.*;import android.app.*;import android.content.*;import android.os.*;import android.widget.*;import android.view.View;import android.graphics.*;import android.util.Base64;import java.io.*;import de.lazytv.pro.playlist.*;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.graphics.Color;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import de.lazytv.pro.live.LiveTvActivity;
+import de.lazytv.pro.playlist.PlaylistManagerActivity;
+
+/**
+ * Lightweight Fire TV first-frame shell.
+ * No bitmap decoding, network, provider parsing or native player initialization happens here.
+ */
 public class MainActivity extends Activity {
- private Playlist active(){String id=new PlaylistStorage(this).getActiveId();return id==null?null:new PlaylistStorage(this).get(id);}
- private void openBuiltIn(String type){Intent i=new Intent(this,de.lazytv.pro.live.LiveTvActivity.class);i.putExtra("builtin_live",true);if(type!=null)i.putExtra("catalog_type",type);startActivity(i);}
- @Override protected void onCreate(Bundle b){super.onCreate(b);try{if(!ActivationGuard.enforce(this))return;setContentView(R.layout.activity_main);}catch(Throwable startup){android.util.Log.e("LazyTV-Startup","MainActivity first frame failed",startup);android.widget.LinearLayout safe=new android.widget.LinearLayout(this);safe.setOrientation(android.widget.LinearLayout.VERTICAL);safe.setPadding(32,32,32,32);safe.setBackgroundColor(android.graphics.Color.rgb(2,6,17));android.widget.TextView t=new android.widget.TextView(this);t.setText("LazyTV PRO");t.setTextColor(android.graphics.Color.WHITE);t.setTextSize(28);safe.addView(t);setContentView(safe);return;}
-  ((ImageView)findViewById(R.id.home_logo)).setImageResource(R.drawable.lazytv_official_logo);findViewById(android.R.id.content).post(()->{if(isFinishing()||(Build.VERSION.SDK_INT>=17&&isDestroyed()))return;try{Base64AssetImage.load(this,(ImageView)findViewById(R.id.playlist_art),"lazytv_playlist.webp.b64");loadHomeTiles();}catch(Throwable t){android.util.Log.e("LazyTV-Startup","Deferred home artwork failed",t);}});
-  DeviceIdentityManager d=new DeviceIdentityManager(this);((TextView)findViewById(R.id.home_device)).setText("Device ID  "+d.getLazyTvId());((TextView)findViewById(R.id.home_serial)).setText("Serial  "+d.getSerial());
-  findViewById(R.id.home_activate).setOnClickListener(v->startActivity(new Intent(this,ActivationActivity.class)));
-  findViewById(R.id.manage_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
-  findViewById(R.id.home_live).setOnClickListener(v->openLive());
-  findViewById(R.id.playlist_art).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
-  findViewById(R.id.home_movies).setOnClickListener(v->openCatalog("MOVIES"));findViewById(R.id.home_series).setOnClickListener(v->openCatalog("SERIES"));findViewById(R.id.home_favorites).setOnClickListener(v->openCatalog(null));findViewById(R.id.home_search).setOnClickListener(v->openFreePlayer());
-  findViewById(R.id.home_settings).setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));
-  findViewById(R.id.home_islam_films).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.cms.IslamicHubActivity.class)));
-  
-  
-  
-  findViewById(R.id.home_live).requestFocus();
+ @Override protected void onCreate(Bundle state) {
+  super.onCreate(state);
+  getWindow().setBackgroundDrawableResource(android.R.color.black);
+
+  LinearLayout root=new LinearLayout(this);
+  root.setOrientation(LinearLayout.VERTICAL);
+  root.setGravity(Gravity.CENTER);
+  root.setPadding(dp(36),dp(28),dp(36),dp(28));
+  root.setBackgroundColor(Color.rgb(2,8,18));
+
+  TextView title=new TextView(this);
+  title.setText("LazyTV PRO");
+  title.setTextColor(Color.WHITE);
+  title.setTextSize(30);
+  title.setGravity(Gravity.CENTER);
+  root.addView(title,new LinearLayout.LayoutParams(-1,dp(64)));
+
+  LinearLayout row=new LinearLayout(this);
+  row.setOrientation(LinearLayout.HORIZONTAL);
+  row.setGravity(Gravity.CENTER);
+  root.addView(row,new LinearLayout.LayoutParams(-1,dp(110)));
+
+  Button live=tile("LIVE TV");
+  Button movies=tile("MOVIES");
+  Button series=tile("SERIES");
+  Button playlists=tile("PLAYLISTS");
+  row.addView(live,tileParams());
+  row.addView(movies,tileParams());
+  row.addView(series,tileParams());
+  row.addView(playlists,tileParams());
+
+  live.setOnClickListener(v->{
+   Intent i=new Intent(this,LiveTvActivity.class);
+   i.putExtra("builtin_live",true);
+   i.putExtra("source_scope","TRIAL");
+   startActivity(i);
+  });
+  playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
+  movies.setOnClickListener(v->openPlaylists());
+  series.setOnClickListener(v->openPlaylists());
+
+  live.requestFocus();
+  setContentView(root);
  }
- private void loadHomeTiles(){try{InputStream in=getAssets().open("home_tiles.jpg.b64");ByteArrayOutputStream out=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;while((n=in.read(buf))>0)out.write(buf,0,n);in.close();byte[] raw=Base64.decode(out.toString("UTF-8").trim(),Base64.DEFAULT);Bitmap sheet=BitmapFactory.decodeByteArray(raw,0,raw.length);if(sheet==null)return;int cw=sheet.getWidth()/4,ch=sheet.getHeight()/2;int[] ids={R.id.home_live,R.id.home_movies,R.id.home_series,R.id.home_islam_films,R.id.home_islam_series,R.id.home_lectures,R.id.home_docs,R.id.home_kids};for(int i=0;i<ids.length;i++){Bitmap tile=Bitmap.createBitmap(sheet,(i%4)*cw,(i/4)*ch,cw,ch);((ImageView)findViewById(ids[i])).setImageBitmap(tile);}}catch(Exception ignored){}}
- private void openIslamic(String c){Intent i=new Intent(this,de.lazytv.pro.cms.IslamicCatalogActivity.class);i.putExtra(de.lazytv.pro.cms.IslamicCatalogActivity.EXTRA_CATEGORY,c);startActivity(i);}
- private void openFreePlayer(){Playlist p=active();if(p==null){startActivity(new Intent(this,PlaylistManagerActivity.class));return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");startActivity(i);}
- private void openLive(){Playlist p=active();Intent i=new Intent(this,de.lazytv.pro.live.LiveTvActivity.class);if(p==null){i.putExtra("builtin_live",true);i.putExtra("source_scope","TRIAL");}else{i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");}startActivity(i);}
- private void openCatalog(String type){Playlist p=active();if(p==null){startActivity(new Intent(this,PlaylistManagerActivity.class));return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}
+
+ private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
+ private Button tile(String text){
+  Button b=new Button(this);
+  b.setText(text);
+  b.setTextSize(18);
+  b.setTextColor(Color.WHITE);
+  b.setAllCaps(false);
+  b.setFocusable(true);
+  b.setFocusableInTouchMode(true);
+  b.setBackgroundResource(R.drawable.bg_card);
+  b.setOnFocusChangeListener((v,focused)->{
+   v.setScaleX(focused?1.07f:1f);
+   v.setScaleY(focused?1.07f:1f);
+  });
+  return b;
+ }
+ private LinearLayout.LayoutParams tileParams(){
+  LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
+  p.setMargins(dp(7),dp(7),dp(7),dp(7));
+  return p;
+ }
+ private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
 }
