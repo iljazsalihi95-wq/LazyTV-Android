@@ -58,10 +58,14 @@ public class MainActivity extends Activity {
   Button settings=tile("⚙ SETTINGS");
   Button reload=tile("↻ RELOAD");
   Button exit=tile("EXIT");
+  Button servers=tile("SERVERS");
   row2.addView(favorites,tileParams());
   row2.addView(settings,tileParams());
   row2.addView(reload,tileParams());
   row2.addView(exit,tileParams());
+
+  LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(92)));
+  row3.addView(servers,tileParams());
 
   live.setOnClickListener(v->{
    Intent i=new Intent(this,LiveTvActivity.class);
@@ -75,6 +79,7 @@ public class MainActivity extends Activity {
   favorites.setOnClickListener(v->openCatalog(null));
   settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));
   reload.setOnClickListener(v->reloadPortal());
+  servers.setOnClickListener(v->showServers());
   exit.setOnClickListener(v->finish());
 
   live.requestFocus();
@@ -82,6 +87,7 @@ public class MainActivity extends Activity {
  }
 
  private void reloadPortal(){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");i.putExtra("force_reload",true);startActivity(i);}
+ private void showServers(){final String[] names={"LazyIPTV Master","Krystal","Saray","Server 4","Server 5","Server 6","Server 7","Server 8","Server 9","Server 10"};new android.app.AlertDialog.Builder(this).setTitle("LazyTV Servers").setItems(names,(d,w)->android.widget.Toast.makeText(this,names[w]+" selected",android.widget.Toast.LENGTH_SHORT).show()).setNegativeButton("Close",null).show();}
  private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
  private Playlist active(){PlaylistStorage store=new PlaylistStorage(this);String id=store.getActiveId();return id==null?null:store.get(id);}
  private void openCatalog(String type){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}
