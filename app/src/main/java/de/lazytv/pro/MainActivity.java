@@ -46,10 +46,12 @@ public class MainActivity extends Activity {
   Button movies=tile("MOVIES");
   Button series=tile("SERIES");
   Button playlists=tile("PLAYLISTS");
+  Button catchup=tile("CATCH-UP");
   row.addView(live,tileParams());
   row.addView(movies,tileParams());
   row.addView(series,tileParams());
   row.addView(playlists,tileParams());
+  row.addView(catchup,tileParams());
 
   LinearLayout row2=new LinearLayout(this);
   row2.setOrientation(LinearLayout.HORIZONTAL);
@@ -75,6 +77,7 @@ public class MainActivity extends Activity {
    startActivity(i);
   });
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
+  catchup.setOnClickListener(v->openCatalog("CATCHUP"));
   movies.setOnClickListener(v->openCatalog("MOVIES"));
   series.setOnClickListener(v->openCatalog("SERIES"));
   favorites.setOnClickListener(v->openCatalog(null));
