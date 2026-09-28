@@ -30,7 +30,8 @@ public class MainActivity extends Activity {
   root.setBackgroundColor(Color.rgb(2,8,18));
 
   TextView title=new TextView(this);
-  title.setText("LazyTV PRO");
+  java.text.SimpleDateFormat clockFmt=new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault());java.text.SimpleDateFormat dayFmt=new java.text.SimpleDateFormat("EEEE, dd.MM.yyyy",java.util.Locale.getDefault());
+  title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));
   title.setTextColor(Color.WHITE);
   title.setTextSize(30);
   title.setGravity(Gravity.CENTER);
