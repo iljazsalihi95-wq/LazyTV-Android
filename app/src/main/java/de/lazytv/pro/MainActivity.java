@@ -77,7 +77,7 @@ public class MainActivity extends Activity {
    startActivity(i);
   });
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
-  catchup.setOnClickListener(v->openCatalog("CATCHUP"));
+  catchup.setOnClickListener(v->{Playlist p=active();if(p==null){openPlaylists();return;}android.widget.Toast.makeText(this,"Catch-up aktivizohet vetëm kur provider-i ofron arkivë",android.widget.Toast.LENGTH_LONG).show();});
   movies.setOnClickListener(v->openCatalog("MOVIES"));
   series.setOnClickListener(v->openCatalog("SERIES"));
   favorites.setOnClickListener(v->openCatalog(null));
