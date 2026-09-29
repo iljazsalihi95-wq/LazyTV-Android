@@ -6,6 +6,8 @@ import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.Typeface;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -26,8 +28,8 @@ public class MainActivity extends Activity {
   LinearLayout root=new LinearLayout(this);
   root.setOrientation(LinearLayout.VERTICAL);
   root.setGravity(Gravity.CENTER);
-  root.setPadding(dp(36),dp(28),dp(36),dp(28));
-  root.setBackgroundColor(Color.rgb(2,8,18));
+  root.setPadding(dp(34),dp(20),dp(34),dp(22));
+  GradientDrawable homeBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(2,8,18),Color.rgb(5,20,37),Color.rgb(2,8,18)});root.setBackground(homeBg);
 
   TextView title=new TextView(this);
   java.text.SimpleDateFormat clockFmt=new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault());java.text.SimpleDateFormat dayFmt=new java.text.SimpleDateFormat("EEEE, dd.MM.yyyy",java.util.Locale.getDefault());
@@ -35,20 +37,23 @@ public class MainActivity extends Activity {
   final android.os.Handler clockHandler=new android.os.Handler(android.os.Looper.getMainLooper());
   final Runnable clockTick=new Runnable(){public void run(){if(!isFinishing()){title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));clockHandler.postDelayed(this,30000);}}};clockHandler.postDelayed(clockTick,30000);
   title.setTextColor(Color.WHITE);
-  title.setTextSize(30);
-  title.setGravity(Gravity.CENTER);
-  root.addView(title,new LinearLayout.LayoutParams(-1,dp(64)));
+  title.setTextSize(24);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+  title.setGravity(Gravity.CENTER_VERTICAL);
+  title.setPadding(dp(16),0,0,0);
+  root.addView(title,new LinearLayout.LayoutParams(-1,dp(58)));
+
+  TextView subtitle=new TextView(this);subtitle.setText("ENTERTAINMENT HUB  •  FIRE TV");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
 
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
   row.setGravity(Gravity.CENTER);
-  root.addView(row,new LinearLayout.LayoutParams(-1,dp(110)));
+  root.addView(row,new LinearLayout.LayoutParams(-1,dp(156)));
 
-  Button live=tile("LIVE TV");
-  Button movies=tile("MOVIES");
-  Button series=tile("SERIES");
-  Button playlists=tile("PLAYLISTS");
-  Button catchup=tile("CATCH-UP");
+  Button live=tile("▶\nLIVE TV");
+  Button movies=tile("◆\nMOVIES");
+  Button series=tile("▣\nSERIES");
+  Button playlists=tile("☰\nPLAYLISTS");
+  Button catchup=tile("↶\nCATCH-UP");
   row.addView(live,tileParams());
   row.addView(movies,tileParams());
   row.addView(series,tileParams());
@@ -58,7 +63,7 @@ public class MainActivity extends Activity {
   LinearLayout row2=new LinearLayout(this);
   row2.setOrientation(LinearLayout.HORIZONTAL);
   row2.setGravity(Gravity.CENTER);
-  root.addView(row2,new LinearLayout.LayoutParams(-1,dp(92)));
+  root.addView(row2,new LinearLayout.LayoutParams(-1,dp(104)));
   Button favorites=tile("★ FAVORITES");
   Button settings=tile("⚙ SETTINGS");
   Button reload=tile("↻ RELOAD");
@@ -69,8 +74,9 @@ public class MainActivity extends Activity {
   row2.addView(reload,tileParams());
   row2.addView(exit,tileParams());
 
-  LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(92)));
-  row3.addView(servers,tileParams());
+  LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(96)));
+  TextView serverLabel=new TextView(this);serverLabel.setText("  ACTIVE SOURCE  •  Select LazyTV server / provider");serverLabel.setTextColor(Color.rgb(150,170,190));serverLabel.setTextSize(13);row3.addView(serverLabel,new LinearLayout.LayoutParams(0,-1,1f));
+  LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(310),-1);sp.setMargins(dp(7),dp(7),dp(7),dp(7));row3.addView(servers,sp);
 
   live.setOnClickListener(v->{
    Intent i=new Intent(this,LiveTvActivity.class);
@@ -100,18 +106,19 @@ public class MainActivity extends Activity {
  private Button tile(String text){
   Button b=new Button(this);
   b.setText(text);
-  b.setTextSize(18);
+  b.setTextSize(17);
   b.setTextColor(Color.WHITE);
   b.setAllCaps(false);
   b.setFocusable(true);
   b.setFocusableInTouchMode(true);
-  b.setBackgroundResource(R.drawable.bg_card);
+  applyTileStyle(b,false);
   b.setOnFocusChangeListener((v,focused)->{
-   v.setScaleX(focused?1.07f:1f);
-   v.setScaleY(focused?1.07f:1f);
+   v.animate().scaleX(focused?1.06f:1f).scaleY(focused?1.06f:1f).setDuration(120).start();
+   applyTileStyle((Button)v,focused);
   });
   return b;
  }
+ private void applyTileStyle(Button b,boolean focused){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,focused?new int[]{Color.rgb(0,120,215),Color.rgb(0,63,125)}:new int[]{Color.rgb(8,34,57),Color.rgb(5,21,38)});g.setCornerRadius(dp(18));g.setStroke(dp(focused?3:1),focused?Color.rgb(100,210,255):Color.rgb(35,79,113));b.setBackground(g);b.setElevation(dp(focused?14:3));}
  private LinearLayout.LayoutParams tileParams(){
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
   p.setMargins(dp(7),dp(7),dp(7),dp(7));
