@@ -108,6 +108,9 @@ public class MainActivity extends Activity {
   Button b=new Button(this);
   b.setText(text);
   b.setTextSize(17);
+  b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
+  b.setGravity(Gravity.CENTER);
+  b.setPadding(dp(10),dp(12),dp(10),dp(12));
   b.setTextColor(Color.WHITE);
   b.setAllCaps(false);
   b.setFocusable(true);
@@ -119,7 +122,7 @@ public class MainActivity extends Activity {
   });
   return b;
  }
- private Button smallTile(String text){Button b=tile(text);b.setTextSize(14);return b;}
+ private Button smallTile(String text){Button b=tile(text);b.setTextSize(14);b.setTypeface(Typeface.DEFAULT,Typeface.NORMAL);return b;}
  private void applyTileStyle(Button b,boolean focused){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,focused?new int[]{Color.rgb(0,120,215),Color.rgb(0,63,125)}:new int[]{Color.rgb(8,34,57),Color.rgb(5,21,38)});g.setCornerRadius(dp(18));g.setStroke(dp(focused?3:1),focused?Color.rgb(100,210,255):Color.rgb(35,79,113));b.setBackground(g);b.setElevation(dp(focused?14:3));}
  private LinearLayout.LayoutParams tileParams(){
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
