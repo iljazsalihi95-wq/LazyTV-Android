@@ -32,6 +32,8 @@ public class MainActivity extends Activity {
   TextView title=new TextView(this);
   java.text.SimpleDateFormat clockFmt=new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault());java.text.SimpleDateFormat dayFmt=new java.text.SimpleDateFormat("EEEE, dd.MM.yyyy",java.util.Locale.getDefault());
   title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));
+  final android.os.Handler clockHandler=new android.os.Handler(android.os.Looper.getMainLooper());
+  final Runnable clockTick=new Runnable(){public void run(){if(!isFinishing()){title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));clockHandler.postDelayed(this,30000);}}};clockHandler.postDelayed(clockTick,30000);
   title.setTextColor(Color.WHITE);
   title.setTextSize(30);
   title.setGravity(Gravity.CENTER);
