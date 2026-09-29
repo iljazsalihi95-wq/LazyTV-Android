@@ -64,11 +64,11 @@ public class MainActivity extends Activity {
   row2.setOrientation(LinearLayout.HORIZONTAL);
   row2.setGravity(Gravity.CENTER);
   root.addView(row2,new LinearLayout.LayoutParams(-1,dp(104)));
-  Button favorites=tile("★ FAVORITES");
-  Button settings=tile("⚙ SETTINGS");
-  Button reload=tile("↻ RELOAD");
-  Button exit=tile("EXIT");
-  Button servers=tile("SERVERS");
+  Button favorites=smallTile("★  FAVORITES");
+  Button settings=smallTile("⚙  SETTINGS");
+  Button reload=smallTile("↻  RELOAD");
+  Button exit=smallTile("⏻  EXIT");
+  Button servers=smallTile("▤  SERVERS");
   row2.addView(favorites,tileParams());
   row2.addView(settings,tileParams());
   row2.addView(reload,tileParams());
@@ -118,6 +118,7 @@ public class MainActivity extends Activity {
   });
   return b;
  }
+ private Button smallTile(String text){Button b=tile(text);b.setTextSize(14);return b;}
  private void applyTileStyle(Button b,boolean focused){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,focused?new int[]{Color.rgb(0,120,215),Color.rgb(0,63,125)}:new int[]{Color.rgb(8,34,57),Color.rgb(5,21,38)});g.setCornerRadius(dp(18));g.setStroke(dp(focused?3:1),focused?Color.rgb(100,210,255):Color.rgb(35,79,113));b.setBackground(g);b.setElevation(dp(focused?14:3));}
  private LinearLayout.LayoutParams tileParams(){
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
