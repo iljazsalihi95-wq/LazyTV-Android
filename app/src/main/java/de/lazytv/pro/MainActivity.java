@@ -79,9 +79,10 @@ public class MainActivity extends Activity {
   LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(310),-1);sp.setMargins(dp(7),dp(7),dp(7),dp(7));row3.addView(servers,sp);
 
   live.setOnClickListener(v->{
+   Playlist p=active();
    Intent i=new Intent(this,LiveTvActivity.class);
-   i.putExtra("builtin_live",true);
-   i.putExtra("source_scope","TRIAL");
+   if(p!=null){i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");}
+   else{i.putExtra("builtin_live",true);i.putExtra("source_scope","TRIAL");}
    startActivity(i);
   });
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
