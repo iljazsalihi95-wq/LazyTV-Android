@@ -33,16 +33,16 @@ public class MainActivity extends Activity {
 
   TextView title=new TextView(this);
   java.text.SimpleDateFormat clockFmt=new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault());java.text.SimpleDateFormat dayFmt=new java.text.SimpleDateFormat("EEEE, dd.MM.yyyy",java.util.Locale.getDefault());
-  title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));
+  title.setText("LazyTV PRO                                      "+clockFmt.format(new java.util.Date()));
   final android.os.Handler clockHandler=new android.os.Handler(android.os.Looper.getMainLooper());
-  final Runnable clockTick=new Runnable(){public void run(){if(!isFinishing()){title.setText("LazyTV PRO   •   "+dayFmt.format(new java.util.Date())+"   •   "+clockFmt.format(new java.util.Date()));clockHandler.postDelayed(this,30000);}}};clockHandler.postDelayed(clockTick,30000);
+  final Runnable clockTick=new Runnable(){public void run(){if(!isFinishing()){title.setText("LazyTV PRO                                      "+clockFmt.format(new java.util.Date()));clockHandler.postDelayed(this,30000);}}};clockHandler.postDelayed(clockTick,30000);
   title.setTextColor(Color.WHITE);
   title.setTextSize(24);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   title.setGravity(Gravity.CENTER_VERTICAL);
   title.setPadding(dp(16),0,0,0);
   root.addView(title,new LinearLayout.LayoutParams(-1,dp(58)));
 
-  TextView subtitle=new TextView(this);subtitle.setText("ENTERTAINMENT HUB  •  FIRE TV");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
+  TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
 
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
