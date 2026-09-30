@@ -89,10 +89,11 @@ public class MainActivity extends Activity {
   row2.addView(settings,tileParams());
   row2.addView(reload,tileParams());
   row2.addView(exit,tileParams());
+  row2.addView(servers,tileParams());
 
   LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(96)));
   TextView serverLabel=new TextView(this);Playlist ap=active();String activeName=ap!=null?ap.getName():getSharedPreferences("lazytv_servers",MODE_PRIVATE).getString("active_server_name","LazyIPTV Master");serverLabel.setText("  ACTIVE PORTAL  •  "+activeName+"   |   OK to switch source");serverLabel.setTextColor(Color.rgb(150,200,230));serverLabel.setTextSize(14);serverLabel.setGravity(Gravity.CENTER_VERTICAL);row3.addView(serverLabel,new LinearLayout.LayoutParams(0,-1,1f));
-  LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(dp(310),-1);sp.setMargins(dp(7),dp(7),dp(7),dp(7));row3.addView(servers,sp);
+  
 
   live.setOnClickListener(v->{
    Playlist p=active();
