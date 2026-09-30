@@ -21,6 +21,10 @@ import android.location.LocationManager;
 import android.location.Geocoder;
 import android.Manifest;
 import java.util.List;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import org.json.JSONObject;
 import de.lazytv.pro.live.LiveTvActivity;
 import de.lazytv.pro.playlist.PlaylistManagerActivity;
 import de.lazytv.pro.playlist.PlaylistStorage;
@@ -113,11 +117,20 @@ public class MainActivity extends Activity {
 
  private void updateLocalInfo(TextView v){
   String city=getSharedPreferences("lazytv_local",MODE_PRIVATE).getString("city","");
-  if(!city.isEmpty())v.setText(city+"   •   Weather / Prayer times loading");
+  if(!city.isEmpty())v.setText(city+"   •   Local info loading");
   if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}
-  try{LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);Location loc=null;if(lm!=null){loc=lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);if(loc==null)loc=lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);}if(loc!=null){final Location found=loc;new Thread(()->{try{Geocoder g=new Geocoder(this,java.util.Locale.getDefault());List<android.location.Address> a=g.getFromLocation(found.getLatitude(),found.getLongitude(),1);String n=(a!=null&&!a.isEmpty()&&a.get(0).getLocality()!=null)?a.get(0).getLocality():"Current location";getSharedPreferences("lazytv_local",MODE_PRIVATE).edit().putString("city",n).apply();runOnUiThread(()->v.setText(n+"   •   Weather / Prayer times loading"));}catch(Exception ignored){}}).start();}}
+  try{LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);Location loc=null;if(lm!=null){loc=lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);if(loc==null)loc=lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);}if(loc!=null){final Location found=loc;new Thread(()->loadLocalData(v,found)).start();}}
   catch(SecurityException ignored){}
  }
+ private void loadLocalData(TextView v,Location found){
+  String city="Current location";try{Geocoder g=new Geocoder(this,java.util.Locale.getDefault());List<android.location.Address>a=g.getFromLocation(found.getLatitude(),found.getLongitude(),1);if(a!=null&&!a.isEmpty()&&a.get(0).getLocality()!=null)city=a.get(0).getLocality();}catch(Exception ignored){}
+  String temp="--°C",prayers="";OkHttpClient http=new OkHttpClient.Builder().callTimeout(java.time.Duration.ofSeconds(8)).build();
+  try{String u="https://api.open-meteo.com/v1/forecast?latitude="+found.getLatitude()+"&longitude="+found.getLongitude()+"&current=temperature_2m&timezone=auto";try(Response r=http.newCall(new Request.Builder().url(u).build()).execute()){if(r.isSuccessful()&&r.body()!=null){JSONObject j=new JSONObject(r.body().string());temp=Math.round(j.getJSONObject("current").getDouble("temperature_2m"))+"°C";}}}catch(Exception ignored){}
+  try{String u="https://api.aladhan.com/v1/timings?latitude="+found.getLatitude()+"&longitude="+found.getLongitude()+"&method=3";try(Response r=http.newCall(new Request.Builder().url(u).build()).execute()){if(r.isSuccessful()&&r.body()!=null){JSONObject t=new JSONObject(r.body().string()).getJSONObject("data").getJSONObject("timings");prayers="Sabahu "+cleanTime(t.optString("Fajr"))+"  •  Lindja "+cleanTime(t.optString("Sunrise"))+"  •  Dreka "+cleanTime(t.optString("Dhuhr"))+"  •  Ikindia "+cleanTime(t.optString("Asr"))+"  •  Akshami "+cleanTime(t.optString("Maghrib"))+"  •  Jacia "+cleanTime(t.optString("Isha"));}}}catch(Exception ignored){}
+  final String c=city,tt=temp,pp=prayers;getSharedPreferences("lazytv_local",MODE_PRIVATE).edit().putString("city",c).apply();runOnUiThread(()->v.setText(c+"   •   "+tt+(pp.isEmpty()?"":"   •   "+pp)));
+ }
+ private String cleanTime(String x){if(x==null)return"--:--";int p=x.indexOf(' ');return p>0?x.substring(0,p):x;}
+
  @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==41){android.widget.Toast.makeText(this,grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED?"Location enabled":"Choose city manually in Settings",android.widget.Toast.LENGTH_SHORT).show();recreate();}}
 
  private void reloadPortal(){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");i.putExtra("force_reload",true);startActivity(i);}
