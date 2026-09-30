@@ -49,11 +49,11 @@ public class MainActivity extends Activity {
   row.setGravity(Gravity.CENTER);
   root.addView(row,new LinearLayout.LayoutParams(-1,dp(156)));
 
-  Button live=tile("▶\nLIVE TV");
-  Button movies=tile("◆\nMOVIES");
-  Button series=tile("▣\nSERIES");
-  Button playlists=tile("☰\nPLAYLISTS");
-  Button catchup=tile("↶\nCATCH-UP");
+  Button live=tile("LIVE TV");
+  Button movies=tile("MOVIES");
+  Button series=tile("SERIES");
+  Button playlists=tile("PLAYLISTS");
+  Button catchup=tile("CATCH-UP");
   row.addView(live,tileParams());
   row.addView(movies,tileParams());
   row.addView(series,tileParams());
@@ -64,11 +64,11 @@ public class MainActivity extends Activity {
   row2.setOrientation(LinearLayout.HORIZONTAL);
   row2.setGravity(Gravity.CENTER);
   root.addView(row2,new LinearLayout.LayoutParams(-1,dp(104)));
-  Button favorites=smallTile("★  FAVORITES");
-  Button settings=smallTile("⚙  SETTINGS");
-  Button reload=smallTile("↻  RELOAD");
-  Button exit=smallTile("⏻  EXIT");
-  Button servers=smallTile("▤  SERVERS");
+  Button favorites=smallTile("FAVORITES");
+  Button settings=smallTile("SETTINGS");
+  Button reload=smallTile("RELOAD");
+  Button exit=smallTile("EXIT");
+  Button servers=smallTile("SERVERS");
   row2.addView(favorites,tileParams());
   row2.addView(settings,tileParams());
   row2.addView(reload,tileParams());
