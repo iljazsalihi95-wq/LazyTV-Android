@@ -15,6 +15,12 @@ import android.graphics.drawable.Drawable;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.location.Geocoder;
+import android.Manifest;
+import java.util.List;
 import de.lazytv.pro.live.LiveTvActivity;
 import de.lazytv.pro.playlist.PlaylistManagerActivity;
 import de.lazytv.pro.playlist.PlaylistStorage;
@@ -47,6 +53,8 @@ public class MainActivity extends Activity {
   root.addView(title,new LinearLayout.LayoutParams(-1,dp(58)));
 
   TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
+
+  TextView localInfo=new TextView(this);localInfo.setText("Location • Weather • Prayer times");localInfo.setTextColor(Color.rgb(185,215,235));localInfo.setTextSize(12);localInfo.setGravity(Gravity.CENTER_VERTICAL);localInfo.setPadding(dp(16),0,0,0);root.addView(localInfo,new LinearLayout.LayoutParams(-1,dp(28)));updateLocalInfo(localInfo);
 
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
@@ -102,6 +110,15 @@ public class MainActivity extends Activity {
   live.requestFocus();
   setContentView(root);
  }
+
+ private void updateLocalInfo(TextView v){
+  String city=getSharedPreferences("lazytv_local",MODE_PRIVATE).getString("city","");
+  if(!city.isEmpty())v.setText(city+"   •   Weather / Prayer times loading");
+  if(android.os.Build.VERSION.SDK_INT>=23&&checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}
+  try{LocationManager lm=(LocationManager)getSystemService(LOCATION_SERVICE);Location loc=null;if(lm!=null){loc=lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);if(loc==null)loc=lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);}if(loc!=null){final Location found=loc;new Thread(()->{try{Geocoder g=new Geocoder(this,java.util.Locale.getDefault());List<android.location.Address> a=g.getFromLocation(found.getLatitude(),found.getLongitude(),1);String n=(a!=null&&!a.isEmpty()&&a.get(0).getLocality()!=null)?a.get(0).getLocality():"Current location";getSharedPreferences("lazytv_local",MODE_PRIVATE).edit().putString("city",n).apply();runOnUiThread(()->v.setText(n+"   •   Weather / Prayer times loading"));}catch(Exception ignored){}}).start();}}
+  catch(SecurityException ignored){}
+ }
+ @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] grantResults){super.onRequestPermissionsResult(requestCode,permissions,grantResults);if(requestCode==41){android.widget.Toast.makeText(this,grantResults.length>0&&grantResults[0]==PackageManager.PERMISSION_GRANTED?"Location enabled":"Choose city manually in Settings",android.widget.Toast.LENGTH_SHORT).show();recreate();}}
 
  private void reloadPortal(){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");i.putExtra("force_reload",true);startActivity(i);}
  private void showServers(){final String[] names={"LazyIPTV Master","Krystal","Saray","Server 4","Server 5","Server 6","Server 7","Server 8","Server 9","Server 10"};final android.content.SharedPreferences prefs=getSharedPreferences("lazytv_servers",MODE_PRIVATE);int checked=prefs.getInt("active_server",0);new android.app.AlertDialog.Builder(this).setTitle("LazyTV Servers").setSingleChoiceItems(names,checked,(d,w)->{prefs.edit().putInt("active_server",w).putString("active_server_name",names[w]).apply();d.dismiss();Intent i=new Intent(this,LiveTvActivity.class);i.putExtra("builtin_live",true);i.putExtra("source_scope","SERVER");i.putExtra("server_index",w);i.putExtra("server_name",names[w]);startActivity(i);}).setNegativeButton("Close",null).show();}
