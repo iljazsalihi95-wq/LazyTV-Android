@@ -8,6 +8,10 @@ import android.view.View;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.Typeface;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.drawable.Drawable;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -29,7 +33,7 @@ public class MainActivity extends Activity {
   root.setOrientation(LinearLayout.VERTICAL);
   root.setGravity(Gravity.CENTER);
   root.setPadding(dp(34),dp(20),dp(34),dp(22));
-  GradientDrawable homeBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(2,8,18),Color.rgb(5,20,37),Color.rgb(2,8,18)});root.setBackground(homeBg);
+  GradientDrawable homeBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(1,7,18),Color.rgb(3,28,55),Color.rgb(1,10,24)});root.setBackground(homeBg);
 
   TextView title=new TextView(this);
   java.text.SimpleDateFormat clockFmt=new java.text.SimpleDateFormat("HH:mm",java.util.Locale.getDefault());java.text.SimpleDateFormat dayFmt=new java.text.SimpleDateFormat("EEEE, dd.MM.yyyy",java.util.Locale.getDefault());
@@ -110,7 +114,8 @@ public class MainActivity extends Activity {
   b.setTextSize(17);
   b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   b.setGravity(Gravity.CENTER);
-  b.setPadding(dp(10),dp(12),dp(10),dp(12));
+  b.setPadding(dp(10),dp(10),dp(10),dp(8));
+  Drawable icon=new MenuIconDrawable(text); icon.setBounds(0,0,dp(52),dp(52)); b.setCompoundDrawables(null,icon,null,null); b.setCompoundDrawablePadding(dp(8));
   b.setTextColor(Color.WHITE);
   b.setAllCaps(false);
   b.setFocusable(true);
@@ -128,6 +133,23 @@ public class MainActivity extends Activity {
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
   p.setMargins(dp(7),dp(7),dp(7),dp(7));
   return p;
+ }
+
+ private final class MenuIconDrawable extends Drawable {
+  private final String type; private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
+  MenuIconDrawable(String type){this.type=type;}
+  public void draw(Canvas c){Rect r=getBounds();float w=r.width(),h=r.height(),cx=r.centerX(),cy=r.centerY();p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(Math.max(3f,w*.075f));p.setStrokeCap(Paint.Cap.ROUND);p.setStrokeJoin(Paint.Join.ROUND);p.setColor(iconColor());
+   if("LIVE TV".equals(type)){c.drawRoundRect(w*.12f,h*.20f,w*.88f,h*.72f,w*.08f,w*.08f,p);c.drawLine(w*.36f,h*.84f,w*.64f,h*.84f,p);c.drawLine(cx,h*.72f,cx,h*.84f,p);c.drawLine(w*.38f,h*.08f,cx,h*.20f,p);c.drawLine(w*.62f,h*.08f,cx,h*.20f,p);}
+   else if("MOVIES".equals(type)){c.drawCircle(cx,cy,w*.30f,p);c.drawCircle(cx,cy,w*.06f,p);for(int i=0;i<4;i++){double a=i*Math.PI/2;c.drawCircle(cx+(float)Math.cos(a)*w*.17f,cy+(float)Math.sin(a)*w*.17f,w*.055f,p);}c.drawLine(w*.70f,h*.72f,w*.90f,h*.82f,p);}
+   else if("SERIES".equals(type)){for(int i=0;i<3;i++)c.drawRoundRect(w*.16f,h*(.16f+i*.25f),w*.84f,h*(.31f+i*.25f),w*.05f,w*.05f,p);}
+   else if("PLAYLISTS".equals(type)||"SERVERS".equals(type)){for(int i=0;i<3;i++){float y=h*(.22f+i*.27f);c.drawRoundRect(w*.18f,y,w*.82f,y+h*.14f,w*.04f,w*.04f,p);}}
+   else if("CATCH-UP".equals(type)||"RELOAD".equals(type)){c.drawArc(w*.18f,h*.18f,w*.82f,h*.82f,-55,285,false,p);c.drawLine(w*.18f,h*.34f,w*.18f,h*.12f,p);c.drawLine(w*.18f,h*.12f,w*.38f,h*.18f,p);}
+   else if("FAVORITES".equals(type)){android.graphics.Path q=new android.graphics.Path();q.moveTo(cx,h*.82f);q.cubicTo(w*.08f,h*.52f,w*.18f,h*.18f,cx,h*.34f);q.cubicTo(w*.82f,h*.18f,w*.92f,h*.52f,cx,h*.82f);c.drawPath(q,p);}
+   else if("SETTINGS".equals(type)){c.drawCircle(cx,cy,w*.29f,p);c.drawCircle(cx,cy,w*.10f,p);for(int i=0;i<8;i++){double a=i*Math.PI/4;float x1=cx+(float)Math.cos(a)*w*.29f,y1=cy+(float)Math.sin(a)*w*.29f,x2=cx+(float)Math.cos(a)*w*.40f,y2=cy+(float)Math.sin(a)*w*.40f;c.drawLine(x1,y1,x2,y2,p);}}
+   else if("EXIT".equals(type)){c.drawArc(w*.18f,h*.18f,w*.82f,h*.86f,-55,290,false,p);c.drawLine(cx,h*.08f,cx,h*.48f,p);}
+  }
+  private int iconColor(){if("MOVIES".equals(type)||"EXIT".equals(type)||"FAVORITES".equals(type))return Color.rgb(255,80,95);if("SERIES".equals(type))return Color.rgb(175,95,255);if("CATCH-UP".equals(type)||"SERVERS".equals(type))return Color.rgb(255,180,55);return Color.rgb(55,185,255);}
+  public void setAlpha(int a){p.setAlpha(a);} public void setColorFilter(android.graphics.ColorFilter f){p.setColorFilter(f);} public int getOpacity(){return android.graphics.PixelFormat.TRANSLUCENT;} public int getIntrinsicWidth(){return dp(52);} public int getIntrinsicHeight(){return dp(52);}
  }
  private int dp(int v){return Math.round(v*getResources().getDisplayMetrics().density);}
 }
