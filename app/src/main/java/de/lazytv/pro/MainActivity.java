@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
 
   TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
 
-  TextView localInfo=new TextView(this);localInfo.setText("Location • Weather • Prayer times");localInfo.setTextColor(Color.rgb(185,215,235));localInfo.setTextSize(12);localInfo.setGravity(Gravity.CENTER_VERTICAL);localInfo.setPadding(dp(16),0,0,0);root.addView(localInfo,new LinearLayout.LayoutParams(-1,dp(28)));updateLocalInfo(localInfo);
+  TextView localInfo=new TextView(this);localInfo.setText("Location • Weather • Prayer times");localInfo.setTextColor(Color.rgb(226,241,250));localInfo.setTextSize(13);localInfo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);localInfo.setGravity(Gravity.CENTER_VERTICAL);localInfo.setPadding(dp(18),0,dp(18),0);GradientDrawable prayerBar=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.rgb(5,38,57),Color.rgb(7,72,91),Color.rgb(5,38,57)});prayerBar.setCornerRadius(dp(12));prayerBar.setStroke(dp(1),Color.rgb(40,153,181));localInfo.setBackground(prayerBar);LinearLayout.LayoutParams prayerParams=new LinearLayout.LayoutParams(-1,dp(34));prayerParams.setMargins(dp(14),dp(2),dp(14),dp(5));root.addView(localInfo,prayerParams);updateLocalInfo(localInfo);
 
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
