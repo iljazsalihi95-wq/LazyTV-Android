@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
   LinearLayout root=new LinearLayout(this);
   root.setOrientation(LinearLayout.VERTICAL);
   root.setGravity(Gravity.CENTER);
-  root.setPadding(dp(34),dp(20),dp(34),dp(22));
+  root.setPadding(dp(22),dp(10),dp(22),dp(10));
   GradientDrawable homeBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(1,7,18),Color.rgb(3,28,55),Color.rgb(1,10,24)});root.setBackground(homeBg);
 
   TextView title=new TextView(this);
@@ -54,16 +54,16 @@ public class MainActivity extends Activity {
   title.setTextSize(24);title.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   title.setGravity(Gravity.CENTER_VERTICAL);
   title.setPadding(dp(16),0,0,0);
-  root.addView(title,new LinearLayout.LayoutParams(-1,dp(58)));
+  root.addView(title,new LinearLayout.LayoutParams(-1,dp(48)));
 
-  TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(28)));
+  TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(24)));
 
   TextView localInfo=new TextView(this);localInfo.setText("Location • Weather • Prayer times");localInfo.setTextColor(Color.rgb(226,241,250));localInfo.setTextSize(13);localInfo.setTypeface(Typeface.DEFAULT,Typeface.BOLD);localInfo.setGravity(Gravity.CENTER_VERTICAL);localInfo.setPadding(dp(18),0,dp(18),0);GradientDrawable prayerBar=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,new int[]{Color.rgb(5,38,57),Color.rgb(7,72,91),Color.rgb(5,38,57)});prayerBar.setCornerRadius(dp(12));prayerBar.setStroke(dp(1),Color.rgb(40,153,181));localInfo.setBackground(prayerBar);LinearLayout.LayoutParams prayerParams=new LinearLayout.LayoutParams(-1,dp(34));prayerParams.setMargins(dp(14),dp(2),dp(14),dp(5));root.addView(localInfo,prayerParams);updateLocalInfo(localInfo);
 
   LinearLayout row=new LinearLayout(this);
   row.setOrientation(LinearLayout.HORIZONTAL);
   row.setGravity(Gravity.CENTER);
-  root.addView(row,new LinearLayout.LayoutParams(-1,dp(156)));
+  root.addView(row,new LinearLayout.LayoutParams(-1,0,1.55f));
 
   Button live=tile("LIVE TV");
   Button movies=tile("MOVIES");
@@ -79,7 +79,7 @@ public class MainActivity extends Activity {
   LinearLayout row2=new LinearLayout(this);
   row2.setOrientation(LinearLayout.HORIZONTAL);
   row2.setGravity(Gravity.CENTER);
-  root.addView(row2,new LinearLayout.LayoutParams(-1,dp(104)));
+  root.addView(row2,new LinearLayout.LayoutParams(-1,0,1.05f));
   Button favorites=smallTile("FAVORITES");
   Button settings=smallTile("SETTINGS");
   Button reload=smallTile("RELOAD");
@@ -91,8 +91,8 @@ public class MainActivity extends Activity {
   row2.addView(exit,tileParams());
   row2.addView(servers,tileParams());
 
-  LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(96)));
-  TextView serverLabel=new TextView(this);Playlist ap=active();String activeName=ap!=null?ap.getName():getSharedPreferences("lazytv_servers",MODE_PRIVATE).getString("active_server_name","LazyIPTV Master");serverLabel.setText("  ACTIVE PORTAL  •  "+activeName+"   |   OK to switch source");serverLabel.setTextColor(Color.rgb(150,200,230));serverLabel.setTextSize(14);serverLabel.setGravity(Gravity.CENTER_VERTICAL);row3.addView(serverLabel,new LinearLayout.LayoutParams(0,-1,1f));
+  LinearLayout row3=new LinearLayout(this); row3.setOrientation(LinearLayout.HORIZONTAL); row3.setGravity(Gravity.CENTER); root.addView(row3,new LinearLayout.LayoutParams(-1,dp(42)));
+  TextView serverLabel=new TextView(this);Playlist ap=active();String activeName=ap!=null?ap.getName():getSharedPreferences("lazytv_servers",MODE_PRIVATE).getString("active_server_name","LazyIPTV Master");serverLabel.setText("  ACTIVE PORTAL  •  "+activeName+"   |   OK to switch source");serverLabel.setTextColor(Color.rgb(150,200,230));serverLabel.setTextSize(12);serverLabel.setGravity(Gravity.CENTER_VERTICAL);row3.addView(serverLabel,new LinearLayout.LayoutParams(0,-1,1f));
   
 
   live.setOnClickListener(v->{
