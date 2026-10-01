@@ -6,7 +6,11 @@ public class SettingsActivity extends Activity{
   findViewById(R.id.settings_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.settings_activation).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.activation.ActivationActivity.class)));
   findViewById(R.id.settings_player).setOnClickListener(v->showPlayerSettings());
+  findViewById(R.id.settings_language).setOnClickListener(v->showLanguageSettings());
   findViewById(R.id.settings_back).setOnClickListener(v->finish());
+ }
+ private void showLanguageSettings(){
+  final String[] languages={"Shqip","Deutsch","English"};final android.content.SharedPreferences p=getSharedPreferences("lazytv_ui_settings",MODE_PRIVATE);int selected=p.getInt("language",0);new AlertDialog.Builder(this).setTitle("Language / Gjuha").setSingleChoiceItems(languages,selected,(d,which)->{p.edit().putInt("language",which).putString("language_name",languages[which]).apply();d.dismiss();Toast.makeText(this,"Language saved: "+languages[which],Toast.LENGTH_SHORT).show();}).setNegativeButton("Cancel",null).show();
  }
  private void showPlayerSettings(){
   final String[] modes={"FIT — entire picture","ZOOM — fill screen","FILL — stretch"};
