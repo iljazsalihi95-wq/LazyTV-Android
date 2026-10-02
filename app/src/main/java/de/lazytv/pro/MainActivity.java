@@ -42,7 +42,7 @@ public class MainActivity extends Activity {
   LinearLayout root=new LinearLayout(this);
   root.setOrientation(LinearLayout.VERTICAL);
   root.setGravity(Gravity.CENTER);
-  root.setPadding(dp(22),dp(10),dp(22),dp(10));
+  root.setPadding(dp(14),dp(8),dp(14),dp(8));
   GradientDrawable homeBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(1,7,18),Color.rgb(3,28,55),Color.rgb(1,10,24)});root.setBackground(homeBg);
 
   TextView title=new TextView(this);
@@ -145,8 +145,8 @@ public class MainActivity extends Activity {
   b.setTextSize(17);
   b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
   b.setGravity(Gravity.CENTER);
-  b.setPadding(dp(10),dp(10),dp(10),dp(8));
-  Drawable icon=new MenuIconDrawable(text); icon.setBounds(0,0,dp(52),dp(52)); b.setCompoundDrawables(null,icon,null,null); b.setCompoundDrawablePadding(dp(8));
+  b.setPadding(dp(6),dp(6),dp(6),dp(5));
+  Drawable icon=new MenuIconDrawable(text); icon.setBounds(0,0,dp(42),dp(42)); b.setCompoundDrawables(null,icon,null,null); b.setCompoundDrawablePadding(dp(4));
   b.setTextColor(Color.WHITE);
   b.setAllCaps(false);
   b.setFocusable(true);
@@ -162,7 +162,7 @@ public class MainActivity extends Activity {
  private void applyTileStyle(Button b,boolean focused){GradientDrawable g=new GradientDrawable(GradientDrawable.Orientation.TL_BR,focused?new int[]{Color.rgb(0,120,215),Color.rgb(0,63,125)}:new int[]{Color.rgb(8,34,57),Color.rgb(5,21,38)});g.setCornerRadius(dp(18));g.setStroke(dp(focused?3:1),focused?Color.rgb(100,210,255):Color.rgb(35,79,113));b.setBackground(g);b.setElevation(dp(focused?14:3));}
  private LinearLayout.LayoutParams tileParams(){
   LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
-  p.setMargins(dp(7),dp(7),dp(7),dp(7));
+  p.setMargins(dp(4),dp(5),dp(4),dp(5));
   return p;
  }
 
