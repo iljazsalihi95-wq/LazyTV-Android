@@ -9,10 +9,8 @@ public class SettingsActivity extends Activity{
   findViewById(R.id.settings_language).setOnClickListener(v->showLanguageSettings());
   findViewById(R.id.settings_parental).setOnClickListener(v->showParentalSettings());
   findViewById(R.id.settings_stream).setOnClickListener(v->showStreamFormatSettings());
-  findViewById(R.id.settings_time).setOnClickListener(v->showTimeFormatSettings());
   findViewById(R.id.settings_back).setOnClickListener(v->finish());
  }
- private void showTimeFormatSettings(){final String[] labels={"24-hour — 21:45","12-hour — 9:45 PM"};final String[] values={"24h","12h"};final android.content.SharedPreferences p=getSharedPreferences("lazytv_ui_settings",MODE_PRIVATE);String current=p.getString("time_format","24h");int selected="12h".equals(current)?1:0;new AlertDialog.Builder(this).setTitle("Time Format").setSingleChoiceItems(labels,selected,(d,which)->{p.edit().putString("time_format",values[which]).apply();d.dismiss();Toast.makeText(this,"Time format saved: "+labels[which],Toast.LENGTH_SHORT).show();}).setNegativeButton("Cancel",null).show();}
  private void showStreamFormatSettings(){
   final String[] formats={"AUTO — provider/default","MPEG-TS (.ts)","HLS (.m3u8)"};final String[] values={"auto","ts","m3u8"};final android.content.SharedPreferences p=getSharedPreferences("lazytv_player_settings",MODE_PRIVATE);String current=p.getString("live_stream_format","auto");int selected=0;for(int i=0;i<values.length;i++)if(values[i].equals(current))selected=i;new AlertDialog.Builder(this).setTitle("Live Stream Format").setSingleChoiceItems(formats,selected,(d,which)->{p.edit().putString("live_stream_format",values[which]).apply();d.dismiss();Toast.makeText(this,"Live format saved: "+formats[which],Toast.LENGTH_SHORT).show();}).setNegativeButton("Cancel",null).show();
  }
