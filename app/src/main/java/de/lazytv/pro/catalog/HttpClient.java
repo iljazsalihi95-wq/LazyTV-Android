@@ -4,7 +4,7 @@ public final class HttpClient {
  private HttpClient(){}
  public static String get(String u,Map<String,String> headers)throws CatalogException{
   URL url;try{String raw=u==null?"":u.trim().replace("&amp;","&").replace(" ","%20");url=new URL(raw);}catch(Exception e){throw new CatalogException("URL nuk është valide",e);}
-  Exception lastNetworkError=null;\n  for(int attempt=0;attempt<3;attempt++){\n   URL attemptUrl=url;\n   for(int redirect=0;redirect<=8;redirect++){
+  for(int redirect=0;redirect<=8;redirect++){
    HttpURLConnection c=null;
    try{
     c=(HttpURLConnection)url.openConnection();
@@ -18,7 +18,7 @@ public final class HttpClient {
     String statusLine=c.getHeaderField(0);int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" statusLine="+safeStatus(statusLine)+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
     if(code==301||code==302||code==303||code==307||code==308){
      String loc=c.getHeaderField("Location");if(loc==null||loc.trim().isEmpty())throw new CatalogException("Redirect pa Location (HTTP "+code+")");
-     url=new URL(url,loc);attemptUrl=url;continue;
+     url=new URL(url,loc);continue;
     }
     InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();
     if(in!=null&&"gzip".equalsIgnoreCase(c.getContentEncoding()))in=new GZIPInputStream(in);
@@ -26,10 +26,10 @@ public final class HttpClient {
     if(code==401||code==403)throw new CatalogException("Credentials/refuzim nga serveri (HTTP "+code+")");
     if(code<200||code>=300)throw new CatalogException("Serveri ktheu HTTP "+code);
     return body;
-   }catch(SocketTimeoutException e){lastNetworkError=e;if(attempt<2){sleepRetry(attempt);url=attemptUrl;continue;}throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
+   }catch(SocketTimeoutException e){throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
    catch(CatalogException e){throw e;}
    catch(SSLException e){String m=e.getMessage();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost()+" reason="+(m==null?e.getClass().getSimpleName():m));if("https".equalsIgnoreCase(url.getProtocol())&&url.getPort()>0&&url.getPort()!=443){try{URL retry=new URL("http",url.getHost(),url.getPort(),url.getFile());Log.w("LazyTV-HTTP","Retrying custom-port provider over HTTP host="+url.getHost()+" port="+url.getPort());url=retry;continue;}catch(Exception ignored){}}throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
-   catch(Exception e){if(e instanceof java.net.SocketException||e instanceof java.net.ConnectException||e instanceof java.io.EOFException){lastNetworkError=e;if(attempt<2){sleepRetry(attempt);url=attemptUrl;continue;}}throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
+   catch(Exception e){throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
    finally{if(c!=null)c.disconnect();}
   }
   throw new CatalogException("Shumë redirects nga serveri");
@@ -42,6 +42,6 @@ public final class HttpClient {
    return new String(data,off,data.length-off,StandardCharsets.UTF_8);
   }
  }
- private static void sleepRetry(int attempt){try{Thread.sleep(350L*(attempt+1));}catch(InterruptedException e){Thread.currentThread().interrupt();}}\n private static String safeStatus(String s){if(s==null)return"null";return s.length()>120?s.substring(0,120):s;}
+ private static String safeStatus(String s){if(s==null)return"null";return s.length()>120?s.substring(0,120):s;}
  public static String enc(String s){try{return URLEncoder.encode(s==null?"":s,"UTF-8");}catch(Exception e){return"";}}
 }
