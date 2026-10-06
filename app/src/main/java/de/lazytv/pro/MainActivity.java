@@ -55,6 +55,7 @@ public class MainActivity extends Activity {
   title.setGravity(Gravity.CENTER_VERTICAL);
   title.setPadding(dp(16),0,0,0);
   root.addView(title,new LinearLayout.LayoutParams(-1,dp(48)));
+  setContentView(root);
 
   TextView subtitle=new TextView(this);subtitle.setText(dayFmt.format(new java.util.Date())+"     •     ENTERTAINMENT HUB");subtitle.setTextColor(Color.rgb(111,196,255));subtitle.setTextSize(12);subtitle.setLetterSpacing(.18f);subtitle.setGravity(Gravity.CENTER_VERTICAL);subtitle.setPadding(dp(16),0,0,0);root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(24)));
 
