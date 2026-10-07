@@ -44,8 +44,17 @@ public final class FreeTvCatalog {
 
     static {
         List<Channel> channels = new ArrayList<>();
-        // Add only verified broadcaster-authorized DIRECT media endpoints here.
-        // Do not add website/embed URLs: LazyTV PRO is a native player and uses no WebView.
+
+        // Public direct HLS endpoint currently exposed for free viewing by RTV Pendimi.
+        // Keep website/embed-only broadcasters out until a direct authorized media endpoint
+        // is verified; LazyTV PRO remains a native player and does not use WebView.
+        channels.add(new Channel(
+                "rtv-pendimi",
+                "RTV Pendimi",
+                Region.ISLAMIC,
+                "https://www.rtvpendimi.com:19360/tvpendimi/tvpendimi.m3u8",
+                ""));
+
         CHANNELS = Collections.unmodifiableList(channels);
     }
 
