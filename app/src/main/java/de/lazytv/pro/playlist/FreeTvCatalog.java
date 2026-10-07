@@ -55,6 +55,14 @@ public final class FreeTvCatalog {
                 "https://www.rtvpendimi.com:19360/tvpendimi/tvpendimi.m3u8",
                 ""));
 
+        // News 24 Albania stream is served from the broadcaster group's balkanweb.com host.
+        channels.add(new Channel(
+                "news24-albania",
+                "News 24 Albania",
+                Region.ALBANIA,
+                "https://tv.balkanweb.com/news24/livestream/playlist.m3u8",
+                ""));
+
         CHANNELS = Collections.unmodifiableList(channels);
     }
 
