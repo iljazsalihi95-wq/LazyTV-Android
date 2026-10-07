@@ -15,19 +15,19 @@
 
   <LinearLayout android:id="@+id/live_content_row" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:padding="8dp">
 
-   <LinearLayout android:id="@+id/live_left_panel" android:layout_width="0dp" android:layout_weight="14" android:layout_height="match_parent" android:orientation="vertical" android:background="#071522" android:padding="8dp">
+   <LinearLayout android:id="@+id/live_left_panel" android:layout_width="0dp" android:layout_weight="12" android:layout_height="match_parent" android:orientation="vertical" android:background="#071522" android:padding="8dp">
     <TextView android:text="COUNTRIES" android:textColor="#18D7FF" android:textStyle="bold" android:textSize="13sp" android:paddingBottom="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
     <Spinner android:id="@+id/live_country_spinner" android:focusable="true" android:clickable="true" android:spinnerMode="dropdown" android:background="@drawable/bg_input" android:padding="6dp" android:layout_width="match_parent" android:layout_height="46dp"/>
-    <TextView android:text="CATEGORIES" android:textColor="#18D7FF" android:textStyle="bold" android:textSize="13sp" android:paddingTop="10dp" android:paddingBottom="4dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+    <TextView android:text="CATEGORIES" android:singleLine="true" android:textColor="#18D7FF" android:textStyle="bold" android:textSize="12sp" android:paddingTop="10dp" android:paddingBottom="4dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
     <ListView android:id="@+id/live_categories" android:listSelector="@drawable/bg_live_row" android:dividerHeight="0dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
    </LinearLayout>
 
-   <LinearLayout android:id="@+id/live_channel_panel" android:layout_width="0dp" android:layout_weight="24" android:layout_height="match_parent" android:orientation="vertical" android:background="#091A2C" android:layout_marginStart="6dp" android:padding="6dp">
+   <LinearLayout android:id="@+id/live_channel_panel" android:layout_width="0dp" android:layout_weight="32" android:layout_height="match_parent" android:orientation="vertical" android:background="#091A2C" android:layout_marginStart="6dp" android:padding="6dp">
     <EditText android:id="@+id/live_search" android:hint="Search channels…" android:singleLine="true" android:textColor="#FFFFFF" android:textColorHint="#7890A7" android:background="@drawable/bg_input" android:padding="9dp" android:layout_width="match_parent" android:layout_height="44dp"/>
     <ListView android:id="@+id/live_channels" android:listSelector="@drawable/bg_live_row" android:divider="#173047" android:dividerHeight="1dp" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
    </LinearLayout>
 
-   <LinearLayout android:id="@+id/live_player_column" android:layout_width="0dp" android:layout_weight="62" android:layout_height="match_parent" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:layout_marginTop="4dp" android:layout_marginBottom="4dp" android:orientation="vertical" android:background="#000000">
+   <LinearLayout android:id="@+id/live_player_column" android:layout_width="0dp" android:layout_weight="56" android:layout_height="match_parent" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:layout_marginTop="4dp" android:layout_marginBottom="4dp" android:orientation="vertical" android:background="#000000">
     <FrameLayout android:id="@+id/live_player_panel" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="#000000" android:clipChildren="true" android:clipToPadding="true">
 
     <androidx.media3.ui.PlayerView android:id="@+id/live_player" android:layout_width="match_parent" android:layout_height="match_parent" android:focusable="true" app:resize_mode="fit" app:surface_type="surface_view" app:use_controller="false" app:show_buffering="never"/>
@@ -52,13 +52,13 @@
   <TextView android:id="@+id/live_bottom_bar" android:layout_width="match_parent" android:layout_height="28dp" android:gravity="center_vertical" android:paddingStart="16dp" android:text="LazyTV PRO  •  LIVE TV  •  MOVIES  •  SERIES  •  ISLAM" android:textColor="#71859A" android:textSize="11sp" android:background="#06111E"/>
  </LinearLayout>
 
- <LinearLayout android:id="@+id/live_overlay" android:visibility="gone" android:layout_width="560dp" android:layout_height="match_parent" android:layout_gravity="start" android:orientation="horizontal" android:padding="8dp" android:background="#F007121D">
-  <LinearLayout android:layout_width="0dp" android:layout_weight="42" android:layout_height="match_parent" android:orientation="vertical">
-   <TextView android:text="CATEGORIES" android:textColor="#18D7FF" android:textStyle="bold" android:padding="10dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+ <LinearLayout android:id="@+id/live_overlay" android:visibility="gone" android:layout_width="700dp" android:layout_height="match_parent" android:layout_gravity="start" android:orientation="horizontal" android:padding="8dp" android:background="#F007121D">
+  <LinearLayout android:layout_width="0dp" android:layout_weight="30" android:layout_height="match_parent" android:orientation="vertical">
+   <TextView android:text="CATEGORIES" android:singleLine="true" android:textSize="14sp" android:textColor="#18D7FF" android:textStyle="bold" android:padding="10dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
    <ListView android:id="@+id/overlay_categories" android:listSelector="@drawable/bg_live_row" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
   </LinearLayout>
-  <LinearLayout android:layout_width="0dp" android:layout_weight="58" android:layout_height="match_parent" android:orientation="vertical">
-   <TextView android:text="CHANNELS" android:textColor="#18D7FF" android:textStyle="bold" android:padding="10dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
+  <LinearLayout android:layout_width="0dp" android:layout_weight="70" android:layout_height="match_parent" android:orientation="vertical">
+   <TextView android:text="CHANNELS" android:singleLine="true" android:textSize="14sp" android:textColor="#18D7FF" android:textStyle="bold" android:padding="10dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
    <ListView android:id="@+id/overlay_channels" android:listSelector="@drawable/bg_live_row" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
   </LinearLayout>
  </LinearLayout>
