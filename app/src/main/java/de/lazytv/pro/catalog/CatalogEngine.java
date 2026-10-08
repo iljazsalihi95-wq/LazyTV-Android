@@ -4,10 +4,11 @@ import android.content.Context;
 import de.lazytv.pro.playlist.*;
 
 public class CatalogEngine {
+    private static final String IPTV_ORG_COUNTRY_PLAYLIST = "https://iptv-org.github.io/iptv/index.country.m3u";
     private final StalkerCatalogSource stalker = new StalkerCatalogSource();
 
     public Catalog load(Context c, Playlist p) throws CatalogException {
-        if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv();
+        if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv(c, p);
         String e = PlaylistValidator.validateForConnect(c, p);
         if (e != null) throw new CatalogException(e);
         switch (p.getType()) {
@@ -23,28 +24,27 @@ public class CatalogEngine {
         }
     }
 
-    private Catalog loadFreeTv() {
-        Catalog out = new Catalog();
-        for (FreeTvCatalog.Region region : FreeTvCatalog.Region.values()) {
-            String categoryId = "free:" + region.name().toLowerCase(java.util.Locale.ROOT);
-            out.categories.add(new Category(categoryId, region.label, CatalogType.LIVE, region.label));
-        }
-        for (FreeTvCatalog.Channel channel : FreeTvCatalog.all()) {
-            String categoryId = "free:" + channel.region.name().toLowerCase(java.util.Locale.ROOT);
-            out.items.add(new StreamItem(
-                    "free:" + channel.id,
-                    channel.name,
-                    categoryId,
-                    channel.logoUrl,
-                    channel.streamUrl,
-                    "",
-                    CatalogType.LIVE));
-        }
-        return out;
+    /**
+     * FREE TV is a native M3U source backed by iptv-org's public country-grouped playlist.
+     * It stays completely separate from user Premium/Xtream/Stalker credentials.
+     * The existing M3U parser preserves group-title/tvg-logo metadata and gives us the
+     * full public catalog instead of the old four-channel seed list.
+     */
+    private Catalog loadFreeTv(Context c, Playlist source) throws CatalogException {
+        Playlist publicSource = new Playlist(
+                source == null ? "builtin-free-tv" : source.getId(),
+                "FREE TV • iptv-org",
+                PlaylistType.M3U_URL,
+                IPTV_ORG_COUNTRY_PLAYLIST,
+                "",
+                "",
+                "",
+                source == null ? System.currentTimeMillis() : source.getUpdatedAt());
+        return new M3uCatalogSource().load(c, publicSource);
     }
 
     public Catalog loadType(Context c, Playlist p, CatalogType t) throws CatalogException {
-        if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv();
+        if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv(c, p);
         String e = PlaylistValidator.validateForConnect(c, p);
         if (e != null) throw new CatalogException(e);
         String key = CatalogDiskCache.key(p.getId(), t);
