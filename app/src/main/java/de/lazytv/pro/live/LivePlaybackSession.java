@@ -97,7 +97,7 @@ final class LivePlaybackSession {
     }
 
     private void retryCurrent() {
-        if (currentItem == null || retryResolver == null || retryRunning
+        if (currentItem == null || currentStream == null || retryRunning
                 || retryCount >= MAX_RETRIES) {
             if (retryCount >= MAX_RETRIES) {
                 listener.onBuffering(false);
@@ -107,12 +107,14 @@ final class LivePlaybackSession {
         }
         final long expectedGeneration = generation;
         final StreamItem expectedItem = currentItem;
+        final ResolvedStream fallbackStream = currentStream;
         final int attempt = ++retryCount;
         retryRunning = true;
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
-                ResolvedStream refreshed = retryResolver.refresh(expectedItem);
+                ResolvedStream refreshed = retryResolver == null
+                        ? fallbackStream : retryResolver.refresh(expectedItem);
                 main.post(() -> {
                     retryRunning = false;
                     if (expectedGeneration == generation && currentItem == expectedItem)
