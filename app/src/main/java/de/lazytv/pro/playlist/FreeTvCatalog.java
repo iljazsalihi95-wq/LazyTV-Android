@@ -63,6 +63,15 @@ public final class FreeTvCatalog {
                 "https://tv.balkanweb.com/news24/livestream/playlist.m3u8",
                 ""));
 
+        // ABC News Albania HLS is served from the broadcaster's abcnews.al domain.
+        // The endpoint has also been accepted as a public stream by iptv-org.
+        channels.add(new Channel(
+                "abc-news-albania",
+                "ABC News Albania",
+                Region.ALBANIA,
+                "https://tv2.abcnews.al/live/abcnews/playlist.m3u8",
+                "https://i.imgur.com/q5pjJ2m.png"));
+
         CHANNELS = Collections.unmodifiableList(channels);
     }
 
