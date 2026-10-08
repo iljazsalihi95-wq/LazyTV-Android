@@ -1,6 +1,8 @@
 package de.lazytv.pro.catalog;
 
 import android.content.Context;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import de.lazytv.pro.playlist.*;
 
 public class CatalogEngine {
@@ -65,11 +67,32 @@ public class CatalogEngine {
     }
 
     public ResolvedStream resolveStream(Playlist p, StreamItem i) throws CatalogException {
-        return new StreamResolver(stalker).resolve(p, i);
+        ResolvedStream r = new StreamResolver(stalker).resolve(p, i);
+        return enrichXtreamLiveEpg(p, i, r);
     }
 
     public ResolvedStream resolveStream(Context c, Playlist p, StreamItem i) throws CatalogException {
-        return new StreamResolver(stalker, c).resolve(p, i);
+        ResolvedStream r = new StreamResolver(stalker, c).resolve(p, i);
+        return enrichXtreamLiveEpg(p, i, r);
+    }
+
+    /**
+     * Xtream short EPG is fetched only after a LIVE channel has been selected. This keeps
+     * catalog loading fast and avoids one EPG request per channel. Playback resolution is
+     * still authoritative: an unavailable EPG must never prevent the stream from playing.
+     */
+    private ResolvedStream enrichXtreamLiveEpg(Playlist p, StreamItem i, ResolvedStream r) {
+        if (p == null || i == null || r == null || p.getType() != PlaylistType.XTREAM_CODES || i.type != CatalogType.LIVE) return r;
+        try {
+            Map<String,String> epg = new XtreamCatalogSource().loadLiveEpg(p, i.id);
+            if (epg == null || epg.isEmpty()) return r;
+            Map<String,String> metadata = new LinkedHashMap<>(r.metadata);
+            metadata.putAll(epg);
+            return new ResolvedStream(r.url, r.streamType, r.title, r.artwork, r.epgId, r.headers, metadata);
+        } catch (Exception ignored) {
+            // EPG is optional. Never fail or rebuild the active playback session because EPG failed.
+            return r;
+        }
     }
 
     public ResolvedStream refreshStream(Playlist p, StreamItem i) throws CatalogException {
