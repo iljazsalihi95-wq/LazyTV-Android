@@ -72,6 +72,15 @@ public final class FreeTvCatalog {
                 "https://tv2.abcnews.al/live/abcnews/playlist.m3u8",
                 "https://i.imgur.com/q5pjJ2m.png"));
 
+        // Ora News is a free Albanian news broadcaster. Its public HLS feed is carried
+        // through the Albanian MediaDesk distribution host and indexed as Ora News.
+        channels.add(new Channel(
+                "ora-news-albania",
+                "Ora News",
+                Region.ALBANIA,
+                "https://live1.mediadesk.al/oranews.m3u8",
+                "https://i.imgur.com/ILZY5bJ.png"));
+
         CHANNELS = Collections.unmodifiableList(channels);
     }
 
