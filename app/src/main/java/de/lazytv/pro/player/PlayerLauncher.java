@@ -4,6 +4,8 @@ import android.app.Activity;
 import android.content.Intent;
 import android.widget.Toast;
 
+import de.lazytv.pro.catalog.CatalogType;
+import de.lazytv.pro.catalog.Episode;
 import de.lazytv.pro.catalog.ResolvedStream;
 import de.lazytv.pro.catalog.StreamItem;
 
@@ -19,7 +21,14 @@ public final class PlayerLauncher {
             return;
         }
 
-        Intent intent = new Intent(activity, PlayerActivity.class);
+        Class<? extends PlayerActivity> target = PlayerActivity.class;
+        if (item instanceof Episode) {
+            target = EpisodePlayerActivity.class;
+        } else if (item.type == CatalogType.MOVIES) {
+            target = MoviePlayerActivity.class;
+        }
+
+        Intent intent = new Intent(activity, target);
         intent.putExtra(PlayerActivity.EXTRA_PLAYLIST_ID, playlistId);
         intent.putExtra(PlayerActivity.EXTRA_ITEM, item);
         intent.putExtra(PlayerActivity.EXTRA_RESOLVED, resolved);
