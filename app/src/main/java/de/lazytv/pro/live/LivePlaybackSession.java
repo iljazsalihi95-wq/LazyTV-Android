@@ -45,10 +45,11 @@ final class LivePlaybackSession {
     private final Listener listener;
     private final ExecutorService retryWorker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
-    private final Runnable stablePlaybackReset;
+    private Runnable stablePlaybackReset;
     private long generation;
     private int retryCount;
     private boolean retryRunning;
+    private boolean released;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
 
@@ -66,26 +67,24 @@ final class LivePlaybackSession {
                 .setPrioritizeTimeOverSizeThresholds(true).build();
         player = new ExoPlayer.Builder(context).setLoadControl(loadControl)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSource)).build();
-        stablePlaybackReset = () -> {
-            if (player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) retryCount = 0;
-        };
         playerView.setUseController(false);
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int state) {
+                if (released) return;
                 listener.onBuffering(state == Player.STATE_BUFFERING);
                 if (state == Player.STATE_READY) {
                     retryRunning = false;
-                    main.removeCallbacks(stablePlaybackReset);
-                    main.postDelayed(stablePlaybackReset, STABLE_PLAYBACK_MS);
+                    scheduleStableReset();
                     listener.onReady();
                 } else {
-                    main.removeCallbacks(stablePlaybackReset);
+                    cancelStableReset();
                     if (state == Player.STATE_ENDED) retryCurrent();
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
-                main.removeCallbacks(stablePlaybackReset);
+                if (released) return;
+                cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
                 retryCurrent();
@@ -94,8 +93,9 @@ final class LivePlaybackSession {
     }
 
     void play(StreamItem item, ResolvedStream stream) {
+        if (released) return;
         generation++;
-        main.removeCallbacks(stablePlaybackReset);
+        cancelStableReset();
         retryCount = 0;
         retryRunning = false;
         currentItem = item;
@@ -103,14 +103,34 @@ final class LivePlaybackSession {
     }
 
     boolean isActive() {
-        return player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
-                || player.getPlaybackState() == Player.STATE_READY;
+        return !released && (player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
+                || player.getPlaybackState() == Player.STATE_READY);
+    }
+
+    private void scheduleStableReset() {
+        cancelStableReset();
+        final long expectedGeneration = generation;
+        final StreamItem expectedItem = currentItem;
+        stablePlaybackReset = () -> {
+            if (!released && expectedGeneration == generation && currentItem == expectedItem
+                    && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
+                retryCount = 0;
+            }
+        };
+        main.postDelayed(stablePlaybackReset, STABLE_PLAYBACK_MS);
+    }
+
+    private void cancelStableReset() {
+        if (stablePlaybackReset != null) {
+            main.removeCallbacks(stablePlaybackReset);
+            stablePlaybackReset = null;
+        }
     }
 
     private void retryCurrent() {
-        if (currentItem == null || currentStream == null || retryRunning
+        if (released || currentItem == null || currentStream == null || retryRunning
                 || retryCount >= MAX_RETRIES) {
-            if (retryCount >= MAX_RETRIES) {
+            if (!released && retryCount >= MAX_RETRIES) {
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError("Rilidhja e stream-it dështoi");
             }
@@ -127,12 +147,14 @@ final class LivePlaybackSession {
                 ResolvedStream refreshed = retryResolver == null
                         ? fallbackStream : retryResolver.refresh(expectedItem);
                 main.post(() -> {
+                    if (released) return;
                     retryRunning = false;
                     if (expectedGeneration == generation && currentItem == expectedItem)
                         apply(expectedGeneration, expectedItem, refreshed);
                 });
             } catch (Exception error) {
                 main.post(() -> {
+                    if (released) return;
                     retryRunning = false;
                     if (expectedGeneration == generation && currentItem == expectedItem)
                         retryCurrent();
@@ -142,7 +164,7 @@ final class LivePlaybackSession {
     }
 
     private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream) {
-        if (expectedGeneration != generation || item != currentItem || stream == null
+        if (released || expectedGeneration != generation || item != currentItem || stream == null
                 || stream.url == null || stream.url.trim().isEmpty()) return;
         currentStream = stream;
         http.setDefaultRequestProperties(stream.headers);
@@ -168,8 +190,12 @@ final class LivePlaybackSession {
     }
 
     void release() {
+        if (released) return;
+        released = true;
         generation++;
-        main.removeCallbacks(stablePlaybackReset);
+        retryRunning = false;
+        cancelStableReset();
+        main.removeCallbacksAndMessages(null);
         retryWorker.shutdownNow();
         playerView.setPlayer(null);
         player.release();
