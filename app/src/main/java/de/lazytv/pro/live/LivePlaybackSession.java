@@ -45,14 +45,12 @@ final class LivePlaybackSession {
     private final Listener listener;
     private final ExecutorService retryWorker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
+    private final Runnable stablePlaybackReset;
     private long generation;
     private int retryCount;
     private boolean retryRunning;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
-    private final Runnable stablePlaybackReset = () -> {
-        if (player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) retryCount = 0;
-    };
 
     LivePlaybackSession(Context context, PlayerView playerView,
                         RetryResolver retryResolver, Listener listener) {
@@ -68,6 +66,9 @@ final class LivePlaybackSession {
                 .setPrioritizeTimeOverSizeThresholds(true).build();
         player = new ExoPlayer.Builder(context).setLoadControl(loadControl)
                 .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSource)).build();
+        stablePlaybackReset = () -> {
+            if (player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) retryCount = 0;
+        };
         playerView.setUseController(false);
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
