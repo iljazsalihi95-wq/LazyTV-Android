@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.UUID;
 
 import de.lazytv.pro.R;
@@ -24,6 +25,7 @@ import de.lazytv.pro.live.LiveTvActivity;
 public class PlaylistEditorActivity extends Activity {
     public static final String EXTRA_ID = "playlist_id";
     private static final int PICK_M3U = 7001;
+    private static final String SERVER_10_DISPLAY_NAME = "PREMIUM TEST – Server 10";
 
     private PlaylistStorage storage;
     private Playlist current;
@@ -81,27 +83,17 @@ public class PlaylistEditorActivity extends Activity {
         String[] labels = {"M3U URL", "Zgjidh skedar M3U nga pajisja", "Xtream Codes", "Stalker / Portal"};
         type.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, labels));
         type.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                renderType();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-            }
+            @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) { renderType(); }
+            @Override public void onNothingSelected(AdapterView<?> parent) { }
         });
     }
 
     private PlaylistType selectedType() {
         switch (type.getSelectedItemPosition()) {
-            case 1:
-                return PlaylistType.M3U_FILE;
-            case 2:
-                return PlaylistType.XTREAM_CODES;
-            case 3:
-                return PlaylistType.STALKER_PORTAL;
-            default:
-                return PlaylistType.M3U_URL;
+            case 1: return PlaylistType.M3U_FILE;
+            case 2: return PlaylistType.XTREAM_CODES;
+            case 3: return PlaylistType.STALKER_PORTAL;
+            default: return PlaylistType.M3U_URL;
         }
     }
 
@@ -114,115 +106,68 @@ public class PlaylistEditorActivity extends Activity {
     }
 
     private void fill(Playlist playlist) {
-        name.setText(playlist.getName());
-        url.setText(playlist.getUrl());
-        user.setText(playlist.getUsername());
-        pass.setText(playlist.getPassword());
-        mac.setText(playlist.getMacAddress());
-        int position = playlist.getType() == PlaylistType.M3U_FILE ? 1
-                : playlist.getType() == PlaylistType.XTREAM_CODES ? 2
-                : playlist.getType() == PlaylistType.STALKER_PORTAL ? 3 : 0;
+        name.setText(playlist.getName()); url.setText(playlist.getUrl()); user.setText(playlist.getUsername());
+        pass.setText(playlist.getPassword()); mac.setText(playlist.getMacAddress());
+        int position = playlist.getType() == PlaylistType.M3U_FILE ? 1 : playlist.getType() == PlaylistType.XTREAM_CODES ? 2 : playlist.getType() == PlaylistType.STALKER_PORTAL ? 3 : 0;
         type.setSelection(position);
-        if (playlist.getType() == PlaylistType.M3U_FILE) {
-            fileName.setText(displayName(Uri.parse(playlist.getUrl())));
-        }
+        if (playlist.getType() == PlaylistType.M3U_FILE) fileName.setText(displayName(Uri.parse(playlist.getUrl())));
     }
 
     private void pickFile() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("*/*");
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{
-                "audio/x-mpegurl",
-                "application/vnd.apple.mpegurl",
-                "text/plain",
-                "application/octet-stream"
-        });
+        intent.addCategory(Intent.CATEGORY_OPENABLE); intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"audio/x-mpegurl","application/vnd.apple.mpegurl","text/plain","application/octet-stream"});
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(intent, PICK_M3U);
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode != PICK_M3U || resultCode != RESULT_OK || data == null || data.getData() == null) {
-            return;
-        }
-
+        if (requestCode != PICK_M3U || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         Uri selectedFile = data.getData();
         try {
             int offeredFlags = data.getFlags();
-            if ((offeredFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
-                getContentResolver().takePersistableUriPermission(selectedFile, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            }
-            try (InputStream stream = getContentResolver().openInputStream(selectedFile)) {
-                if (stream == null) throw new IllegalStateException("File cannot be opened");
-            }
+            if ((offeredFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) getContentResolver().takePersistableUriPermission(selectedFile, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try (InputStream stream = getContentResolver().openInputStream(selectedFile)) { if (stream == null) throw new IllegalStateException("File cannot be opened"); }
         } catch (Exception error) {
-            Toast.makeText(this, "Skedari nuk mund të lexohet. Zgjidhe përsëri.", Toast.LENGTH_LONG).show();
-            return;
+            Toast.makeText(this, "Skedari nuk mund të lexohet. Zgjidhe përsëri.", Toast.LENGTH_LONG).show(); return;
         }
-
         url.setText(selectedFile.toString());
-        String selectedName = displayName(selectedFile);
-        fileName.setText(selectedName);
-        if (name.getText().toString().trim().isEmpty()) {
-            name.setText(stripM3uExtension(selectedName));
-        }
+        String selectedName = displayName(selectedFile); fileName.setText(selectedName);
+        if (name.getText().toString().trim().isEmpty()) name.setText(isServer10File(selectedName) ? SERVER_10_DISPLAY_NAME : stripM3uExtension(selectedName));
+    }
+
+    private boolean isServer10File(String value) {
+        if (value == null) return false;
+        String normalized = value.toLowerCase(Locale.US).replace('-', '_').replace(' ', '_');
+        return normalized.contains("server_10") || normalized.contains("server10");
     }
 
     private String displayName(Uri uri) {
         String displayName = uri.getLastPathSegment();
         try (Cursor cursor = getContentResolver().query(uri, null, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                if (column >= 0) displayName = cursor.getString(column);
-            }
-        } catch (Exception ignored) {
-        }
+            if (cursor != null && cursor.moveToFirst()) { int column = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME); if (column >= 0) displayName = cursor.getString(column); }
+        } catch (Exception ignored) { }
         return displayName == null ? "M3U file" : displayName;
     }
 
-    private String stripM3uExtension(String value) {
-        return value.replaceFirst("(?i)\\.(m3u8?|txt)$", "");
-    }
+    private String stripM3uExtension(String value) { return value.replaceFirst("(?i)\\.(m3u8?|txt)$", ""); }
 
     private void save() {
         PlaylistType selected = selectedType();
         String id = current == null ? UUID.randomUUID().toString() : current.getId();
         String endpoint = url.getText().toString().trim().replace("&amp;", "&");
-        Playlist playlist = new Playlist(
-                id,
-                name.getText().toString().trim(),
-                selected,
-                endpoint,
-                user.getText().toString().trim(),
-                pass.getText().toString(),
-                mac.getText().toString().trim(),
-                System.currentTimeMillis()
-        );
-
+        Playlist playlist = new Playlist(id,name.getText().toString().trim(),selected,endpoint,user.getText().toString().trim(),pass.getText().toString(),mac.getText().toString().trim(),System.currentTimeMillis());
         String error = PlaylistValidator.validateForConnect(this, playlist);
-        if (error != null) {
-            Toast.makeText(this, error, Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        storage.save(playlist);
-        storage.setActive(playlist.getId());
+        if (error != null) { Toast.makeText(this, error, Toast.LENGTH_LONG).show(); return; }
+        storage.save(playlist); storage.setActive(playlist.getId());
         if (selected == PlaylistType.M3U_FILE) {
             Toast.makeText(this, "Skedari u ruajt. Po hap Live TV…", Toast.LENGTH_SHORT).show();
-            Intent live = new Intent(this, LiveTvActivity.class);
-            live.putExtra("playlist_id", playlist.getId());
-            live.putExtra("source_scope", "PROVIDER");
-            live.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(live);
+            Intent live = new Intent(this, LiveTvActivity.class); live.putExtra("playlist_id", playlist.getId()); live.putExtra("source_scope", "PROVIDER");
+            live.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP); startActivity(live);
         } else {
-            Toast.makeText(this, "U ruajt. Katalogu ngarkohet kur hap rubrikën.", Toast.LENGTH_SHORT).show();
-            Intent home = new Intent(this, de.lazytv.pro.MainActivity.class);
-            home.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            startActivity(home);
+            Toast.makeText(this, "Playlist u ruajt.", Toast.LENGTH_SHORT).show();
         }
-        finish();
+        setResult(RESULT_OK); finish();
     }
 }
