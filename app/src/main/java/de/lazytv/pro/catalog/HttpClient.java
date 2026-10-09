@@ -11,10 +11,12 @@ public final class HttpClient {
     c=(HttpURLConnection)url.openConnection();
     c.setConnectTimeout(20000);c.setReadTimeout(45000);c.setInstanceFollowRedirects(false);
     c.setRequestMethod("GET");c.setUseCaches(false);c.setDoInput(true);
-    c.setRequestProperty("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
+    boolean stalker=headers!=null&&headers.containsKey("X-User-Agent");
+    c.setRequestProperty("User-Agent",stalker?"Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp":"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
     c.setRequestProperty("Accept","*/*");
     c.setRequestProperty("Accept-Encoding","identity");
     c.setRequestProperty("Connection","close");
+    if(stalker)c.setRequestProperty("Accept-Language","en-US,en;q=0.8");
     if(headers!=null)for(Map.Entry<String,String>e:headers.entrySet())if(e.getKey()!=null&&e.getValue()!=null)c.setRequestProperty(e.getKey(),e.getValue());
     String statusLine=c.getHeaderField(0);int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" statusLine="+safeStatus(statusLine)+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
     dnsRetries=0;
