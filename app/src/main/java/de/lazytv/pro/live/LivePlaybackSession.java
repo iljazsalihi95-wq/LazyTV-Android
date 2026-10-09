@@ -37,6 +37,7 @@ final class LivePlaybackSession {
     }
 
     private static final int MAX_RETRIES = 3;
+    private static final long STABLE_PLAYBACK_MS = 12000L;
     private final ExoPlayer player;
     private final PlayerView playerView;
     private final DefaultHttpDataSource.Factory http;
@@ -49,6 +50,9 @@ final class LivePlaybackSession {
     private boolean retryRunning;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
+    private final Runnable stablePlaybackReset = () -> {
+        if (player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) retryCount = 0;
+    };
 
     LivePlaybackSession(Context context, PlayerView playerView,
                         RetryResolver retryResolver, Listener listener) {
@@ -71,11 +75,16 @@ final class LivePlaybackSession {
                 listener.onBuffering(state == Player.STATE_BUFFERING);
                 if (state == Player.STATE_READY) {
                     retryRunning = false;
-                    retryCount = 0;
+                    main.removeCallbacks(stablePlaybackReset);
+                    main.postDelayed(stablePlaybackReset, STABLE_PLAYBACK_MS);
                     listener.onReady();
-                } else if (state == Player.STATE_ENDED) retryCurrent();
+                } else {
+                    main.removeCallbacks(stablePlaybackReset);
+                    if (state == Player.STATE_ENDED) retryCurrent();
+                }
             }
             @Override public void onPlayerError(PlaybackException error) {
+                main.removeCallbacks(stablePlaybackReset);
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
                 retryCurrent();
@@ -85,6 +94,7 @@ final class LivePlaybackSession {
 
     void play(StreamItem item, ResolvedStream stream) {
         generation++;
+        main.removeCallbacks(stablePlaybackReset);
         retryCount = 0;
         retryRunning = false;
         currentItem = item;
@@ -158,6 +168,7 @@ final class LivePlaybackSession {
 
     void release() {
         generation++;
+        main.removeCallbacks(stablePlaybackReset);
         retryWorker.shutdownNow();
         playerView.setPlayer(null);
         player.release();
