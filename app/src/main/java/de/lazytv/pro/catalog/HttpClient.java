@@ -4,6 +4,7 @@ public final class HttpClient {
  private HttpClient(){}
  public static String get(String u,Map<String,String> headers)throws CatalogException{
   URL url;try{String raw=u==null?"":u.trim().replace("&amp;","&").replace(" ","%20");url=new URL(raw);}catch(Exception e){throw new CatalogException("URL nuk është valide",e);}
+  int dnsRetries=0;
   for(int redirect=0;redirect<=8;redirect++){
    HttpURLConnection c=null;
    try{
@@ -16,6 +17,7 @@ public final class HttpClient {
     c.setRequestProperty("Connection","close");
     if(headers!=null)for(Map.Entry<String,String>e:headers.entrySet())if(e.getKey()!=null&&e.getValue()!=null)c.setRequestProperty(e.getKey(),e.getValue());
     String statusLine=c.getHeaderField(0);int code=c.getResponseCode();String ct=c.getContentType();String enc=c.getContentEncoding();Log.d("LazyTV-HTTP","GET host="+url.getHost()+" status="+code+" statusLine="+safeStatus(statusLine)+" redirect="+redirect+" contentType="+ct+" encoding="+enc);
+    dnsRetries=0;
     if(code==301||code==302||code==303||code==307||code==308){
      String loc=c.getHeaderField("Location");if(loc==null||loc.trim().isEmpty())throw new CatalogException("Redirect pa Location (HTTP "+code+")");
      url=new URL(url,loc);continue;
@@ -26,7 +28,11 @@ public final class HttpClient {
     if(code==401||code==403)throw new CatalogException("Credentials/refuzim nga serveri (HTTP "+code+")");
     if(code<200||code>=300)throw new CatalogException("Serveri ktheu HTTP "+code);
     return body;
-   }catch(SocketTimeoutException e){throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
+   }catch(UnknownHostException e){
+    if(dnsRetries<2){dnsRetries++;Log.w("LazyTV-HTTP","DNS retry="+dnsRetries+" host="+url.getHost());try{Thread.sleep(350L*dnsRetries);}catch(InterruptedException interrupted){Thread.currentThread().interrupt();throw new CatalogException("Lidhja u ndërpre",interrupted);}redirect--;continue;}
+    throw new CatalogException("Hosti i portalit nuk gjendet në DNS. Kontrollo URL-në ose rrjetin.",e);
+   }
+   catch(SocketTimeoutException e){throw new CatalogException("Serveri nuk u përgjigj brenda afatit",e);}
    catch(CatalogException e){throw e;}
    catch(SSLException e){String m=e.getMessage();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost()+" reason="+(m==null?e.getClass().getSimpleName():m));if("https".equalsIgnoreCase(url.getProtocol())&&url.getPort()>0&&url.getPort()!=443){try{URL retry=new URL("http",url.getHost(),url.getPort(),url.getFile());Log.w("LazyTV-HTTP","Retrying custom-port provider over HTTP host="+url.getHost()+" port="+url.getPort());url=retry;continue;}catch(Exception ignored){}}throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
    catch(Exception e){throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
