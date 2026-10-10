@@ -1,7 +1,7 @@
 name: LazyTV CI
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'fix/compact-home-after-662' ]
   workflow_dispatch:
 permissions:
   contents: read
