@@ -3,11 +3,17 @@ package de.lazytv.pro.player;
 import android.app.Activity;
 import android.content.Intent;
 import android.widget.Toast;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import de.lazytv.pro.catalog.CatalogType;
 import de.lazytv.pro.catalog.Episode;
 import de.lazytv.pro.catalog.ResolvedStream;
 import de.lazytv.pro.catalog.StreamItem;
+import de.lazytv.pro.catalog.XtreamVodInfoSource;
+import de.lazytv.pro.playlist.Playlist;
+import de.lazytv.pro.playlist.PlaylistStorage;
+import de.lazytv.pro.playlist.PlaylistType;
 
 public final class PlayerLauncher {
     private PlayerLauncher() {}
@@ -21,13 +27,46 @@ public final class PlayerLauncher {
             return;
         }
 
-        Class<? extends PlayerActivity> target = PlayerActivity.class;
-        if (item instanceof Episode) {
-            target = EpisodePlayerActivity.class;
-        } else if (item.type == CatalogType.MOVIES) {
-            target = MoviePlayerActivity.class;
+        if (item.type == CatalogType.MOVIES) {
+            Playlist playlist = new PlaylistStorage(activity).get(playlistId);
+            if (playlist != null && playlist.getType() == PlaylistType.XTREAM_CODES) {
+                final StreamItem original = item;
+                final String cat = categoryName;
+                new Thread(() -> {
+                    StreamItem enriched = original;
+                    try {
+                        Map<String,String> details = new XtreamVodInfoSource().load(playlist, original.id);
+                        if (!details.isEmpty()) {
+                            Map<String,String> merged = new LinkedHashMap<>(original.metadata);
+                            merged.putAll(details);
+                            String poster = details.get("poster");
+                            enriched = new StreamItem(original.id, original.name, original.categoryId,
+                                    poster == null || poster.trim().isEmpty() ? original.logo : poster,
+                                    original.streamUrl, original.tvgId, original.type,
+                                    original.fallbackUrls, merged);
+                        }
+                    } catch (Exception ignored) {
+                        // VOD metadata is optional; playback must still work when a provider omits get_vod_info.
+                    }
+                    final StreamItem ready = enriched;
+                    activity.runOnUiThread(() -> launch(activity, playlistId, ready, resolved, cat,
+                            MoviePlayerActivity.class));
+                }, "LazyTV-Xtream-VOD-Info").start();
+                return;
+            }
+            launch(activity, playlistId, item, resolved, categoryName, MoviePlayerActivity.class);
+            return;
         }
 
+        Class<? extends PlayerActivity> target = item instanceof Episode
+                ? EpisodePlayerActivity.class : PlayerActivity.class;
+        launch(activity, playlistId, item, resolved, categoryName, target);
+    }
+
+    private static void launch(Activity activity, String playlistId, StreamItem item,
+                               ResolvedStream resolved, String categoryName,
+                               Class<? extends PlayerActivity> target) {
+        if (activity.isFinishing() || (android.os.Build.VERSION.SDK_INT >= 17 && activity.isDestroyed())) return;
         Intent intent = new Intent(activity, target);
         intent.putExtra(PlayerActivity.EXTRA_PLAYLIST_ID, playlistId);
         intent.putExtra(PlayerActivity.EXTRA_ITEM, item);
