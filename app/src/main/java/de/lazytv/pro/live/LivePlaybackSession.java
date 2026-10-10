@@ -127,6 +127,10 @@ final class LivePlaybackSession {
         }
     }
 
+    private boolean validStream(ResolvedStream stream) {
+        return stream != null && stream.url != null && !stream.url.trim().isEmpty();
+    }
+
     private void retryCurrent(long expectedGeneration, StreamItem expectedItem) {
         if (released || expectedGeneration != generation || expectedItem == null
                 || expectedItem != currentItem || currentStream == null || retryRunning
@@ -149,6 +153,10 @@ final class LivePlaybackSession {
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
+                    if (!validStream(refreshed)) {
+                        retryCurrent(expectedGeneration, expectedItem);
+                        return;
+                    }
                     apply(expectedGeneration, expectedItem, refreshed);
                 });
             } catch (Exception error) {
@@ -162,8 +170,7 @@ final class LivePlaybackSession {
     }
 
     private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream) {
-        if (released || expectedGeneration != generation || item != currentItem || stream == null
-                || stream.url == null || stream.url.trim().isEmpty()) return;
+        if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
         currentStream = stream;
         http.setDefaultRequestProperties(stream.headers);
         MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url));
