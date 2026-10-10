@@ -79,7 +79,7 @@ final class LivePlaybackSession {
                     listener.onReady();
                 } else {
                     cancelStableReset();
-                    if (state == Player.STATE_ENDED) retryCurrent();
+                    if (state == Player.STATE_ENDED) retryCurrent(generation, currentItem);
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
@@ -87,7 +87,7 @@ final class LivePlaybackSession {
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
-                retryCurrent();
+                retryCurrent(generation, currentItem);
             }
         });
     }
@@ -127,17 +127,17 @@ final class LivePlaybackSession {
         }
     }
 
-    private void retryCurrent() {
-        if (released || currentItem == null || currentStream == null || retryRunning
+    private void retryCurrent(long expectedGeneration, StreamItem expectedItem) {
+        if (released || expectedGeneration != generation || expectedItem == null
+                || expectedItem != currentItem || currentStream == null || retryRunning
                 || retryCount >= MAX_RETRIES) {
-            if (!released && retryCount >= MAX_RETRIES) {
+            if (!released && expectedGeneration == generation && expectedItem == currentItem
+                    && retryCount >= MAX_RETRIES) {
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError("Rilidhja e stream-it dështoi");
             }
             return;
         }
-        final long expectedGeneration = generation;
-        final StreamItem expectedItem = currentItem;
         final ResolvedStream fallbackStream = currentStream;
         final int attempt = ++retryCount;
         retryRunning = true;
@@ -147,17 +147,15 @@ final class LivePlaybackSession {
                 ResolvedStream refreshed = retryResolver == null
                         ? fallbackStream : retryResolver.refresh(expectedItem);
                 main.post(() -> {
-                    if (released) return;
+                    if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
-                    if (expectedGeneration == generation && currentItem == expectedItem)
-                        apply(expectedGeneration, expectedItem, refreshed);
+                    apply(expectedGeneration, expectedItem, refreshed);
                 });
             } catch (Exception error) {
                 main.post(() -> {
-                    if (released) return;
+                    if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
-                    if (expectedGeneration == generation && currentItem == expectedItem)
-                        retryCurrent();
+                    retryCurrent(expectedGeneration, expectedItem);
                 });
             }
         });
