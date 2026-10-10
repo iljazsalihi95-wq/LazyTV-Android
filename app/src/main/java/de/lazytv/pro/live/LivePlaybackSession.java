@@ -49,6 +49,7 @@ final class LivePlaybackSession {
     private long generation;
     private int retryCount;
     private boolean retryRunning;
+    private boolean fatalNotified;
     private boolean released;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
@@ -99,6 +100,7 @@ final class LivePlaybackSession {
         cancelStableReset();
         retryCount = 0;
         retryRunning = false;
+        fatalNotified = false;
         currentItem = item;
         apply(generation, item, stream);
     }
@@ -116,6 +118,7 @@ final class LivePlaybackSession {
             if (!released && expectedGeneration == generation && currentItem == expectedItem
                     && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
                 retryCount = 0;
+                fatalNotified = false;
             }
         };
         main.postDelayed(stablePlaybackReset, STABLE_PLAYBACK_MS);
@@ -137,7 +140,8 @@ final class LivePlaybackSession {
                 || expectedItem != currentItem || currentStream == null || retryRunning
                 || retryCount >= MAX_RETRIES) {
             if (!released && expectedGeneration == generation && expectedItem == currentItem
-                    && retryCount >= MAX_RETRIES) {
+                    && retryCount >= MAX_RETRIES && !fatalNotified) {
+                fatalNotified = true;
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError("Rilidhja e stream-it dështoi");
             }
