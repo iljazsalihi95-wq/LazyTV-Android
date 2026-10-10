@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
   if(portrait){
    android.widget.ScrollView scroll=new android.widget.ScrollView(this);scroll.setVerticalScrollBarEnabled(false);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));GridLayout grid=new GridLayout(this);grid.setColumnCount(2);grid.setAlignmentMode(GridLayout.ALIGN_BOUNDS);grid.setUseDefaultMargins(false);scroll.addView(grid);
    Button[] all={live,premium,movies,series,playlists,catchup,favorites,settings,reload,servers,exit};
-   for(Button b:all){GridLayout.LayoutParams gp=new GridLayout.LayoutParams();gp.width=0;gp.height=dp(72);gp.columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);gp.rowSpec=GridLayout.spec(GridLayout.UNDEFINED);gp.setMargins(dp(4),dp(4),dp(4),dp(4));b.setTextSize(14);Drawable[] ds=b.getCompoundDrawables();if(ds[1]!=null)ds[1].setBounds(0,0,dp(24),dp(24));grid.addView(b,gp);}
+   for(Button b:all){GridLayout.LayoutParams gp=new GridLayout.LayoutParams();gp.width=0;gp.height=dp(104);gp.columnSpec=GridLayout.spec(GridLayout.UNDEFINED,1f);gp.rowSpec=GridLayout.spec(GridLayout.UNDEFINED);gp.setMargins(dp(4),dp(4),dp(4),dp(4));b.setTextSize(16);Drawable[] ds=b.getCompoundDrawables();if(ds[1]!=null)ds[1].setBounds(0,0,dp(44),dp(44));grid.addView(b,gp);}
   }else{
    LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER);root.addView(row,new LinearLayout.LayoutParams(-1,0,1.55f));row.addView(live,tileParams());row.addView(premium,tileParams());row.addView(movies,tileParams());row.addView(series,tileParams());row.addView(playlists,tileParams());row.addView(catchup,tileParams());
    LinearLayout row2=new LinearLayout(this);row2.setOrientation(LinearLayout.HORIZONTAL);row2.setGravity(Gravity.CENTER);root.addView(row2,new LinearLayout.LayoutParams(-1,0,1.05f));row2.addView(favorites,tileParams());row2.addView(settings,tileParams());row2.addView(reload,tileParams());row2.addView(exit,tileParams());row2.addView(servers,tileParams());
@@ -69,7 +69,6 @@ public class MainActivity extends Activity {
 
   premium.setOnClickListener(v->openServerTen());
   live.setOnClickListener(v->{Playlist p=active();Intent i=new Intent(this,LiveTvActivity.class);if(p!=null){i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");}else{i.putExtra("builtin_live",true);i.putExtra("source_scope","TRIAL");}startActivity(i);});
-  premium.setOnClickListener(v->openPremium());
   playlists.setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   catchup.setOnClickListener(v->{Playlist p=active();if(p==null){openPlaylists();return;}android.widget.Toast.makeText(this,"Catch-up aktivizohet vetëm kur provider-i ofron arkivë",android.widget.Toast.LENGTH_LONG).show();});
   movies.setOnClickListener(v->openCatalog("MOVIES"));series.setOnClickListener(v->openCatalog("SERIES"));favorites.setOnClickListener(v->openCatalog(null));settings.setOnClickListener(v->startActivity(new Intent(this,SettingsActivity.class)));reload.setOnClickListener(v->reloadPortal());servers.setOnClickListener(v->showServers());exit.setOnClickListener(v->finish());
