@@ -22,8 +22,8 @@ android {
         ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
         minSdk 23
         targetSdk 35
-        versionCode 3
-        versionName '1.2'
+        versionCode 603
+        versionName '603'
         buildConfigField 'String', 'ACTIVATION_BASE_URL', escBuildConfig(activationBaseUrl)
         buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'false'
     }
