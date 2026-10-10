@@ -102,6 +102,7 @@ final class LivePlaybackSession {
         retryRunning = false;
         fatalNotified = false;
         currentItem = item;
+        currentStream = null;
         apply(generation, item, stream);
     }
 
