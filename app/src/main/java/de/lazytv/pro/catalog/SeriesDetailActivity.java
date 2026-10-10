@@ -7,6 +7,7 @@ import android.view.KeyEvent;
 import android.widget.*;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import de.lazytv.pro.R;
 import de.lazytv.pro.playlist.*;
 import de.lazytv.pro.player.PlayerLauncher;
@@ -15,6 +16,7 @@ public class SeriesDetailActivity extends Activity {
     public static final String PLAYLIST="playlist_id",SERIES_ID="series_id",SERIES_NAME="series_name",SERIES_LOGO="series_logo",SERIES_CAT="series_cat";
     private final ExecutorService pool=Executors.newSingleThreadExecutor();
     private final CatalogEngine engine=new CatalogEngine();
+    private final AtomicInteger generation=new AtomicInteger();
     private Playlist p;
     private Series series;
     private SeriesDetails details;
@@ -50,12 +52,13 @@ public class SeriesDetailActivity extends Activity {
     }
 
     private void load(){
+        final int token=generation.incrementAndGet();
         status.setText("Duke ngarkuar sezonet…");
         pool.execute(()->{
             try{
                 SeriesDetails d=engine.loadSeries(p,series);
-                runOnUiThread(()->{if(isFinishing())return;details=d;showSeries();});
-            }catch(Exception e){runOnUiThread(()->status.setText(msg(e,"Seriali nuk mund të ngarkohet")));}
+                runOnUiThread(()->{if(!isCurrent(token))return;details=d;showSeries();});
+            }catch(Exception e){runOnUiThread(()->{if(isCurrent(token))status.setText(msg(e,"Seriali nuk mund të ngarkohet"));});}
         });
     }
 
@@ -92,14 +95,21 @@ public class SeriesDetailActivity extends Activity {
     private void openEpisode(int pos){
         if(pos<0||pos>=visibleEpisodes.size())return;
         final Episode ep=visibleEpisodes.get(pos);
+        final int token=generation.incrementAndGet();
         status.setText("Duke përgatitur stream-in…");
         pool.execute(()->{
             try{
                 ResolvedStream rs=engine.resolveStream(p,ep);
-                runOnUiThread(()->{if(isFinishing())return;status.setText("Stream gati");PlayerLauncher.open(this,p.getId(),ep,rs,series.name);});
-            }catch(Exception e){runOnUiThread(()->status.setText("Stream-i nuk mund të zgjidhet"));}
+                runOnUiThread(()->{
+                    if(!isCurrent(token))return;
+                    status.setText("Stream gati");
+                    PlayerLauncher.open(this,p.getId(),ep,rs,series.name);
+                });
+            }catch(Exception e){runOnUiThread(()->{if(isCurrent(token))status.setText("Stream-i nuk mund të zgjidhet");});}
         });
     }
+
+    private boolean isCurrent(int token){return token==generation.get()&&!isFinishing()&&!isDestroyed();}
 
     @Override public boolean dispatchKeyEvent(KeyEvent e){
         if(e.getAction()==KeyEvent.ACTION_DOWN){
@@ -122,5 +132,5 @@ public class SeriesDetailActivity extends Activity {
     }
 
     private String msg(Exception e,String d){return e.getMessage()==null?d:e.getMessage();}
-    @Override protected void onDestroy(){pool.shutdownNow();engine.close();super.onDestroy();}
+    @Override protected void onDestroy(){generation.incrementAndGet();pool.shutdownNow();engine.close();super.onDestroy();}
 }
