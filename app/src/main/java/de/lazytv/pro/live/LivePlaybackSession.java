@@ -79,7 +79,8 @@ final class LivePlaybackSession {
                     listener.onReady();
                 } else {
                     cancelStableReset();
-                    if (state == Player.STATE_ENDED) retryCurrent(generation, currentItem);
+                    if (state == Player.STATE_ENDED && !retryRunning)
+                        retryCurrent(generation, currentItem);
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
@@ -87,7 +88,7 @@ final class LivePlaybackSession {
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
-                retryCurrent(generation, currentItem);
+                if (!retryRunning) retryCurrent(generation, currentItem);
             }
         });
     }
