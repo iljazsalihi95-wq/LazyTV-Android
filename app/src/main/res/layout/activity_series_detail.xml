@@ -1,1 +1,76 @@
-<?xml version="1.0" encoding="utf-8"?><LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:orientation="vertical" android:background="@color/lazytv_background" android:padding="12dp" android:layout_width="match_parent" android:layout_height="match_parent"><TextView android:id="@+id/series_title" android:textColor="#FFFFFF" android:textSize="24sp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content"/><TextView android:id="@+id/series_status" android:textColor="#9FB5C8" android:padding="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"/><ListView android:id="@+id/series_list" android:layout_weight="1" android:layout_width="match_parent" android:layout_height="0dp"/></LinearLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:background="@color/lazytv_background"
+    android:padding="12dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/series_title"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <TextView
+        android:id="@+id/series_status"
+        android:textColor="#9FB5C8"
+        android:padding="6dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.34"
+            android:paddingEnd="6dp">
+            <TextView
+                android:text="SEASONS"
+                android:textColor="#6FC4FF"
+                android:textStyle="bold"
+                android:padding="8dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+            <ListView
+                android:id="@+id/series_seasons"
+                android:choiceMode="singleChoice"
+                android:focusable="true"
+                android:nextFocusRight="@id/series_episodes"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.66"
+            android:paddingStart="6dp">
+            <TextView
+                android:text="EPISODES"
+                android:textColor="#6FC4FF"
+                android:textStyle="bold"
+                android:padding="8dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"/>
+            <ListView
+                android:id="@+id/series_episodes"
+                android:choiceMode="singleChoice"
+                android:focusable="true"
+                android:nextFocusLeft="@id/series_seasons"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
