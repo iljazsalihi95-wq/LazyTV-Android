@@ -72,7 +72,7 @@ final class LivePlaybackSession {
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int state) {
-                if (released) return;
+                if (released || !callbackBelongsToCurrentGeneration()) return;
                 listener.onBuffering(state == Player.STATE_BUFFERING);
                 if (state == Player.STATE_READY) {
                     retryRunning = false;
@@ -85,7 +85,7 @@ final class LivePlaybackSession {
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
-                if (released) return;
+                if (released || !callbackBelongsToCurrentGeneration()) return;
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
@@ -111,12 +111,20 @@ final class LivePlaybackSession {
                 || player.getPlaybackState() == Player.STATE_READY);
     }
 
+    private boolean callbackBelongsToCurrentGeneration() {
+        MediaItem item = player.getCurrentMediaItem();
+        if (item == null || item.localConfiguration == null) return false;
+        Object tag = item.localConfiguration.tag;
+        return tag instanceof Long && ((Long) tag).longValue() == generation;
+    }
+
     private void scheduleStableReset() {
         cancelStableReset();
         final long expectedGeneration = generation;
         final StreamItem expectedItem = currentItem;
         stablePlaybackReset = () -> {
             if (!released && expectedGeneration == generation && currentItem == expectedItem
+                    && callbackBelongsToCurrentGeneration()
                     && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
                 retryCount = 0;
                 fatalNotified = false;
@@ -179,7 +187,7 @@ final class LivePlaybackSession {
         if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
         currentStream = stream;
         http.setDefaultRequestProperties(stream.headers);
-        MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url));
+        MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url)).setTag(Long.valueOf(expectedGeneration));
         String url = stream.url.toLowerCase(Locale.US);
         String type = stream.streamType == null ? "" : stream.streamType.toLowerCase(Locale.US);
         if (url.contains(".m3u8") || type.contains("hls") || type.contains("m3u8"))
