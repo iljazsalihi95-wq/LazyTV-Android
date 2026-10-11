@@ -44,8 +44,20 @@ public final class MoviePlayerActivity extends PlayerActivity {
 
     private String duration(Map<String,String> metadata) {
         String value = clean(metadata.get("duration"));
-        if (value.isEmpty()) value = clean(metadata.get("duration_secs"));
-        return value;
+        if (!value.isEmpty() && !value.matches("\\d+")) return value;
+        String seconds = clean(metadata.get("duration_secs"));
+        if (seconds.isEmpty() && value.matches("\\d+")) seconds = value;
+        if (seconds.isEmpty()) return value;
+        try {
+            long total = Long.parseLong(seconds);
+            if (total <= 0) return value;
+            long hours = total / 3600;
+            long minutes = (total % 3600) / 60;
+            if (hours > 0) return hours + "h " + minutes + "m";
+            return minutes + "m";
+        } catch (NumberFormatException ignored) {
+            return value;
+        }
     }
 
     private void append(StringBuilder out, String value) {
