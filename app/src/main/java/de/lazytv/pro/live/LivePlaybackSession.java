@@ -95,7 +95,12 @@ final class LivePlaybackSession {
     }
 
     void play(StreamItem item, ResolvedStream stream) {
-        if (released) return;
+        if (released || item == null || !validStream(stream)) return;
+        if (sameActiveStream(item, stream)) {
+            playerView.setPlayer(player);
+            if (!player.isPlaying()) player.play();
+            return;
+        }
         generation++;
         cancelStableReset();
         retryCount = 0;
@@ -104,6 +109,15 @@ final class LivePlaybackSession {
         currentItem = item;
         currentStream = null;
         apply(generation, item, stream, true);
+    }
+
+    private boolean sameActiveStream(StreamItem item, ResolvedStream stream) {
+        if (currentItem == null || currentStream == null) return false;
+        if (currentItem.id == null || item.id == null || !currentItem.id.equals(item.id)) return false;
+        if (currentStream.url == null || !currentStream.url.equals(stream.url)) return false;
+        int state = player.getPlaybackState();
+        return callbackBelongsToCurrentGeneration()
+                && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
     }
 
     boolean isActive() {
