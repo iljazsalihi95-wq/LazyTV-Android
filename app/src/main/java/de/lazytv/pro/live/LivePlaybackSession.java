@@ -20,6 +20,7 @@ import androidx.media3.ui.PlayerView;
 
 import java.net.URL;
 import java.net.URLDecoder;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -223,7 +224,7 @@ final class LivePlaybackSession {
             Playlist stalker = new Playlist("server10-stalker", "Server 10", PlaylistType.STALKER_PORTAL,
                     portal, "", "", mac, System.currentTimeMillis());
             StreamItem reference = new StreamItem(item.id, item.name, item.categoryId, item.logo,
-                    "ffmpeg http://localhost/ch/" + streamId + "_", item.tvgId, CatalogType.LIVE, item.tags);
+                    "ffmpeg http://localhost/ch/" + streamId + "_", item.tvgId, CatalogType.LIVE, new ArrayList<String>());
             StalkerCatalogSource.LinkResult link = new StalkerCatalogSource().resolve(stalker, reference);
             return new ResolvedStream(link.url, stream.streamType, stream.title, stream.artwork,
                     stream.epgId, link.headers, stream.metadata);
