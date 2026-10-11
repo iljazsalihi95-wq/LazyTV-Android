@@ -19,12 +19,17 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
 import androidx.media3.ui.PlayerView;
 
 import java.net.URL;
+import java.net.URLDecoder;
 import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import de.lazytv.pro.catalog.CatalogType;
 import de.lazytv.pro.catalog.ResolvedStream;
+import de.lazytv.pro.catalog.StalkerCatalogSource;
 import de.lazytv.pro.catalog.StreamItem;
+import de.lazytv.pro.playlist.Playlist;
+import de.lazytv.pro.playlist.PlaylistType;
 
 /** Owns one persistent Live TV player and one video surface. */
 @UnstableApi
@@ -176,16 +181,21 @@ final class LivePlaybackSession {
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
-                ResolvedStream refreshed = retryResolver == null
-                        ? fallbackStream : retryResolver.refresh(expectedItem);
+                ResolvedStream refreshed = refreshExpiredStalkerLink(fallbackStream, expectedItem);
+                if (refreshed == null) {
+                    refreshed = retryResolver == null ? fallbackStream : retryResolver.refresh(expectedItem);
+                    ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
+                    if (stalkerRetry != null) refreshed = stalkerRetry;
+                }
+                final ResolvedStream result = refreshed;
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
-                    if (!validStream(refreshed)) {
+                    if (!validStream(result)) {
                         retryCurrent(expectedGeneration, expectedItem);
                         return;
                     }
-                    apply(expectedGeneration, expectedItem, refreshed, false);
+                    apply(expectedGeneration, expectedItem, result, false);
                 });
             } catch (Exception error) {
                 main.post(() -> {
@@ -195,6 +205,42 @@ final class LivePlaybackSession {
                 });
             }
         });
+    }
+
+    /**
+     * LazyMapper Server 10 can contain Stalker create_link results. Their play_token is temporary.
+     * When such a URL expires, rebuild the Stalker session and request a fresh create_link instead
+     * of replaying the stale token. No MAC/token is written to logs.
+     */
+    private ResolvedStream refreshExpiredStalkerLink(ResolvedStream stream, StreamItem item) {
+        if (stream == null || stream.url == null || !stream.url.contains("play_token=")) return null;
+        try {
+            URL u = new URL(stream.url);
+            String mac = queryValue(u.getQuery(), "mac");
+            String streamId = queryValue(u.getQuery(), "stream");
+            if (mac.isEmpty() || streamId.isEmpty()) return null;
+            String portal = u.getProtocol() + "://" + u.getAuthority();
+            Playlist stalker = new Playlist("server10-stalker", "Server 10", PlaylistType.STALKER_PORTAL,
+                    portal, "", "", mac, System.currentTimeMillis());
+            StreamItem reference = new StreamItem(item.id, item.name, item.categoryId, item.logo,
+                    "ffmpeg http://localhost/ch/" + streamId + "_", item.tvgId, CatalogType.LIVE, item.tags);
+            StalkerCatalogSource.LinkResult link = new StalkerCatalogSource().resolve(stalker, reference);
+            return new ResolvedStream(link.url, stream.streamType, stream.title, stream.artwork,
+                    stream.epgId, link.headers, stream.metadata);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private String queryValue(String query, String wanted) {
+        if (query == null || wanted == null) return "";
+        for (String part : query.split("&")) {
+            int p = part.indexOf('=');
+            if (p <= 0 || !wanted.equalsIgnoreCase(part.substring(0, p))) continue;
+            try { return URLDecoder.decode(part.substring(p + 1), "UTF-8"); }
+            catch (Exception ignored) { return ""; }
+        }
+        return "";
     }
 
     private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream, boolean resetPosition) {
