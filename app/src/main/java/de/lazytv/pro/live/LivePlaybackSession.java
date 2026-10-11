@@ -103,7 +103,7 @@ final class LivePlaybackSession {
         fatalNotified = false;
         currentItem = item;
         currentStream = null;
-        apply(generation, item, stream);
+        apply(generation, item, stream, true);
     }
 
     boolean isActive() {
@@ -163,7 +163,7 @@ final class LivePlaybackSession {
                         retryCurrent(expectedGeneration, expectedItem);
                         return;
                     }
-                    apply(expectedGeneration, expectedItem, refreshed);
+                    apply(expectedGeneration, expectedItem, refreshed, false);
                 });
             } catch (Exception error) {
                 main.post(() -> {
@@ -175,7 +175,7 @@ final class LivePlaybackSession {
         });
     }
 
-    private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream) {
+    private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream, boolean resetPosition) {
         if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
         currentStream = stream;
         http.setDefaultRequestProperties(stream.headers);
@@ -190,7 +190,7 @@ final class LivePlaybackSession {
             media.setMimeType(MimeTypes.VIDEO_MP2T);
         else if (url.matches(".*\\.(mp4|m4v)(\\?.*)?$") || url.contains("extension=mp4")
                 || type.equals("mp4")) media.setMimeType(MimeTypes.VIDEO_MP4);
-        player.setMediaItem(media.build(), true);
+        player.setMediaItem(media.build(), resetPosition);
         player.prepare();
         player.play();
     }
