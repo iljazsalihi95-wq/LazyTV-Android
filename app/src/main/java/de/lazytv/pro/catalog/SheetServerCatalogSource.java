@@ -19,11 +19,16 @@ public final class SheetServerCatalogSource {
         HttpURLConnection connection = null;
         try {
             String endpoint = "https://docs.google.com/spreadsheets/d/" + spreadsheetId +
-                    "/gviz/tq?tqx=out:csv&sheet=" + URLEncoder.encode(sheetName, "UTF-8");
+                    "/gviz/tq?tqx=out:csv&sheet=" + URLEncoder.encode(sheetName, "UTF-8") +
+                    "&lazytv_refresh=" + System.currentTimeMillis();
             connection = (HttpURLConnection) new URL(endpoint).openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(20000);
+            connection.setUseCaches(false);
+            connection.setDefaultUseCaches(false);
             connection.setInstanceFollowRedirects(true);
+            connection.setRequestProperty("Cache-Control", "no-cache, no-store, max-age=0");
+            connection.setRequestProperty("Pragma", "no-cache");
             connection.setRequestProperty("User-Agent", "LazyTV-PRO/1.0");
             int code = connection.getResponseCode();
             if (code < 200 || code >= 300) throw new CatalogException("Serveri Premium nuk është i disponueshëm për momentin.");
