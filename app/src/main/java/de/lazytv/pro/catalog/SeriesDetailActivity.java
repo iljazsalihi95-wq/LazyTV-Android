@@ -48,6 +48,10 @@ public class SeriesDetailActivity extends Activity {
             public void onItemSelected(AdapterView<?> a,android.view.View v,int pos,long id){selectSeason(pos,false);}
             public void onNothingSelected(AdapterView<?> a){}
         });
+        episodesList.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+            public void onItemSelected(AdapterView<?> a,android.view.View v,int pos,long id){showEpisodeInfo(pos);}
+            public void onNothingSelected(AdapterView<?> a){}
+        });
         load();
     }
 
@@ -83,13 +87,36 @@ public class SeriesDetailActivity extends Activity {
         List<Episode> es=details.episodes.get(selectedSeason.number);
         visibleEpisodes=es==null?Collections.emptyList():es;
         episodesAdapter.clear();
-        for(Episode e:visibleEpisodes)episodesAdapter.add((e.episodeNumber>0?e.episodeNumber+". ":"")+e.name);
+        for(Episode e:visibleEpisodes){
+            StringBuilder label=new StringBuilder();
+            if(e.episodeNumber>0)label.append(e.episodeNumber).append(". ");
+            label.append(e.name);
+            String duration=clean(e.duration);
+            if(!duration.isEmpty())label.append("  •  ").append(duration);
+            episodesAdapter.add(label.toString());
+        }
         seasonsList.setItemChecked(pos,true);
         status.setText(selectedSeason.title+" • "+visibleEpisodes.size()+" episode");
         if(!visibleEpisodes.isEmpty()){
             episodesList.setSelection(0);
             if(moveToEpisodes)episodesList.requestFocus();
         }
+    }
+
+    private void showEpisodeInfo(int pos){
+        if(pos<0||pos>=visibleEpisodes.size())return;
+        Episode e=visibleEpisodes.get(pos);
+        StringBuilder info=new StringBuilder(selectedSeason==null?"":selectedSeason.title);
+        if(e.episodeNumber>0)append(info,"Ep. "+e.episodeNumber);
+        append(info,clean(e.duration));
+        String rating=clean(e.metadata.get("rating"));
+        if(!rating.isEmpty())append(info,"★ "+rating);
+        String date=clean(e.metadata.get("releasedate"));
+        if(!date.isEmpty())append(info,date);
+        String plot=clean(e.metadata.get("plot"));
+        if(plot.isEmpty())plot=clean(e.metadata.get("description"));
+        if(!plot.isEmpty())info.append("\n").append(plot);
+        status.setText(info.toString());
     }
 
     private void openEpisode(int pos){
@@ -131,6 +158,8 @@ public class SeriesDetailActivity extends Activity {
         super.onBackPressed();
     }
 
+    private void append(StringBuilder out,String value){value=clean(value);if(value.isEmpty())return;if(out.length()>0)out.append(" • ");out.append(value);}
+    private String clean(String value){return value==null?"":value.trim();}
     private String msg(Exception e,String d){return e.getMessage()==null?d:e.getMessage();}
     @Override protected void onDestroy(){generation.incrementAndGet();pool.shutdownNow();engine.close();super.onDestroy();}
 }
