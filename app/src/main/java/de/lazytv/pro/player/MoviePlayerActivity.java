@@ -33,12 +33,17 @@ public final class MoviePlayerActivity extends PlayerActivity {
         if (!rating.isEmpty()) append(line, "★ " + rating);
 
         StringBuilder result = new StringBuilder(line);
+        String country = clean(metadata.get("country"));
+        if (!country.isEmpty()) result.append("\nShteti: ").append(country);
         String director = clean(metadata.get("director"));
-        if (!director.isEmpty()) result.append("\nDirector: ").append(director);
+        if (!director.isEmpty()) result.append("\nRegjia: ").append(director);
         String cast = clean(metadata.get("cast"));
-        if (!cast.isEmpty()) result.append("\nCast: ").append(cast);
+        if (!cast.isEmpty()) result.append("\nAktorët: ").append(cast);
         String plot = clean(metadata.get("plot"));
-        if (!plot.isEmpty()) result.append("\n").append(plot);
+        if (plot.isEmpty()) plot = clean(metadata.get("description"));
+        if (plot.isEmpty()) plot = clean(metadata.get("overview"));
+        if (plot.isEmpty()) plot = clean(metadata.get("storyline"));
+        if (!plot.isEmpty()) result.append("\n\nPërmbajtja\n").append(plot);
         return result.toString();
     }
 
