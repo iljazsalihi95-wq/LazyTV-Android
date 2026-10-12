@@ -31,7 +31,8 @@ public class SeriesDetailActivity extends Activity {
         if(!ActivationGuard.enforce(this))return;
         setContentView(R.layout.activity_series_detail);
         p=new PlaylistStorage(this).get(getIntent().getStringExtra(PLAYLIST));
-        series=new Series(getIntent().getStringExtra(SERIES_ID),getIntent().getStringExtra(SERIES_NAME),getIntent().getStringExtra(SERIES_CAT),getIntent().getStringExtra(SERIES_LOGO),"","");
+        series=(Series)getIntent().getSerializableExtra("series_item");
+        if(series==null)series=new Series(getIntent().getStringExtra(SERIES_ID),getIntent().getStringExtra(SERIES_NAME),getIntent().getStringExtra(SERIES_CAT),getIntent().getStringExtra(SERIES_LOGO),"","");
         if(p==null||series.id==null){finish();return;}
         title=findViewById(R.id.series_title);
         status=findViewById(R.id.series_status);
@@ -67,6 +68,15 @@ public class SeriesDetailActivity extends Activity {
     }
 
     private void showSeries(){
+        Map<String,String> metadata=new LinkedHashMap<>(series.metadata);metadata.putAll(details.metadata);
+        StringBuilder summary=new StringBuilder();
+        for(String key:new String[]{"year","rating","genre","country","director","cast","plot"}){
+            String value=clean(metadata.get(key));if(value.isEmpty()||"null".equalsIgnoreCase(value))continue;
+            if(summary.length()>0)summary.append("\n");summary.append(key.equals("plot")?value:key+": "+value);
+        }
+        TextView info=findViewById(R.id.series_details);info.setText(summary);info.setVisibility(summary.length()==0?android.view.View.GONE:android.view.View.VISIBLE);
+        info.setOnClickListener(v->new AlertDialog.Builder(this).setTitle(series.name).setMessage(summary.toString()).setPositiveButton("OK",null).show());
+
         seasonsAdapter.clear();
         for(Season s:details.seasons)seasonsAdapter.add(s.title);
         if(details.seasons.isEmpty()){
@@ -132,7 +142,7 @@ public class SeriesDetailActivity extends Activity {
                     status.setText("Stream gati");
                     PlayerLauncher.open(this,p.getId(),ep,rs,series.name);
                 });
-            }catch(Exception e){runOnUiThread(()->{if(isCurrent(token))status.setText("Stream-i nuk mund të zgjidhet");});}
+            }catch(Exception e){runOnUiThread(()->{if(isCurrent(token))status.setText(msg(e,"Stream-i nuk mund të zgjidhet"));});}
         });
     }
 

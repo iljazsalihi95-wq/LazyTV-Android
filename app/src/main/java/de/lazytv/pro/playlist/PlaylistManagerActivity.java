@@ -69,7 +69,7 @@ public class PlaylistManagerActivity extends Activity {
         refresh();
         Toast.makeText(this, item.getName() + " active", Toast.LENGTH_SHORT).show();
 
-        if (item.getType() == PlaylistType.M3U_FILE) {
+        if (item.getType() == PlaylistType.M3U_FILE || item.getType() == PlaylistType.STALKER_PORTAL) {
             Intent live = new Intent(this, LiveTvActivity.class);
             live.putExtra("playlist_id", item.getId());
             live.putExtra("source_scope", "PROVIDER");

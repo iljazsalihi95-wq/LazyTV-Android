@@ -58,7 +58,7 @@ public class CatalogEngine {
         if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv(c, p);
         String e = PlaylistValidator.validateForConnect(c, p);
         if (e != null) throw new CatalogException(e);
-        String key = CatalogDiskCache.key(p.getId(), t);
+        String key = CatalogDiskCache.key(p.getId()+"|"+p.getUpdatedAt(), t);
         Catalog cached = CatalogDiskCache.get(c, key);
         if (cached != null) return cached;
         Catalog out;
@@ -194,7 +194,7 @@ public class CatalogEngine {
     }
 
     public ResolvedStream refreshStream(Playlist p, StreamItem i) throws CatalogException {
-        if (p.getType() == PlaylistType.STALKER_PORTAL) stalker(p).clear();
+        // Request a fresh link while retaining a valid portal authorization token.
         return resolveStream(p, i);
     }
 

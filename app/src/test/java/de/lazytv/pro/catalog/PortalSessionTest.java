@@ -15,6 +15,7 @@ public class PortalSessionTest {
     private String base;
     private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();
     private boolean rejectOnce,blocked;
+    private String lastLinkQuery;
     @Before public void start()throws Exception{
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
         base="http://127.0.0.1:"+server.getAddress().getPort();
@@ -26,8 +27,9 @@ public class PortalSessionTest {
             if(cookie==null||!cookie.contains("session=local"+handshakes.get())||!cookie.contains("mac=")){reply(e,403,"{}");return;}
             if(q.contains("action=get_main_info")){reply(e,200,blocked?"{\"js\":{\"status\":\"expired\"}}":"{\"js\":{\"status\":\"active\"}}");return;}
             if(q.contains("action=get_profile")){reply(e,200,"{\"js\":{\"id\":1}}");return;}
-            if(q.contains("action=create_link")){links.incrementAndGet();if(rejectOnce){rejectOnce=false;reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4\"}}");return;}
+            if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectOnce){rejectOnce=false;reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4\"}}");return;}
             if(q.contains("get_categories")||q.contains("get_genres")){reply(e,200,"{\"js\":[{\"id\":\"1\",\"title\":\"Provider category\"}]}");return;}
+            if(q.contains("movie_id=series-fixture")){reply(e,200,"{\"js\":{\"data\":[{\"id\":\"season-2\",\"season\":2,\"name\":\"Season 2\",\"cmd\":\"ffmpeg /provider/season\",\"series\":[1,3]}]}}");return;}
             reply(e,200,"{\"js\":{\"total_items\":1,\"data\":[{\"id\":\"9\",\"name\":\"Provider title\",\"category_id\":\"1\",\"tv_genre_id\":\"1\",\"cmd\":\"ffmpeg /provider/ref\",\"description\":\"Provider plot\"}]}}");
         });server.start();
     }
@@ -58,6 +60,22 @@ public class PortalSessionTest {
     }
     @Test public void movieListRetainsProviderPlot()throws Exception{
         Catalog c=new StalkerCatalogSource().loadType(playlist(),CatalogType.MOVIES);assertEquals("Provider plot",c.items.get(0).metadata.get("plot"));
+    }
+    @Test public void numericPortalEpisodesUseRealEpisodeNumberAndDoNotAutoplay()throws Exception{
+        StalkerCatalogSource source=new StalkerCatalogSource();Playlist p=playlist();
+        SeriesDetails details=source.loadSeries(p,new Series("series-fixture","Provider series","1","","",""));
+        assertEquals(2,details.seasons.get(0).number);assertEquals(2,details.episodes.get(2).size());assertEquals(0,links.get());
+        Episode selected=details.episodes.get(2).get(1);assertEquals(3,selected.episodeNumber);
+        source.resolve(p,selected);assertTrue(lastLinkQuery.contains("series=3"));assertTrue(lastLinkQuery.contains("cmd=ffmpeg"));
+    }
+    @Test public void screenTeardownAndLinkRefreshKeepValidProviderToken()throws Exception{
+        Playlist p=playlist();Movie movie=new Movie("9","Movie","1","","ffmpeg /provider/ref","");
+        CatalogEngine first=new CatalogEngine();first.resolveStream(p,movie);first.close();
+        CatalogEngine next=new CatalogEngine();next.resolveStream(p,movie);next.refreshStream(p,movie);assertEquals(1,handshakes.get());
+    }
+    @Test public void metadataArraysContainOnlyProviderFacts()throws Exception{
+        Map<String,String> m=ProviderMetadata.read(new org.json.JSONObject("{\"cast\":[{\"name\":\"Actor One\"},\"Actor Two\"],\"backdrop_path\":[\"https://example.com/a.jpg\",\"https://example.com/b.jpg\"]}"));
+        assertEquals("Actor One, Actor Two",m.get("cast"));assertEquals("https://example.com/a.jpg",m.get("backdrop"));assertFalse(m.containsKey("year"));
     }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }

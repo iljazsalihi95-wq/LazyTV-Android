@@ -29,7 +29,7 @@ final class ProviderMetadata {
                     String part=entry instanceof JSONObject?((JSONObject)entry).optString("name",((JSONObject)entry).optString("title")):String.valueOf(entry);
                     if(!part.trim().isEmpty())parts.add(part.trim());
                     if(name.equals("backdrop")&&!parts.isEmpty())break;
-                }value=android.text.TextUtils.join(", ",parts);
+                }StringBuilder joined=new StringBuilder();for(String part:parts){if(joined.length()>0)joined.append(", ");joined.append(part);}value=joined.toString();
             }else if(!(raw instanceof JSONObject))value=String.valueOf(raw).trim();
             if(!value.isEmpty()&&!value.equalsIgnoreCase("null")){m.put(name,value);return;}
         }

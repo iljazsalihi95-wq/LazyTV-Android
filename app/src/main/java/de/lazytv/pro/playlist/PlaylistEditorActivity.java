@@ -161,8 +161,8 @@ public class PlaylistEditorActivity extends Activity {
         String error = PlaylistValidator.validateForConnect(this, playlist);
         if (error != null) { Toast.makeText(this, error, Toast.LENGTH_LONG).show(); return; }
         storage.save(playlist); storage.setActive(playlist.getId());
-        if (selected == PlaylistType.M3U_FILE) {
-            Toast.makeText(this, "Skedari u ruajt. Po hap Live TV…", Toast.LENGTH_SHORT).show();
+        if (selected == PlaylistType.M3U_FILE || selected == PlaylistType.STALKER_PORTAL) {
+            Toast.makeText(this, "Burimi u ruajt. Po ngarkoj katalogun…", Toast.LENGTH_SHORT).show();
             Intent live = new Intent(this, LiveTvActivity.class); live.putExtra("playlist_id", playlist.getId()); live.putExtra("source_scope", "PROVIDER");
             live.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP); startActivity(live);
         } else {
