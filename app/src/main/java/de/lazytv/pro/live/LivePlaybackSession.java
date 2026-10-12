@@ -111,7 +111,7 @@ final class LivePlaybackSession {
     }
 
     /** Invalidate pending old-channel retries immediately, while retaining the player/surface. */
-    void beginStalkerSelection() {
+    void beginSelection() {
         generation++;
         stalkerTicket = stalkerGuard.begin();
         retryRunning = false;
