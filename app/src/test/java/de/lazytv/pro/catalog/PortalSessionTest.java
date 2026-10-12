@@ -14,7 +14,7 @@ public class PortalSessionTest {
     private HttpServer server;
     private String base;
     private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();
-    private boolean rejectOnce,blocked;
+    private boolean rejectOnce,blocked,expiredToken;
     private String lastLinkQuery;
     @Before public void start()throws Exception{
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -22,7 +22,7 @@ public class PortalSessionTest {
         server.createContext("/portal.php",e->reply(e,200,"<html>landing page</html>"));
         server.createContext("/server/load.php",e->{
             String q=e.getRequestURI().getQuery();
-            if(q.contains("action=handshake")){int n=handshakes.incrementAndGet();e.getResponseHeaders().add("Set-Cookie","session=local"+n+"; Path=/");reply(e,200,"{\"js\":{\"token\":\"test"+n+"\"}}");return;}
+            if(q.contains("action=handshake")){int n=handshakes.incrementAndGet();e.getResponseHeaders().add("Set-Cookie","session=local"+n+"; Path=/");reply(e,200,"{\"js\":{\"token\":\"test"+n+"\""+(expiredToken?",\"expires_at\":1":"")+"}}");return;}
             String cookie=e.getRequestHeaders().getFirst("Cookie");
             if(cookie==null||!cookie.contains("session=local"+handshakes.get())||!cookie.contains("mac=")){reply(e,403,"{}");return;}
             if(q.contains("action=get_main_info")){reply(e,200,blocked?"{\"js\":{\"status\":\"expired\"}}":"{\"js\":{\"status\":\"active\"}}");return;}
@@ -82,6 +82,15 @@ public class PortalSessionTest {
         try{HttpClient.get(base+"/forbidden",null);fail();}catch(ProviderHttpException e){assertEquals(403,e.status);}assertEquals(2,count.get());
         count.set(0);Map<String,String> h=new HashMap<>();h.put("User-Agent","Provider agent");
         try{HttpClient.get(base+"/forbidden",h);fail();}catch(ProviderHttpException e){assertEquals(403,e.status);}assertEquals(1,count.get());
+    }
+    @Test public void opaqueTokenHasNoGuessedTwentyMinuteExpiry()throws Exception{
+        StalkerCatalogSource source=new StalkerCatalogSource();Playlist p=playlist();source.loadType(p,CatalogType.LIVE);
+        java.lang.reflect.Field clock=StalkerCatalogSource.class.getDeclaredField("sessionAt");clock.setAccessible(true);clock.setLong(source,1);
+        source.loadType(p,CatalogType.MOVIES);assertEquals(1,handshakes.get());
+    }
+    @Test public void explicitProviderExpiryTriggersRefresh()throws Exception{
+        expiredToken=true;StalkerCatalogSource source=new StalkerCatalogSource();Playlist p=playlist();source.loadType(p,CatalogType.LIVE);
+        expiredToken=false;source.loadType(p,CatalogType.MOVIES);assertEquals(2,handshakes.get());
     }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
