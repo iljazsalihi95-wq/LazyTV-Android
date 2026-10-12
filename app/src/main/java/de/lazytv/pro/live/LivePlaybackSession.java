@@ -150,6 +150,8 @@ final class LivePlaybackSession {
                 && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
     }
 
+    boolean isBuffering() { return !released && player.getPlaybackState() == Player.STATE_BUFFERING; }
+
     boolean isActive() {
         return !released && callbackBelongsToCurrentGeneration()
                 && (player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
