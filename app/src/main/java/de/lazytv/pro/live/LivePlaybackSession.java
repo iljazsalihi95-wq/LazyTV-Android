@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import de.lazytv.pro.catalog.CatalogType;
+import de.lazytv.pro.catalog.ProviderPlaybackPolicy;
 import de.lazytv.pro.catalog.ResolvedStream;
 import de.lazytv.pro.catalog.StalkerCatalogSource;
 import de.lazytv.pro.catalog.StreamItem;
@@ -54,6 +55,7 @@ final class LivePlaybackSession {
     private Runnable stablePlaybackReset;
     private long generation;
     private int retryCount;
+    private int lastHttpStatus;
     private boolean retryRunning;
     private boolean fatalNotified;
     private boolean released;
@@ -95,6 +97,8 @@ final class LivePlaybackSession {
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
+                lastHttpStatus=ProviderPlaybackPolicy.status(error);
+                if(lastHttpStatus==402){fatalNotified=true;listener.onBuffering(false);listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(402));return;}
                 if (!retryRunning) retryCurrent(generation, currentItem);
             }
         });
@@ -110,6 +114,7 @@ final class LivePlaybackSession {
         generation++;
         cancelStableReset();
         retryCount = 0;
+        lastHttpStatus = 0;
         retryRunning = false;
         fatalNotified = false;
         currentItem = item;
@@ -172,12 +177,13 @@ final class LivePlaybackSession {
                     && retryCount >= MAX_RETRIES && !fatalNotified) {
                 fatalNotified = true;
                 listener.onBuffering(false);
-                listener.onFatalPlaybackError("Rilidhja e stream-it dështoi");
+                listener.onFatalPlaybackError(lastHttpStatus>0?ProviderPlaybackPolicy.message(lastHttpStatus):"Rilidhja e stream-it dështoi");
             }
             return;
         }
         final ResolvedStream fallbackStream = currentStream;
         final int attempt = ++retryCount;
+        final int httpStatus=lastHttpStatus;
         retryRunning = true;
         retryWorker.execute(() -> {
             try {
@@ -188,7 +194,7 @@ final class LivePlaybackSession {
                     ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
                     if (stalkerRetry != null) refreshed = stalkerRetry;
                 }
-                final ResolvedStream result = refreshed;
+                final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed,expectedItem,httpStatus,attempt);
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
@@ -202,6 +208,9 @@ final class LivePlaybackSession {
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
+                    int code=ProviderPlaybackPolicy.status(error);
+                    if(code>0)lastHttpStatus=code;
+                    if(code==402){fatalNotified=true;listener.onBuffering(false);listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(code));return;}
                     retryCurrent(expectedGeneration, expectedItem);
                 });
             }

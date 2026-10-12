@@ -14,7 +14,7 @@ public final class RemoteM3uDownloader{
     if(r.code()<200||r.code()>=300)throw new RemoteHttpException(r.code(),host,"Remote M3U HTTP "+r.code());
     return new Result(body,r.code(),host,redirects);
    }
-  }catch(RemoteHttpException e){throw e;}catch(javax.net.ssl.SSLException e){Log.e("LazyTV-M3U","REMOTE TLS host="+safeHost(raw)+" error="+e.getClass().getSimpleName());throw new CatalogException("TLS/SSL: "+safe(e.getMessage()),e);}catch(Exception e){Log.e("LazyTV-M3U","REMOTE FAIL host="+safeHost(raw)+" error="+e.getClass().getSimpleName());throw new CatalogException("Remote M3U: "+e.getClass().getSimpleName()+" - "+safe(e.getMessage()),e);}
+  }catch(RemoteHttpException e){throw e;}catch(javax.net.ssl.SSLException e){Log.e("LazyTV-M3U","REMOTE TLS host="+safeHost(raw)+" error="+e.getClass().getSimpleName());throw new CatalogException("TLS/SSL: "+e.getClass().getSimpleName(),e);}catch(Exception e){Log.e("LazyTV-M3U","REMOTE FAIL host="+safeHost(raw)+" error="+e.getClass().getSimpleName());throw new CatalogException("Remote M3U: "+e.getClass().getSimpleName()+" - "+e.getClass().getSimpleName(),e);}
  }
  static final class RemoteHttpException extends CatalogException{final int status;final String host;RemoteHttpException(int s,String h,String m){super(m);status=s;host=h;}}
  private static String safeHost(String s){try{return new URL(s).getHost();}catch(Exception e){return"unknown";}}

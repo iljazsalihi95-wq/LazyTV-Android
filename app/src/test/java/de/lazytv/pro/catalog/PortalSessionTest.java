@@ -77,6 +77,12 @@ public class PortalSessionTest {
         Map<String,String> m=ProviderMetadata.read(new org.json.JSONObject("{\"cast\":[{\"name\":\"Actor One\"},\"Actor Two\"],\"backdrop_path\":[\"https://example.com/a.jpg\",\"https://example.com/b.jpg\"]}"));
         assertEquals("Actor One, Actor Two",m.get("cast"));assertEquals("https://example.com/a.jpg",m.get("backdrop"));assertFalse(m.containsKey("year"));
     }
+    @Test public void forbiddenHttpRetryIsBoundedAndRespectsExplicitUserAgent()throws Exception{
+        AtomicInteger count=new AtomicInteger();server.createContext("/forbidden",e->{count.incrementAndGet();reply(e,403,"{}");});
+        try{HttpClient.get(base+"/forbidden",null);fail();}catch(ProviderHttpException e){assertEquals(403,e.status);}assertEquals(2,count.get());
+        count.set(0);Map<String,String> h=new HashMap<>();h.put("User-Agent","Provider agent");
+        try{HttpClient.get(base+"/forbidden",h);fail();}catch(ProviderHttpException e){assertEquals(403,e.status);}assertEquals(1,count.get());
+    }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
     private static final class Headers extends TreeMap<String,List<String>> {

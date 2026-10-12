@@ -75,6 +75,7 @@ public final class MovieDetailActivity extends Activity {
     private TextView text(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextColor(Color.WHITE);t.setTextSize(size);t.setLineSpacing(dp(3),1);return t;}
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private void render(){
+        if(first("duration").isEmpty()&&!first("duration_secs").isEmpty())metadata.put("duration",first("duration_secs")+" s");
         StringBuilder b=new StringBuilder();
         for(String key:new String[]{"year","rating","genre","duration","country","director","cast"}){
             String value=clean(metadata.get(key));if(value.isEmpty())continue;
