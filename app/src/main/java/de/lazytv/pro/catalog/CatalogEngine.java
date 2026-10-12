@@ -93,8 +93,12 @@ public class CatalogEngine {
             StalkerCatalogSource source=stalker(playlist);if(!(source instanceof StalkerNativePortalClient))return EpgSchedule.empty();
             body=((StalkerNativePortalClient)source).loadEpg(playlist,item.id);
         }else if(playlist.getType()==PlaylistType.XTREAM_CODES&&!(item instanceof M3uStreamItem)){
-            String api=XtreamUrlBuilder.base(playlist.getUrl())+"/player_api.php?username="+HttpClient.enc(playlist.getUsername())+"&password="+HttpClient.enc(playlist.getPassword());
-            body=HttpClient.get(api+"&action=get_short_epg&stream_id="+HttpClient.enc(item.id)+"&limit=6",null);
+            try{
+                body=HttpClient.get(XtreamUrlBuilder.api(playlist,"get_short_epg","stream_id",item.id,"limit","6"),null);
+                EpgSchedule schedule=EpgSchedule.parse(body,item.id,System.currentTimeMillis());
+                if(schedule.current!=null||schedule.next!=null)return schedule;
+            }catch(ProviderHttpException unavailable){if(unavailable.status!=404&&unavailable.status!=405)throw unavailable;}
+            body=HttpClient.get(XtreamUrlBuilder.api(playlist,"get_simple_data_table","stream_id",item.id),null);
         }else return EpgSchedule.empty();
         return EpgSchedule.parse(body,item.id,System.currentTimeMillis());
     }
@@ -138,9 +142,7 @@ public class CatalogEngine {
      */
     private ResolvedStream enrichXtreamVodInfo(Playlist p, StreamItem i, ResolvedStream r) {
         try {
-            String endpoint = xtreamBase(p) + "/player_api.php?username=" + HttpClient.enc(p.getUsername())
-                    + "&password=" + HttpClient.enc(p.getPassword())
-                    + "&action=get_vod_info&vod_id=" + HttpClient.enc(i.id);
+            String endpoint = XtreamUrlBuilder.api(p,"get_vod_info","vod_id",i.id);
             JSONObject root = new JSONObject(HttpClient.get(endpoint, null));
             JSONObject info = root.optJSONObject("info");
             JSONObject movie = root.optJSONObject("movie_data");
@@ -189,25 +191,6 @@ public class CatalogEngine {
             }
         }
         return "";
-    }
-
-    private static String xtreamBase(Playlist p) {
-        String x = p.getUrl() == null ? "" : p.getUrl().trim().replace("&amp;", "&");
-        if (!x.matches("(?i)^https?://.*")) x = "http://" + x;
-        try {
-            URI u = new URI(x);
-            String scheme = u.getScheme() == null ? "http" : u.getScheme();
-            String host = u.getHost();
-            if (host == null || host.trim().isEmpty()) throw new Exception();
-            int port = u.getPort();
-            String path = u.getPath() == null ? "" : u.getPath().replaceAll("/+$", "");
-            path = path.replaceFirst("(?i)/(player_api\\.php|get\\.php)$", "").replaceAll("/+$", "");
-            return scheme + "://" + host + (port > 0 ? ":" + port : "") + path;
-        } catch (Exception e) {
-            int q = x.indexOf('?');
-            if (q > 0) x = x.substring(0, q);
-            return x.replaceAll("(?i)/(player_api\\.php|get\\.php)/?$", "").replaceAll("/+$", "");
-        }
     }
 
     public ResolvedStream refreshStream(Playlist p, StreamItem i) throws CatalogException {

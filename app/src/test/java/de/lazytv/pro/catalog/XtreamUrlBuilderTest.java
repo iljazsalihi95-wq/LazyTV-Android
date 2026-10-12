@@ -17,4 +17,13 @@ public class XtreamUrlBuilderTest {
  @Test public void invalidAuthorityFailsBeforeDns()throws Exception {
   try{XtreamUrlBuilder.base("http://:80");fail();}catch(CatalogException expected){}
  }
+ private de.lazytv.pro.playlist.Playlist playlist(){return new de.lazytv.pro.playlist.Playlist("fixture","Fixture",de.lazytv.pro.playlist.PlaylistType.XTREAM_CODES,"http://provider.invalid:80/player_api.php?ignored=yes","user name","p$&+ /","",1);}
+ @Test public void allActionsUseOneApiAndPreserveCredentials()throws Exception {
+  String[] actions={"get_live_categories","get_live_streams","get_vod_categories","get_vod_streams","get_vod_info","get_series_categories","get_series","get_series_info","get_short_epg","get_simple_data_table"};
+  for(String action:actions){String url=XtreamUrlBuilder.api(playlist(),action,"stream_id","9");assertTrue(url.startsWith("http://provider.invalid:80/player_api.php?"));assertFalse(url.contains("player_api.php/player_api.php"));assertFalse(url.contains("ignored="));assertTrue(url.contains("password=p%24%26%2B+%2F"));assertTrue(url.contains("action="+action));}
+ }
+ @Test public void streamPathAndM3uFallbackEncodeReservedCharacters()throws Exception {
+  assertEquals("http://provider.invalid:80/live/user%20name/p%24%26%2B%20%2F/9.ts",XtreamUrlBuilder.stream(XtreamUrlBuilder.base(playlist().getUrl()),playlist(),"live","9","ts"));
+  assertTrue(XtreamUrlBuilder.m3u(playlist()).startsWith("http://provider.invalid:80/get.php?"));assertTrue(XtreamUrlBuilder.m3u(playlist()).endsWith("&type=m3u&output=ts"));
+ }
 }

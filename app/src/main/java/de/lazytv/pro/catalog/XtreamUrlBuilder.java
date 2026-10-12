@@ -18,4 +18,18 @@ public final class XtreamUrlBuilder {
   String host=parsed.host().contains(":")?"["+parsed.host()+"]":parsed.host();
   return parsed.scheme()+"://"+host+(explicitPort||parsed.port()!=HttpUrl.defaultPort(parsed.scheme())?":"+parsed.port():"")+path;
  }
+ public static String api(de.lazytv.pro.playlist.Playlist playlist,String action,String...parameters)throws CatalogException {
+  if(parameters.length%2!=0)throw new CatalogException("Xtream API parameters të pavlefshëm");
+  StringBuilder url=new StringBuilder(base(playlist.getUrl())).append("/player_api.php?username=").append(HttpClient.enc(playlist.getUsername())).append("&password=").append(HttpClient.enc(playlist.getPassword()));
+  if(action!=null&&!action.isEmpty())url.append("&action=").append(HttpClient.enc(action));
+  for(int n=0;n<parameters.length;n+=2)url.append('&').append(HttpClient.enc(parameters[n])).append('=').append(HttpClient.enc(parameters[n+1]));
+  return url.toString();
+ }
+ public static String m3u(de.lazytv.pro.playlist.Playlist playlist)throws CatalogException {
+  return base(playlist.getUrl())+"/get.php?username="+HttpClient.enc(playlist.getUsername())+"&password="+HttpClient.enc(playlist.getPassword())+"&type=m3u&output=ts";
+ }
+ static String stream(String base,de.lazytv.pro.playlist.Playlist playlist,String kind,String id,String extension){
+  return base+"/"+kind+"/"+segment(playlist.getUsername())+"/"+segment(playlist.getPassword())+"/"+segment(id)+"."+segment(extension);
+ }
+ private static String segment(String value){return HttpClient.enc(value).replace("+","%20");}
 }

@@ -12,7 +12,7 @@ public final class XtreamVodInfoSource {
  public Map<String,String> load(Playlist p,String vodId)throws CatalogException{
   Map<String,String> out=new LinkedHashMap<>();
   if(p==null||vodId==null||vodId.trim().isEmpty())return out;
-  String url=base(p)+"/player_api.php?"+auth(p)+"&action=get_vod_info&vod_id="+HttpClient.enc(vodId.trim());
+  String url=XtreamUrlBuilder.api(p,"get_vod_info","vod_id",vodId.trim());
   JSONObject root=obj(HttpClient.get(url,null));
   JSONObject info=root.optJSONObject("info");
   JSONObject movie=root.optJSONObject("movie_data");
@@ -45,18 +45,6 @@ public final class XtreamVodInfoSource {
   }
   return out;
  }
- private String base(Playlist p)throws CatalogException{
-  String x=p.getUrl()==null?"":p.getUrl().trim().replace("&amp;","&");
-  if(x.isEmpty())throw new CatalogException("Xtream URL mungon");
-  if(!x.matches("(?i)^https?://.*"))x="http://"+x;
-  try{
-   java.net.URI u=new java.net.URI(x);String scheme=u.getScheme()==null?"http":u.getScheme();String host=u.getHost();
-   if(host==null||host.trim().isEmpty())throw new Exception("host");int port=u.getPort();String path=u.getPath()==null?"":u.getPath().replaceAll("/+$","");
-   path=path.replaceFirst("(?i)/(player_api\\.php|get\\.php)$","").replaceAll("/+$","");
-   return scheme+"://"+host+(port>0?":"+port:"")+path;
-  }catch(Exception e){throw new CatalogException("Xtream URL e pavlefshme",e);}
- }
- private String auth(Playlist p){return "username="+HttpClient.enc(p.getUsername())+"&password="+HttpClient.enc(p.getPassword());}
  private JSONObject obj(String s)throws CatalogException{try{return new JSONObject(s);}catch(Exception e){throw new CatalogException("Përgjigje Xtream VOD e pavlefshme",e);}}
  private String first(JSONObject o,String...keys){for(String k:keys){Object raw=o.opt(k);if(raw==null||raw==JSONObject.NULL)continue;String v=String.valueOf(raw).trim();if(!v.isEmpty()&&!"null".equalsIgnoreCase(v))return v;}return "";}
  private String textValue(JSONObject o,String...keys){for(String k:keys){Object raw=o.opt(k);if(raw==null||raw==JSONObject.NULL)continue;if(raw instanceof JSONArray){JSONArray a=(JSONArray)raw;StringBuilder b=new StringBuilder();for(int i=0;i<a.length();i++){Object entry=a.opt(i);String v="";if(entry instanceof JSONObject)v=first((JSONObject)entry,"name","title");else if(entry!=null)v=String.valueOf(entry).trim();if(v.isEmpty())continue;if(b.length()>0)b.append(", ");b.append(v);}if(b.length()>0)return b.toString();}else{String v=String.valueOf(raw).trim();if(!v.isEmpty()&&!"null".equalsIgnoreCase(v))return v;}}return "";}
