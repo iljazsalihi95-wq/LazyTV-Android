@@ -5,7 +5,8 @@ import de.lazytv.pro.playlist.Playlist;
 public class StalkerNativePortalClient extends StalkerCatalogSource {
  private final CookieManager linkCookies=new CookieManager(null,CookiePolicy.ACCEPT_ORIGINAL_SERVER);
  private String selectedEndpoint="";
- @Override public synchronized void clear(){super.clear();linkCookies.getCookieStore().removeAll();selectedEndpoint="";}
+ private Map<String,String> lastPortalHeaders=Collections.emptyMap();
+ @Override public synchronized void clear(){super.clear();linkCookies.getCookieStore().removeAll();selectedEndpoint="";lastPortalHeaders=Collections.emptyMap();}
  @Override public synchronized Catalog load(Playlist playlist)throws CatalogException{return loadNativeLive(playlist);}
  @Override public synchronized Catalog loadType(Playlist playlist,CatalogType wanted)throws CatalogException{return wanted==CatalogType.LIVE?loadNativeLive(playlist):super.loadType(playlist,wanted);}
  private Catalog loadNativeLive(Playlist playlist)throws CatalogException {
@@ -57,12 +58,23 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
     String url=StalkerLinkParser.url(command,endpoint);if(url.isEmpty())throw new CatalogException("Portali nuk ktheu URL për kanalin");
     headers.put("User-Agent","Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp");
     try{headers.put("Cookie",HttpClient.cookieHeader(linkCookies,new URL(endpoint),headers.get("Cookie")));}catch(Exception ignored){}
+    lastPortalHeaders=new LinkedHashMap<>(headers);
     JSONObject supplied=result.optJSONObject("headers");if(supplied==null)supplied=result.optJSONObject("http_headers");
     if(supplied!=null){Iterator<String> keys=supplied.keys();while(keys.hasNext()){String key=keys.next(),value=supplied.optString(key);if(key.matches("[A-Za-z0-9-]+")&&!value.contains("\r")&&!value.contains("\n"))headers.put(key,value);}}
     return new LinkResult(url,headers);
    }catch(ProviderHttpException error){if(attempt==0&&(error.status==401||error.status==403)){clear();continue;}throw error;}
   }
   throw new CatalogException("Stalker session-i u refuzua pas rifreskimit");
+ }
+ /** Snapshot only; EPG never holds the playback session monitor during network I/O. */
+ public String loadEpg(Playlist playlist,String channelId)throws CatalogException {
+  final Map<String,String> headers;final String endpoint;
+  synchronized(this){headers=new LinkedHashMap<>(lastPortalHeaders);endpoint=selectedEndpoint;}
+  if(headers.isEmpty()||endpoint.isEmpty())return "{\"js\":{\"data\":[]}}";
+  String query="type=itv&action=get_epg_info&period=6&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml";
+  try{return HttpClient.get(endpoint+"?"+query,headers);}
+  catch(ProviderHttpException unsupported){if(unsupported.status!=404&&unsupported.status!=405)throw unsupported;}
+  return HttpClient.get(endpoint+"?type=itv&action=get_short_epg&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml",headers);
  }
  protected String requestLink(Playlist playlist,String query,Map<String,String> headers)throws CatalogException {
   LinkedHashSet<String> endpoints=new LinkedHashSet<>();if(!selectedEndpoint.isEmpty())endpoints.add(selectedEndpoint);endpoints.addAll(StalkerPortalAddress.endpoints(playlist.getUrl()));

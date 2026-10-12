@@ -2,19 +2,20 @@ package de.lazytv.pro.catalog;
 import java.util.*;import android.content.Context;import de.lazytv.pro.playlist.*;import org.json.*;
 public class StreamResolver {
  private static final String TV_USER_AGENT="Mozilla/5.0 (Linux; Android 10; Android TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36";
- private final StalkerCatalogSource stalker; private final Context context;
- public StreamResolver(StalkerCatalogSource s){stalker=s;context=null;}
- public StreamResolver(StalkerCatalogSource s,Context c){stalker=s;context=c==null?null:c.getApplicationContext();}
+ private final StalkerCatalogSource stalker;private final Context context;private final boolean epgEnabled;
+ public StreamResolver(StalkerCatalogSource source){this(source,null,true);}
+ public StreamResolver(StalkerCatalogSource source,Context context){this(source,context,true);}
+ public StreamResolver(StalkerCatalogSource source,Context context,boolean epgEnabled){this.stalker=source;this.context=context==null?null:context.getApplicationContext();this.epgEnabled=epgEnabled;}
  public ResolvedStream resolve(Playlist p,StreamItem i)throws CatalogException{
   String url=i.streamUrl;Map<String,String> headers=new LinkedHashMap<>(),meta=new LinkedHashMap<>();
   if(p.getType()==PlaylistType.M3U_URL||p.getType()==PlaylistType.M3U_FILE||p.getType()==PlaylistType.XTREAM_CODES&&i instanceof M3uStreamItem){if(i instanceof M3uStreamItem)headers.putAll(((M3uStreamItem)i).requestHeaders);}
   if(p.getType()==PlaylistType.STALKER_PORTAL){
    meta.putAll(i.metadata);meta.put("stalker_session","true");
    // Resolve last: optional EPG network calls must not consume a short-lived playback URL.
-   if(i.type==CatalogType.LIVE)try{mergeExtendedEpg(meta,loadStalkerEpg(p,i.id,stalker.sessionHeaders(p)));}catch(Exception ignored){}
+   if(epgEnabled&&i.type==CatalogType.LIVE)try{mergeExtendedEpg(meta,loadStalkerEpg(p,i.id,stalker.sessionHeaders(p)));}catch(Exception ignored){}
    StalkerCatalogSource.LinkResult x=stalker.resolve(p,i);url=x.url;headers.putAll(x.headers);
   }
-  if(p.getType()==PlaylistType.XTREAM_CODES&&i.type==CatalogType.LIVE&&!(i instanceof M3uStreamItem)){
+  if(epgEnabled&&p.getType()==PlaylistType.XTREAM_CODES&&i.type==CatalogType.LIVE&&!(i instanceof M3uStreamItem)){
    try{meta.putAll(new XtreamCatalogSource().loadLiveEpg(p,i.id));}catch(Exception ignored){}
    try{Map<String,String> extended=loadXtreamEpgFallback(p,i.id);mergeExtendedEpg(meta,extended);}catch(Exception ignored){}
   }

@@ -60,6 +60,7 @@ final class LivePlaybackSession {
     private int lastHttpStatus;
     private boolean retryRunning;
     private boolean fatalNotified;
+    private boolean foreground=true, resumePlayback;
     private volatile boolean released;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
@@ -90,7 +91,7 @@ final class LivePlaybackSession {
                     listener.onReady();
                 } else {
                     cancelStableReset();
-                    if (state == Player.STATE_ENDED && !retryRunning) retryCurrent(generation, currentItem);
+                    if (state == Player.STATE_ENDED && foreground && !retryRunning) retryCurrent(generation, currentItem);
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
@@ -105,7 +106,7 @@ final class LivePlaybackSession {
                     listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(402));
                     return;
                 }
-                if (!retryRunning) retryCurrent(generation, currentItem);
+                if (foreground && !retryRunning) retryCurrent(generation, currentItem);
             }
         });
     }
@@ -126,7 +127,7 @@ final class LivePlaybackSession {
         if (released || item == null || !validStream(stream)) return;
         if (sameActiveStream(item, stream)) {
             if (playerView.getPlayer() != player) playerView.setPlayer(player);
-            if (!player.isPlaying()) player.play();
+            if (!player.isPlaying() && foreground) player.play();
             return;
         }
         generation++;
@@ -148,6 +149,16 @@ final class LivePlaybackSession {
         int state = player.getPlaybackState();
         return callbackBelongsToCurrentGeneration()
                 && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
+    }
+
+    void pauseForBackground() {
+        foreground=false;resumePlayback=player.getPlayWhenReady();player.pause();
+    }
+    void resumeFromBackground() {
+        foreground=true;
+        if(resumePlayback){resumePlayback=false;stalkerTicket=stalkerGuard.begin();retryCount=0;fatalNotified=false;
+            if(player.getPlayerError()!=null&&!retryRunning)retryCurrent(generation,currentItem);else player.play();
+        }
     }
 
     boolean isBuffering() { return !released && player.getPlaybackState() == Player.STATE_BUFFERING; }
@@ -319,7 +330,7 @@ final class LivePlaybackSession {
                 || type.equals("mp4")) media.setMimeType(MimeTypes.VIDEO_MP4);
         player.setMediaItem(media.build(), resetPosition);
         player.prepare();
-        player.play();
+        if (foreground) player.play(); else resumePlayback=true;
     }
 
     private String currentHost() {

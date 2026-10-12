@@ -2,8 +2,8 @@ package de.lazytv.pro.catalog;
 import org.junit.Test;import static org.junit.Assert.*;import java.util.*;import org.json.*;import de.lazytv.pro.playlist.*;
 public class StalkerNativePortalClientTest {
  private static class Fixture extends StalkerNativePortalClient {
-  int calls,refreshes;boolean refuseAlways,refuseFirst;String query;
-  @Override public synchronized Map<String,String> sessionHeaders(Playlist p){return new LinkedHashMap<>();}
+  int calls,refreshes,headerReads;boolean refuseAlways,refuseFirst;String query;
+  @Override public synchronized Map<String,String> sessionHeaders(Playlist p){headerReads++;return new LinkedHashMap<>();}
   @Override public synchronized void clear(){refreshes++;super.clear();}
   @Override protected String requestLink(Playlist p,String q,Map<String,String> h){calls++;query=q;
    if(refuseAlways||refuseFirst&&calls==1)return "{\"js\":{\"status\":401}}";
@@ -30,4 +30,5 @@ public class StalkerNativePortalClientTest {
   assertEquals("http://provider.invalid/custom/portal.php",StalkerPortalAddress.normalize("http://provider.invalid/custom/portal.php?ignored=1"));
   assertTrue(StalkerPortalAddress.endpoints("http://provider.invalid/custom/c/").contains("http://provider.invalid/custom/server/load.php"));
  }
+ @Test public void liveStreamResolutionDoesNotWaitForEpg()throws Exception {Fixture source=new Fixture();new StreamResolver(source,null,false).resolve(playlist(),channel());assertEquals(1,source.headerReads);assertEquals(1,source.calls);}
 }

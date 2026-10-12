@@ -83,6 +83,22 @@ public class CatalogEngine {
         throw new CatalogException("Ky burim nuk ekspozon seasons/episodes të strukturuara");
     }
 
+    /** Live selection resolves a stream immediately; EPG is a separate optional request. */
+    public ResolvedStream resolveLiveStream(Playlist playlist,StreamItem item)throws CatalogException {
+        return new StreamResolver(playlist.getType()==PlaylistType.STALKER_PORTAL?stalker(playlist):null,null,false).resolve(playlist,item);
+    }
+    public EpgSchedule loadLiveSchedule(Playlist playlist,StreamItem item)throws CatalogException {
+        if(playlist==null||item==null)return EpgSchedule.empty();String body;
+        if(playlist.getType()==PlaylistType.STALKER_PORTAL){
+            StalkerCatalogSource source=stalker(playlist);if(!(source instanceof StalkerNativePortalClient))return EpgSchedule.empty();
+            body=((StalkerNativePortalClient)source).loadEpg(playlist,item.id);
+        }else if(playlist.getType()==PlaylistType.XTREAM_CODES&&!(item instanceof M3uStreamItem)){
+            String api=XtreamUrlBuilder.base(playlist.getUrl())+"/player_api.php?username="+HttpClient.enc(playlist.getUsername())+"&password="+HttpClient.enc(playlist.getPassword());
+            body=HttpClient.get(api+"&action=get_short_epg&stream_id="+HttpClient.enc(item.id)+"&limit=6",null);
+        }else return EpgSchedule.empty();
+        return EpgSchedule.parse(body,item.id,System.currentTimeMillis());
+    }
+
     public ResolvedStream resolveStream(Playlist p, StreamItem i) throws CatalogException {
         ResolvedStream r = new StreamResolver(p != null && p.getType() == PlaylistType.STALKER_PORTAL ? stalker(p) : null).resolve(p, i);
         return enrichXtreamSelection(p, i, r);
