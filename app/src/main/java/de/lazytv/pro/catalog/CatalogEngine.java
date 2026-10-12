@@ -9,7 +9,22 @@ import de.lazytv.pro.playlist.*;
 
 public class CatalogEngine {
     private static final String IPTV_ORG_COUNTRY_PLAYLIST = "https://iptv-org.github.io/iptv/index.country.m3u";
-    private final StalkerCatalogSource stalker = new StalkerCatalogSource();
+    // Portal sessions belong to a provider, not an Activity. Keep a small process-local
+    // cache so Live, Movies, Series and their players reuse the same token.
+    private static final Map<String, StalkerCatalogSource> STALKER_SESSIONS =
+            new LinkedHashMap<String, StalkerCatalogSource>(8, 0.75f, true);
+
+    private static synchronized StalkerCatalogSource stalker(Playlist p) {
+        String key = p.getId() + "\n" + p.getUrl() + "\n" + p.getMacAddress();
+        StalkerCatalogSource source = STALKER_SESSIONS.get(key);
+        if (source == null) {
+            source = new StalkerCatalogSource();
+            STALKER_SESSIONS.put(key, source);
+            if (STALKER_SESSIONS.size() > 8)
+                STALKER_SESSIONS.remove(STALKER_SESSIONS.keySet().iterator().next());
+        }
+        return source;
+    }
 
     public Catalog load(Context c, Playlist p) throws CatalogException {
         if (p != null && p.getType() == PlaylistType.FREE_TV) return loadFreeTv(c, p);
@@ -22,7 +37,7 @@ public class CatalogEngine {
             case XTREAM_CODES:
                 return new XtreamCatalogSource(c).load(p);
             case STALKER_PORTAL:
-                return stalker.load(p);
+                return stalker(p).load(p);
             default:
                 throw new CatalogException("Lloj burimi i panjohur");
         }
@@ -47,7 +62,7 @@ public class CatalogEngine {
         Catalog cached = CatalogDiskCache.get(c, key);
         if (cached != null) return cached;
         Catalog out;
-        if (p.getType() == PlaylistType.STALKER_PORTAL) out = stalker.loadType(p, t);
+        if (p.getType() == PlaylistType.STALKER_PORTAL) out = stalker(p).loadType(p, t);
         else if (p.getType() == PlaylistType.XTREAM_CODES) out = new XtreamCatalogSource(c).loadType(p, t);
         else out = load(c, p);
         CatalogDiskCache.put(c, key, out);
@@ -56,17 +71,17 @@ public class CatalogEngine {
 
     public SeriesDetails loadSeries(Playlist p, Series s) throws CatalogException {
         if (p.getType() == PlaylistType.XTREAM_CODES) return new XtreamCatalogSource().loadSeries(p, s.id);
-        if (p.getType() == PlaylistType.STALKER_PORTAL) return stalker.loadSeries(p, s);
+        if (p.getType() == PlaylistType.STALKER_PORTAL) return stalker(p).loadSeries(p, s);
         throw new CatalogException("Ky burim nuk ekspozon seasons/episodes të strukturuara");
     }
 
     public ResolvedStream resolveStream(Playlist p, StreamItem i) throws CatalogException {
-        ResolvedStream r = new StreamResolver(stalker).resolve(p, i);
+        ResolvedStream r = new StreamResolver(p != null && p.getType() == PlaylistType.STALKER_PORTAL ? stalker(p) : null).resolve(p, i);
         return enrichXtreamSelection(p, i, r);
     }
 
     public ResolvedStream resolveStream(Context c, Playlist p, StreamItem i) throws CatalogException {
-        ResolvedStream r = new StreamResolver(stalker, c).resolve(p, i);
+        ResolvedStream r = new StreamResolver(p != null && p.getType() == PlaylistType.STALKER_PORTAL ? stalker(p) : null, c).resolve(p, i);
         return enrichXtreamSelection(p, i, r);
     }
 
@@ -171,9 +186,9 @@ public class CatalogEngine {
     }
 
     public ResolvedStream refreshStream(Playlist p, StreamItem i) throws CatalogException {
-        if (p.getType() == PlaylistType.STALKER_PORTAL) stalker.clear();
+        if (p.getType() == PlaylistType.STALKER_PORTAL) stalker(p).clear();
         return resolveStream(p, i);
     }
 
-    public void close() { stalker.clear(); }
+    public void close() { /* Activity teardown must not invalidate a shared portal session. */ }
 }
