@@ -11,12 +11,20 @@ public class StreamResolver {
   if(p.getType()==PlaylistType.STALKER_PORTAL){StalkerCatalogSource.LinkResult x=stalker.resolve(p,i);url=x.url;headers.putAll(x.headers);}
   if(p.getType()==PlaylistType.XTREAM_CODES&&i.type==CatalogType.LIVE){
    try{meta.putAll(new XtreamCatalogSource().loadLiveEpg(p,i.id));}catch(Exception ignored){}
-   if(meta.isEmpty())try{meta.putAll(loadXtreamEpgFallback(p,i.id));}catch(Exception ignored){}
+   try{Map<String,String> extended=loadXtreamEpgFallback(p,i.id);mergeExtendedEpg(meta,extended);}catch(Exception ignored){}
   }
   if(url==null||url.trim().isEmpty()||url.contains("://")&&url.startsWith("xtream-series://"))throw new CatalogException("Stream URL mungon");
   putIfHeaderMissing(headers,"User-Agent",TV_USER_AGENT);putIfHeaderMissing(headers,"Accept","*/*");
   if(i instanceof Episode){Episode e=(Episode)i;meta.put("series_id",e.seriesId);meta.put("season",String.valueOf(e.seasonNumber));meta.put("episode",String.valueOf(e.episodeNumber));meta.put("duration",e.duration==null?"":e.duration);meta.put("container",e.extension==null?"":e.extension);meta.putAll(e.metadata);}
   return new ResolvedStream(url,i.type.name(),i.name,i.logo,i.tvgId,headers,meta);
+ }
+ private void mergeExtendedEpg(Map<String,String> meta,Map<String,String> extended){
+  if(extended==null||extended.isEmpty())return;
+  if(!meta.containsKey("epg_now")&&extended.containsKey("epg_now"))meta.put("epg_now",extended.get("epg_now"));
+  StringBuilder upcoming=new StringBuilder();
+  for(int n=1;n<6;n++){String key=n==1?"epg_next":"epg_"+n;String value=extended.get(key);if(value==null||value.trim().isEmpty())continue;if(upcoming.length()>0)upcoming.append("\n");upcoming.append(value.trim());}
+  if(upcoming.length()>0)meta.put("epg_next",upcoming.toString());
+  for(Map.Entry<String,String> e:extended.entrySet())if(!meta.containsKey(e.getKey()))meta.put(e.getKey(),e.getValue());
  }
  private Map<String,String> loadXtreamEpgFallback(Playlist p,String streamId)throws Exception{
   Map<String,String> out=new LinkedHashMap<>();if(streamId==null||streamId.trim().isEmpty())return out;
