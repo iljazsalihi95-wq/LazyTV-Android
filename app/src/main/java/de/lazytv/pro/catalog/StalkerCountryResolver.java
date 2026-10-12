@@ -55,6 +55,18 @@ public final class StalkerCountryResolver {
         Matcher prefix=Pattern.compile("^(?:\\[[ ]*)?([A-Za-z]{2,3})(?:[ ]*\\]|[ ]*[|:•»>_–—-]|[ ]+)").matcher(raw.trim());
         return prefix.find()?normalize(prefix.group(1)):"OTHER";
     }
+    public static List<CountryGroup> groups(List<Category> categories) {
+        Map<String,CountryGroup> groups=new LinkedHashMap<>();
+        for(Category category:categories){String key=normalize(category.country);if("OTHER".equals(key))key=title(category.name);
+            CountryGroup group=groups.get(key);if(group==null){group=new CountryGroup(key,label(key));groups.put(key,group);}group.categories.add(category);
+        }
+        List<CountryGroup> result=new ArrayList<>(groups.values());result.sort((a,b)->"OTHER".equals(a.key)?("OTHER".equals(b.key)?0:1):"OTHER".equals(b.key)?-1:a.label.compareToIgnoreCase(b.label));return result;
+    }
+    private static String label(String code) {
+        if("OTHER".equals(code))return "🌐 Të tjera";
+        String name="XK".equals(code)?"Kosovë":new Locale("",code).getDisplayCountry(new Locale("sq"));
+        return new String(Character.toChars(0x1F1E6+code.charAt(0)-'A'))+new String(Character.toChars(0x1F1E6+code.charAt(1)-'A'))+" "+name+" - "+code;
+    }
     public static String resolve(String channelCountry, String genreCountry, String genreTitle, String channelName) {
         for(String code:new String[]{normalize(channelCountry),normalize(genreCountry),title(genreTitle),title(channelName)})
             if(!"OTHER".equals(code)) return code;

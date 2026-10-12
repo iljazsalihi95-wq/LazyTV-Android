@@ -28,4 +28,20 @@ public class StalkerLiveParserTest {
   assertEquals("IE",c.categories.get(0).country);assertEquals("JP",c.categories.get(1).country);
   for(StreamItem item:c.items) assertFalse(c.items(CatalogType.LIVE,item.categoryId).isEmpty());
  }
+ @Test public void genreFetchEnrichesUnknownAllChannelWithoutDuplicates()throws Exception {
+  Catalog catalog=new Catalog();StalkerLiveParser parser=new StalkerLiveParser(catalog,new JSONArray("[{\"id\":\"7\",\"title\":\"Ireland\"}]"));
+  parser.add(new JSONArray("[{\"id\":\"9\",\"name\":\"Neutral\",\"cmd\":\"original\"}]"),"");
+  parser.add(new JSONArray("[{\"id\":\"9\",\"name\":\"Neutral\"}]"),"7");
+  assertEquals(1,catalog.items.size());assertEquals("IE",catalog.items.get(0).meta("stalker_country_code"));assertEquals("original",catalog.items.get(0).streamUrl);
+ }
+ @Test public void providerKeyedGenresAndNestedCountryAreRead()throws Exception {
+  JSONArray genres=StalkerPayload.rows("{\"js\":{\"genres\":{\"7\":{\"name\":\"News\",\"country\":{\"iso3\":\"DEU\"}}}}}");
+  Catalog catalog=new Catalog();StalkerLiveParser parser=new StalkerLiveParser(catalog,genres);
+  parser.add(new JSONArray("[{\"id\":\"1\",\"tv_genre_id\":\"7\",\"cmd\":\"original\"}]"),"");
+  assertEquals("DE",catalog.items.get(0).meta("stalker_country_code"));assertEquals("7",catalog.items.get(0).meta("stalker_genre_id"));
+ }
+ @Test public void kosovoIsCanonicalWithoutChangingGlobalResolver() {
+  java.util.List<Category> categories=java.util.Arrays.asList(new Category("1","Sports",CatalogType.LIVE,"RKS"));
+  assertEquals("XK",StalkerCountryResolver.groups(categories).get(0).key);
+ }
 }

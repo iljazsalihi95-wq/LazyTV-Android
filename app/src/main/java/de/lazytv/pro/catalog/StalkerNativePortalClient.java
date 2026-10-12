@@ -6,6 +6,40 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
  private final CookieManager linkCookies=new CookieManager(null,CookiePolicy.ACCEPT_ORIGINAL_SERVER);
  private String selectedEndpoint="";
  @Override public synchronized void clear(){super.clear();linkCookies.getCookieStore().removeAll();selectedEndpoint="";}
+ @Override public synchronized Catalog load(Playlist playlist)throws CatalogException{return loadNativeLive(playlist);}
+ @Override public synchronized Catalog loadType(Playlist playlist,CatalogType wanted)throws CatalogException{return wanted==CatalogType.LIVE?loadNativeLive(playlist):super.loadType(playlist,wanted);}
+ private Catalog loadNativeLive(Playlist playlist)throws CatalogException {
+  String genres;
+  try{genres=catalogRequest(playlist,"type=itv&action=get_genres&JsHttpRequest=1-xml");}
+  catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;genres=catalogRequest(playlist,"type=itv&action=get_categories&JsHttpRequest=1-xml");}
+  Catalog catalog=new Catalog();StalkerLiveParser parser=new StalkerLiveParser(catalog,StalkerPayload.rows(genres));
+  try{catalogPages(playlist,parser,"get_all_channels","");}
+  catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;}
+  Set<String> known=parser.genreIds(),used=parser.usedGenres();
+  for(String id:known)if(!id.isEmpty()&&!"0".equals(id)&&!"*".equals(id)&&!used.contains(id))catalogPages(playlist,parser,"get_ordered_list",id);
+  if(parser.size()==0)catalogPages(playlist,parser,"get_ordered_list","*");
+  Set<String> categories=new HashSet<>();for(StreamItem item:catalog.items)categories.add(item.categoryId);
+  catalog.categories.removeIf(category->!categories.contains(category.id));
+  if(catalog.isEmpty())throw new CatalogException("Portali nuk ktheu kanale LIVE");return catalog;
+ }
+ private void catalogPages(Playlist playlist,StalkerLiveParser parser,String action,String genre)throws CatalogException {
+  Set<String> pageIds=new HashSet<>();
+  for(int page=1;page<=500;page++) {
+   String query="type=itv&action="+action+"&p="+page+(genre.isEmpty()?"":"&genre="+HttpClient.enc(genre))+"&JsHttpRequest=1-xml";
+   String body=catalogRequest(playlist,query);JSONArray rows=StalkerPayload.rows(body);if(rows.length()==0)break;int previous=pageIds.size();
+   for(int n=0;n<rows.length();n++){JSONObject row=rows.optJSONObject(n);if(row!=null)pageIds.add(StalkerLiveParser.first(row,"id","ch_id","channel_id"));}
+   parser.add(rows,"*".equals(genre)?"":genre);int total=StalkerPayload.total(body);
+   if(pageIds.size()==previous||total>0&&pageIds.size()>=total)break;
+  }
+ }
+ private String catalogRequest(Playlist playlist,String query)throws CatalogException {
+  for(int attempt=0;attempt<2;attempt++)try {
+   String body=requestLink(playlist,query,sessionHeaders(playlist));Object root=new JSONTokener(body.trim()).nextValue();
+   if(root instanceof JSONObject){int status=refusal(payload(body));if(status!=0)throw new ProviderHttpException(status);}return body;
+  }catch(ProviderHttpException error){if(attempt==0&&(error.status==401||error.status==403)){clear();continue;}throw error;}
+   catch(JSONException invalid){throw new CatalogException("Stalker catalog përgjigje e pavlefshme");}
+  throw new CatalogException("Stalker catalog session-i u refuzua");
+ }
  @Override public synchronized LinkResult resolve(Playlist playlist,StreamItem item)throws CatalogException {
   if(item.type!=CatalogType.LIVE)return super.resolve(playlist,item);
   String cmd=item.meta("stalker_original_cmd");if(cmd.isEmpty())cmd=item.streamUrl;
@@ -34,7 +68,7 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
   LinkedHashSet<String> endpoints=new LinkedHashSet<>();if(!selectedEndpoint.isEmpty())endpoints.add(selectedEndpoint);endpoints.addAll(StalkerPortalAddress.endpoints(playlist.getUrl()));
   CatalogException last=null;
   for(String endpoint:endpoints)try {
-   String body=HttpClient.get(endpoint+"?"+query,headers,linkCookies);payload(body);selectedEndpoint=endpoint;return body;
+   String body=HttpClient.get(endpoint+"?"+query,headers,linkCookies);try{Object json=new JSONTokener(body.trim()).nextValue();if(!(json instanceof JSONObject)&&!(json instanceof JSONArray))throw new JSONException("not JSON");}catch(JSONException invalid){throw new CatalogException("Stalker përgjigje e pavlefshme");}selectedEndpoint=endpoint;return body;
   }catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;last=error;}
    catch(CatalogException invalid){last=invalid;}
   throw last==null?new CatalogException("Stalker create_link nuk u përgjigj"):last;
