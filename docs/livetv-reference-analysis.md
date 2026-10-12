@@ -30,6 +30,8 @@ MAG profile parameters only come from the existing provider identity; new serial
 5. Native Previous/Next/Favorite/EPG/List/Back controls; optional EPG on a separate executor with generation checks and actual current/next timestamps.
 6. One Xtream URL builder for API/catalog/series details/EPG/M3U/stream URLs, preserving scheme and nondefault ports and encoding credentials.
 7. Movie Play/Resume seeks and saves the active Exo/VLC/IJK engine, not an inactive Exo instance. Resume keys retain the previous provider/content contract.
+Continue Watching is a separate native Movies catalog filter, sorted by actual saved timestamp and showing saved position/progress. It uses the same keys and Resume action; expired/completed records are excluded by PlaybackResumeStore. Movie retries retain the active-engine position.
+
 8. Series containers cannot play; episode metadata now reaches StreamItem; native details/artwork and per-episode Play/Resume/progress.
 9. M3U EXTINF titles respect the first unquoted separator, retain provider metadata/headers, and build seasons/episodes from explicit metadata or clear SxxExx/1xNN markers. Unknown season/episode numbers remain unknown. SAF requires persisted URI read permission; no local-file copying. Existing Live M3U IDs remain unchanged.
 

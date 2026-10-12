@@ -176,7 +176,7 @@ public class PlayerActivity extends Activity {
     private void switchLive(int delta){StreamItem target;synchronized(liveItems){if(liveItems.isEmpty())return;int base=liveIndex>=0&&liveIndex<liveItems.size()?liveIndex:0;int nextIndex=(base+delta+liveItems.size())%liveItems.size();target=liveItems.get(nextIndex);liveIndex=nextIndex;}resolveAndPlay(target,false);}
     private boolean currentPlayback(){MediaItem media=player==null?null:player.getCurrentMediaItem();return media!=null&&media.localConfiguration!=null&&Long.valueOf(selectionGeneration).equals(media.localConfiguration.tag);}
     private void resolveAndPlay(StreamItem item,boolean forceRefresh){
-        if(item==null||destroyed)return;final long token=++selectionGeneration;providerRetries=0;providerRetryRunning=false;loading.setVisibility(View.VISIBLE);
+        if(item==null||destroyed)return;if(!live&&item==currentItem)pendingSeekMs=playbackPosition();final long token=++selectionGeneration;providerRetries=0;providerRetryRunning=false;loading.setVisibility(View.VISIBLE);
         worker.execute(()->{try{ResolvedStream resolved=forceRefresh?engine.refreshStream(playlist,item):engine.resolveStream(playlist,item);
             ui.post(()->{if(destroyed||isFinishing()||token!=selectionGeneration)return;currentItem=item;live=item.type==CatalogType.LIVE;contentKey=stableContentKey(item);prev.setVisibility(live?View.VISIBLE:View.GONE);next.setVisibility(live?View.VISIBLE:View.GONE);playResolved(resolved,true);});
         }catch(Exception e){ui.post(()->{if(!destroyed&&!isFinishing()&&token==selectionGeneration)showSafeError(e.getMessage()==null?"Stream-i nuk mund të përgatitet":e.getMessage());});}});

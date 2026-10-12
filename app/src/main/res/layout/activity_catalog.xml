@@ -10,6 +10,7 @@
   <ImageButton android:id="@+id/tab_series" android:contentDescription="SERIES" android:scaleType="fitCenter" android:background="@drawable/bg_home_tile" android:layout_weight="1" android:layout_width="0dp" android:layout_height="82dp" android:focusable="true"/>
   <Button android:id="@+id/tab_favorites" android:text="★ FAVORITES" android:layout_weight="1" android:layout_width="0dp" android:layout_height="wrap_content" android:focusable="true"/>
  </LinearLayout>
+ <Button android:id="@+id/continue_watching" android:text="CONTINUE WATCHING" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:layout_marginTop="6dp" android:layout_width="240dp" android:layout_height="48dp" android:focusable="true" android:nextFocusDown="@id/catalog_list"/>
  <TextView android:id="@+id/catalog_breadcrumb" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingVertical="9dp" android:textColor="@color/lazytv_accent" android:textStyle="bold"/>
  <ImageView android:id="@+id/catalog_progress" android:layout_gravity="center" android:layout_width="120dp" android:layout_height="120dp" android:scaleType="fitCenter"/>
  <TextView android:id="@+id/catalog_status" android:textColor="@color/lazytv_muted" android:padding="6dp" android:layout_width="match_parent" android:layout_height="wrap_content"/>
