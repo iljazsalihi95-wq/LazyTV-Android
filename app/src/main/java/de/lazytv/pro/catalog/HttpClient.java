@@ -22,7 +22,14 @@ public final class HttpClient {
     dnsRetries=0;
     if(code==301||code==302||code==303||code==307||code==308){
      String loc=c.getHeaderField("Location");if(loc==null||loc.trim().isEmpty())throw new CatalogException("Redirect pa Location (HTTP "+code+")");
-     url=new URL(url,loc);continue;
+     URL next=new URL(url,loc);
+     // Some Stalker/MAG portals redirect portal.php -> stalker_portal/c/ or server/load.php
+     // without repeating the API query. Preserve it only for Stalker-style requests so the
+     // handshake/action is not accidentally turned into an HTML landing-page request.
+     if(stalker&&url.getQuery()!=null&&!url.getQuery().isEmpty()&&(next.getQuery()==null||next.getQuery().isEmpty())){
+      try{next=new URL(next.getProtocol(),next.getHost(),next.getPort(),next.getPath()+"?"+url.getQuery());}catch(Exception ignored){}
+     }
+     url=next;continue;
     }
     InputStream in=code>=200&&code<300?c.getInputStream():c.getErrorStream();
     if(in!=null&&"gzip".equalsIgnoreCase(c.getContentEncoding()))in=new GZIPInputStream(in);
