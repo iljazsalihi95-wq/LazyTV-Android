@@ -31,7 +31,11 @@ public class PlaylistManagerActivity extends Activity {
         findViewById(R.id.add_m3u).setOnClickListener(v -> openPreset("M3U"));
         findViewById(R.id.add_xtream).setOnClickListener(v -> openPreset("XTREAM"));
         findViewById(R.id.add_stalker).setOnClickListener(v -> openPreset("STALKER"));
-        list.setOnItemClickListener((p, v, pos, id) -> showActions(adapter.getItem(pos)));
+        list.setOnItemClickListener((p, v, pos, id) -> connect(adapter.getItem(pos)));
+        list.setOnItemLongClickListener((p, v, pos, id) -> {
+            showActions(adapter.getItem(pos));
+            return true;
+        });
     }
 
     @Override protected void onResume() {
@@ -51,10 +55,9 @@ public class PlaylistManagerActivity extends Activity {
     }
 
     private void showActions(Playlist item) {
-        String[] a = {"Use / Open", "Edit", "Delete"};
+        String[] a = {"Edit", "Delete"};
         new AlertDialog.Builder(this).setTitle(item.getName()).setItems(a, (d, w) -> {
-            if (w == 0) connect(item);
-            else if (w == 1) edit(item);
+            if (w == 0) edit(item);
             else confirmDelete(item);
         }).show();
     }
@@ -67,7 +70,6 @@ public class PlaylistManagerActivity extends Activity {
         }
         storage.setActive(item.getId());
         refresh();
-        Toast.makeText(this, item.getName() + " active", Toast.LENGTH_SHORT).show();
 
         if (item.getType() == PlaylistType.M3U_FILE || item.getType() == PlaylistType.STALKER_PORTAL) {
             Intent live = new Intent(this, LiveTvActivity.class);
