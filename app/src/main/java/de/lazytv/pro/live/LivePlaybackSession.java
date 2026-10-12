@@ -53,12 +53,14 @@ final class LivePlaybackSession {
     private final ExecutorService retryWorker = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private Runnable stablePlaybackReset;
-    private long generation;
+    private volatile long generation;
+    private final StalkerPlaybackGuard stalkerGuard = new StalkerPlaybackGuard();
+    private long stalkerTicket;
     private int retryCount;
     private int lastHttpStatus;
     private boolean retryRunning;
     private boolean fatalNotified;
-    private boolean released;
+    private volatile boolean released;
     private StreamItem currentItem;
     private ResolvedStream currentStream;
 
@@ -108,6 +110,18 @@ final class LivePlaybackSession {
         });
     }
 
+    /** Invalidate pending old-channel retries immediately, while retaining the player/surface. */
+    void beginStalkerSelection() {
+        generation++;
+        stalkerTicket = stalkerGuard.begin();
+        retryRunning = false;
+        cancelStableReset();
+    }
+
+    private boolean isStalker(ResolvedStream stream) {
+        return stream != null && "true".equals(stream.metadata.get("stalker_session"));
+    }
+
     void play(StreamItem item, ResolvedStream stream) {
         if (released || item == null || !validStream(stream)) return;
         if (sameActiveStream(item, stream)) {
@@ -123,6 +137,7 @@ final class LivePlaybackSession {
         fatalNotified = false;
         currentItem = item;
         currentStream = null;
+        if (isStalker(stream)) stalkerTicket = stalkerGuard.begin();
         apply(generation, item, stream, true);
     }
 
@@ -156,7 +171,7 @@ final class LivePlaybackSession {
             if (!released && expectedGeneration == generation && currentItem == expectedItem
                     && callbackBelongsToCurrentGeneration()
                     && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
-                retryCount = 0;
+                if (!isStalker(currentStream)) retryCount = 0;
                 fatalNotified = false;
             }
         };
@@ -187,6 +202,17 @@ final class LivePlaybackSession {
             }
             return;
         }
+        final boolean stalkerPlayback = isStalker(currentStream);
+        final long expectedStalkerTicket = stalkerTicket;
+        if (stalkerPlayback && !stalkerGuard.retry(expectedStalkerTicket)) {
+            if (!fatalNotified) {
+                fatalNotified = true;
+                listener.onBuffering(false);
+                listener.onFatalPlaybackError(lastHttpStatus > 0
+                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : "Stalker: rilidhja e kanalit dështoi pas një prove.");
+            }
+            return;
+        }
         final ResolvedStream fallbackStream = currentStream;
         final int attempt = ++retryCount;
         final int httpStatus = lastHttpStatus;
@@ -198,8 +224,14 @@ final class LivePlaybackSession {
                 // fresh URL first; only fall back to the current URL when refresh is unavailable.
                 ResolvedStream refreshed = retryResolver == null ? null : retryResolver.refresh(expectedItem);
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
-                if (!validStream(refreshed)) refreshed = fallbackStream;
-                ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
+                if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
+                if (!validStream(refreshed)) {
+                    if (stalkerPlayback) throw new IllegalStateException("Fresh Stalker URL missing");
+                    refreshed = fallbackStream;
+                }
+                // Retain Server 10's existing recovery; a real Stalker playlist already used
+                // its shared provider session and must not handshake/resolve a second time.
+                ResolvedStream stalkerRetry = stalkerPlayback ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
                 if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
                 main.post(() -> {
