@@ -97,7 +97,7 @@ public class PortalSessionTest {
         StreamItem channel=source.load(p).items.get(0);String original=channel.streamUrl;
         String first=source.resolve(p,channel).url,second=source.resolve(p,channel).url;
         assertNotEquals(first,second);assertEquals(original,channel.streamUrl);
-        assertTrue(lastLinkQuery.contains("cmd=ffmpeg /provider/ref"));assertEquals(1,handshakes.get());assertEquals(2,links.get());
+        assertTrue(URLDecoder.decode(lastLinkQuery,"UTF-8").contains("cmd=ffmpeg /provider/ref"));assertEquals(1,handshakes.get());assertEquals(2,links.get());
     }
     @Test public void repeatedAuthRefusalStopsAfterOneSessionRefresh()throws Exception {
         Playlist p=playlist();StalkerCatalogSource source=new StalkerCatalogSource();source.load(p);rejectAlways=true;
