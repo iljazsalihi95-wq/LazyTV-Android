@@ -8,23 +8,24 @@ public class CatalogAdapter extends BaseAdapter{
  public View getView(int p,View v,ViewGroup g){
   final float d=g.getResources().getDisplayMetrics().density;
   if(v==null)v=LayoutInflater.from(g.getContext()).inflate(R.layout.item_catalog_stream,g,false);
-  TextView n=v.findViewById(R.id.stream_name),m=v.findViewById(R.id.stream_meta);ImageView logo=v.findViewById(R.id.stream_logo);LinearLayout row=(LinearLayout)v;
+  TextView n=v.findViewById(R.id.stream_name),m=v.findViewById(R.id.stream_meta);ImageView logo=v.findViewById(R.id.stream_logo);LinearLayout row=(LinearLayout)v;LinearLayout text=(LinearLayout)n.getParent();
   logo.setImageDrawable(null);logo.setVisibility(labelMode?View.GONE:View.VISIBLE);
-  if(labelMode){row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.getLayoutParams().height=(int)(64*d);n.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);n.setText(labels.get(p));m.setText("");}
+  if(labelMode){row.setOrientation(LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER_VERTICAL);row.getLayoutParams().height=(int)(64*d);text.setPadding((int)(12*d),0,0,0);n.setGravity(Gravity.START|Gravity.CENTER_VERTICAL);n.setText(labels.get(p));m.setText("");}
   else{
    StreamItem i=x.get(p);boolean poster=i.type==CatalogType.MOVIES||i.type==CatalogType.SERIES;
    row.setOrientation(poster?LinearLayout.VERTICAL:LinearLayout.HORIZONTAL);row.setGravity(Gravity.CENTER);
-   row.getLayoutParams().height=(int)((poster?340:72)*d);
+   row.getLayoutParams().height=(int)((poster?360:72)*d);
    LinearLayout.LayoutParams lp=(LinearLayout.LayoutParams)logo.getLayoutParams();
-   lp.width=poster?LinearLayout.LayoutParams.MATCH_PARENT:(int)(52*d);lp.height=(int)((poster?260:52)*d);if(poster){lp.setMargins((int)(7*d),(int)(7*d),(int)(7*d),(int)(4*d));}
+   lp.width=poster?LinearLayout.LayoutParams.MATCH_PARENT:(int)(52*d);lp.height=(int)((poster?260:52)*d);lp.weight=0;if(poster){lp.setMargins((int)(7*d),(int)(7*d),(int)(7*d),(int)(4*d));}else lp.setMargins(0,0,0,0);
    logo.setLayoutParams(lp);logo.setAdjustViewBounds(true);logo.setScaleType(poster?ImageView.ScaleType.FIT_CENTER:ImageView.ScaleType.CENTER_INSIDE);
-   n.setGravity(poster?Gravity.CENTER:Gravity.START);n.setText(i.name);n.setMaxLines(poster?2:1);n.setTextSize(poster?15:17);
-   m.setGravity(poster?Gravity.CENTER:Gravity.START);m.setMaxLines(poster?2:1);m.setText(poster?metaLine(i):(i.type==CatalogType.LIVE?"LIVE":""));
+   LinearLayout.LayoutParams tp=(LinearLayout.LayoutParams)text.getLayoutParams();tp.width=poster?LinearLayout.LayoutParams.MATCH_PARENT:0;tp.height=poster?0:LinearLayout.LayoutParams.WRAP_CONTENT;tp.weight=1;text.setLayoutParams(tp);text.setPadding(poster?(int)(8*d):(int)(12*d),poster?(int)(2*d):0,poster?(int)(8*d):0,poster?(int)(6*d):0);text.setGravity(poster?Gravity.TOP|Gravity.CENTER_HORIZONTAL:Gravity.CENTER_VERTICAL);
+   n.setGravity(poster?Gravity.CENTER:Gravity.START);n.setText(i.name==null||i.name.trim().isEmpty()?(i.type==CatalogType.MOVIES?"Film":"Serial"):i.name.trim());n.setMaxLines(poster?2:1);n.setTextSize(poster?15:17);n.setVisibility(View.VISIBLE);
+   m.setGravity(poster?Gravity.CENTER:Gravity.START);m.setMaxLines(poster?2:1);m.setText(poster?metaLine(i):(i.type==CatalogType.LIVE?"LIVE":""));m.setVisibility(View.VISIBLE);
    if(i.logo!=null&&!i.logo.trim().isEmpty())load(logo,i.logo);else logo.setImageResource(R.drawable.ic_lazytv_launcher);
   }
   v.setFocusable(false);return v;
  }
- private String metaLine(StreamItem i){java.util.List<String> a=new java.util.ArrayList<>();String rating=i.meta("rating"),year=i.meta("year"),genre=i.meta("genre");if(rating!=null&&!rating.isEmpty())a.add("★ "+rating);if(year!=null&&!year.isEmpty()){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(19|20)[0-9]{2}").matcher(year);a.add(m.find()?m.group():year);}if(genre!=null&&!genre.isEmpty())a.add(genre);if(a.isEmpty())return i.type==CatalogType.MOVIES?"MOVIE":"SERIES";return android.text.TextUtils.join("  •  ",a);}
+ private String metaLine(StreamItem i){java.util.List<String> a=new java.util.ArrayList<>();String rating=i.meta("rating"),year=i.meta("year"),genre=i.meta("genre"),duration=i.meta("duration");if(rating!=null&&!rating.isEmpty())a.add("★ "+rating);if(year!=null&&!year.isEmpty()){java.util.regex.Matcher m=java.util.regex.Pattern.compile("(19|20)[0-9]{2}").matcher(year);a.add(m.find()?m.group():year);}if(genre!=null&&!genre.isEmpty())a.add(genre);if(duration!=null&&!duration.isEmpty())a.add(duration);if(a.isEmpty())return i.type==CatalogType.MOVIES?"MOVIE":"SERIES";return android.text.TextUtils.join("  •  ",a);}
  private void load(ImageView view,String url){view.setTag(url);Bitmap hit=cache.get(url);if(hit!=null){view.setImageBitmap(hit);return;}images.execute(()->{java.net.HttpURLConnection c=null;try{c=(java.net.HttpURLConnection)new URL(url).openConnection();c.setInstanceFollowRedirects(true);c.setRequestProperty("User-Agent","Mozilla/5.0 LazyTV-PRO");c.setRequestProperty("Accept","image/avif,image/webp,image/apng,image/*,*/*;q=0.8");c.setConnectTimeout(6000);c.setReadTimeout(8000);Bitmap b=BitmapFactory.decodeStream(c.getInputStream());if(b!=null){cache.put(url,b);view.post(()->{if(url.equals(view.getTag()))view.setImageBitmap(b);});}}catch(Exception ignored){}finally{if(c!=null)c.disconnect();}});}
  public void close(){images.shutdownNow();}
 }
