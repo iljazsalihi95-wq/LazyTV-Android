@@ -95,6 +95,7 @@ public class CatalogEngine {
 
     private ResolvedStream enrichXtreamSelection(Playlist p, StreamItem i, ResolvedStream r) {
         if (p == null || i == null || r == null || p.getType() != PlaylistType.XTREAM_CODES) return r;
+        if (i instanceof M3uStreamItem) return r;
         if (i.type == CatalogType.LIVE) return enrichXtreamLiveEpg(p, i, r);
         // Movie details are loaded on the details page, before explicit PLAY.
         return r;

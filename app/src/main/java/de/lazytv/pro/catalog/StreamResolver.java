@@ -7,14 +7,14 @@ public class StreamResolver {
  public StreamResolver(StalkerCatalogSource s,Context c){stalker=s;context=c==null?null:c.getApplicationContext();}
  public ResolvedStream resolve(Playlist p,StreamItem i)throws CatalogException{
   String url=i.streamUrl;Map<String,String> headers=new LinkedHashMap<>(),meta=new LinkedHashMap<>();
-  if(p.getType()==PlaylistType.M3U_URL||p.getType()==PlaylistType.M3U_FILE){if(i instanceof M3uStreamItem)headers.putAll(((M3uStreamItem)i).requestHeaders);}
+  if(p.getType()==PlaylistType.M3U_URL||p.getType()==PlaylistType.M3U_FILE||p.getType()==PlaylistType.XTREAM_CODES&&i instanceof M3uStreamItem){if(i instanceof M3uStreamItem)headers.putAll(((M3uStreamItem)i).requestHeaders);}
   if(p.getType()==PlaylistType.STALKER_PORTAL){
    meta.putAll(i.metadata);meta.put("stalker_session","true");
    // Resolve last: optional EPG network calls must not consume a short-lived playback URL.
    if(i.type==CatalogType.LIVE)try{mergeExtendedEpg(meta,loadStalkerEpg(p,i.id,stalker.sessionHeaders(p)));}catch(Exception ignored){}
    StalkerCatalogSource.LinkResult x=stalker.resolve(p,i);url=x.url;headers.putAll(x.headers);
   }
-  if(p.getType()==PlaylistType.XTREAM_CODES&&i.type==CatalogType.LIVE){
+  if(p.getType()==PlaylistType.XTREAM_CODES&&i.type==CatalogType.LIVE&&!(i instanceof M3uStreamItem)){
    try{meta.putAll(new XtreamCatalogSource().loadLiveEpg(p,i.id));}catch(Exception ignored){}
    try{Map<String,String> extended=loadXtreamEpgFallback(p,i.id);mergeExtendedEpg(meta,extended);}catch(Exception ignored){}
   }
