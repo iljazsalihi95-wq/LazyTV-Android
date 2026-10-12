@@ -111,7 +111,6 @@ final class LivePlaybackSession {
     void play(StreamItem item, ResolvedStream stream) {
         if (released || item == null || !validStream(stream)) return;
         if (sameActiveStream(item, stream)) {
-            // Preview/fullscreen/back must never rebuild or re-resolve the active player.
             if (playerView.getPlayer() != player) playerView.setPlayer(player);
             if (!player.isPlaying()) player.play();
             return;
@@ -195,14 +194,13 @@ final class LivePlaybackSession {
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
+                // Server 10 may rotate Premium URLs. Always ask the catalog resolver for a
+                // fresh URL first; only fall back to the current URL when refresh is unavailable.
+                ResolvedStream refreshed = retryResolver == null ? null : retryResolver.refresh(expectedItem);
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
-                ResolvedStream refreshed = refreshExpiredStalkerLink(fallbackStream, expectedItem);
-                if (refreshed == null) {
-                    refreshed = retryResolver == null ? fallbackStream : retryResolver.refresh(expectedItem);
-                    if (released || expectedGeneration != generation || expectedItem != currentItem) return;
-                    ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
-                    if (stalkerRetry != null) refreshed = stalkerRetry;
-                }
+                if (!validStream(refreshed)) refreshed = fallbackStream;
+                ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
+                if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
