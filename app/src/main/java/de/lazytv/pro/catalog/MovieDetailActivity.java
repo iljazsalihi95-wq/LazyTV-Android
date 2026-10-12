@@ -27,7 +27,7 @@ public final class MovieDetailActivity extends Activity {
     private StreamItem movie;
     private TextView facts,plot,status;
     private ImageView poster,backdrop;
-    private Button play;
+    private Button play,resume;
     private String category;
     private boolean preparing;
 
@@ -62,8 +62,9 @@ public final class MovieDetailActivity extends Activity {
         TextView title=text(movie.name,28);title.setTypeface(null,Typeface.BOLD);detail.addView(title);
         facts=text("",16);facts.setPadding(0,dp(12),0,dp(16));detail.addView(facts);
         LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(0);detail.addView(buttons);
-        play=new Button(this);play.setText("▶ PLAY");play.setTextColor(Color.WHITE);play.setTextSize(20);play.setBackgroundResource(R.drawable.bg_player_button);play.setOnClickListener(v->play());
+        play=new Button(this);play.setText("▶ PLAY");play.setTextColor(Color.WHITE);play.setTextSize(20);play.setBackgroundResource(R.drawable.bg_player_button);play.setOnClickListener(v->play(false));
         buttons.addView(play,new LinearLayout.LayoutParams(0,dp(64),1));
+        resume=new Button(this);resume.setText("▶ RESUME");resume.setTextColor(Color.WHITE);resume.setTextSize(15);resume.setBackgroundResource(R.drawable.bg_player_button);resume.setOnClickListener(v->play(true));LinearLayout.LayoutParams rp=new LinearLayout.LayoutParams(0,dp(64),1);rp.setMargins(dp(8),0,0,0);buttons.addView(resume,rp);updateResume();
         Button favorite=new Button(this);FavoritesStore favorites=new FavoritesStore(this);
         favorite.setText(favorites.contains(playlist.getId(),movie)?"★ Favorite":"☆ Favorite");favorite.setTextColor(Color.WHITE);favorite.setBackgroundResource(R.drawable.bg_player_button);
         favorite.setOnClickListener(v->{favorites.toggle(playlist.getId(),movie);favorite.setText(favorites.contains(playlist.getId(),movie)?"★ Favorite":"☆ Favorite");});
@@ -72,6 +73,8 @@ public final class MovieDetailActivity extends Activity {
         status=text("Duke marrë detajet nga provideri…",14);status.setTextColor(Color.rgb(155,180,208));detail.addView(status);
         setContentView(root);play.requestFocus();
     }
+    @Override protected void onResume(){super.onResume();updateResume();}
+    private void updateResume(){if(resume==null||playlist==null||movie==null)return;de.lazytv.pro.player.PlaybackResumeStore.Entry entry=new de.lazytv.pro.player.PlaybackResumeStore(this).get(de.lazytv.pro.player.PlaybackContentKey.of(playlist.getId(),movie));resume.setVisibility(entry==null?View.GONE:View.VISIBLE);if(entry!=null){long seconds=entry.position/1000;resume.setText("▶ RESUME "+String.format(Locale.getDefault(),"%02d:%02d",seconds/60,seconds%60));}}
     private TextView text(String value,int size){TextView t=new TextView(this);t.setText(value);t.setTextColor(Color.WHITE);t.setTextSize(size);t.setLineSpacing(dp(3),1);return t;}
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}
     private void render(){
@@ -93,16 +96,16 @@ public final class MovieDetailActivity extends Activity {
         try{Map<String,String> info=engine.loadMovieInfo(playlist,movie);runOnUiThread(()->{if(!current(token))return;metadata.putAll(info);render();if(!preparing)status.setText(info.isEmpty()?"Provideri nuk ka dhënë detaje shtesë.":"");});}
         catch(Exception e){runOnUiThread(()->{if(current(token)&&!preparing)status.setText("Detajet shtesë nuk u ngarkuan. "+clean(e.getMessage()));});}
     });}
-    private void play(){if(preparing)return;preparing=true;play.setEnabled(false);status.setText("Duke përgatitur stream-in…");final int token=generation.get();
+    private void play(boolean resumeRequested){if(preparing)return;preparing=true;play.setEnabled(false);resume.setEnabled(false);status.setText("Duke përgatitur stream-in…");final int token=generation.get();
         worker.execute(()->{try{
             ResolvedStream r=engine.resolveStream(this,playlist,movie);runOnUiThread(()->{
-                if(!current(token))return;preparing=false;play.setEnabled(true);status.setText("");
+                if(!current(token))return;preparing=false;play.setEnabled(true);resume.setEnabled(true);status.setText("");
                 Map<String,String> m=new LinkedHashMap<>(r.metadata);m.putAll(metadata);
                 String art=first("poster");if(art.isEmpty())art=r.artwork;
                 ResolvedStream ready=new ResolvedStream(r.url,r.streamType,r.title,art,r.epgId,r.headers,m);
-                PlayerLauncher.playMovie(this,playlist.getId(),movie,ready,category);
+                PlayerLauncher.playMovie(this,playlist.getId(),movie,ready,category,resumeRequested);
             });
-        }catch(Exception e){runOnUiThread(()->{if(!current(token))return;preparing=false;play.setEnabled(true);status.setText(clean(e.getMessage()));play.requestFocus();});}});
+        }catch(Exception e){runOnUiThread(()->{if(!current(token))return;preparing=false;play.setEnabled(true);resume.setEnabled(true);status.setText(clean(e.getMessage()));play.requestFocus();});}});
     }
     private void image(ImageView view,String url){if(url==null||url.trim().isEmpty()){view.setVisibility(View.GONE);return;}view.setVisibility(View.VISIBLE);if(url.equals(view.getTag()))return;view.setTag(url);final int token=generation.get();
         images.execute(()->{HttpURLConnection c=null;try{

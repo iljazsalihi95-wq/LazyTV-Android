@@ -40,15 +40,22 @@ public final class PlayerLauncher {
 
     public static void playMovie(Activity activity, String playlistId, StreamItem item,
                                  ResolvedStream resolved, String categoryName) {
-        launch(activity, playlistId, item, resolved, categoryName, MoviePlayerActivity.class);
+        playMovie(activity,playlistId,item,resolved,categoryName,false);
     }
 
+    public static void playMovie(Activity activity,String playlistId,StreamItem item,ResolvedStream resolved,String categoryName,boolean resume){
+        launch(activity,playlistId,item,resolved,categoryName,MoviePlayerActivity.class,resume?"resume":"start");
+    }
     private static void launch(Activity activity, String playlistId, StreamItem item,
                                ResolvedStream resolved, String categoryName,
                                Class<? extends PlayerActivity> target) {
+        launch(activity,playlistId,item,resolved,categoryName,target,null);
+    }
+    private static void launch(Activity activity,String playlistId,StreamItem item,ResolvedStream resolved,String categoryName,Class<? extends PlayerActivity> target,String resumeMode){
         if (activity.isFinishing() || (android.os.Build.VERSION.SDK_INT >= 17 && activity.isDestroyed())) return;
         Intent intent = new Intent(activity, target);
         intent.putExtra(PlayerActivity.EXTRA_PLAYLIST_ID, playlistId);
+        if(resumeMode!=null)intent.putExtra(PlayerActivity.EXTRA_RESUME_MODE,resumeMode);
         intent.putExtra(PlayerActivity.EXTRA_ITEM, item);
         intent.putExtra(PlayerActivity.EXTRA_RESOLVED, resolved);
         intent.putExtra(PlayerActivity.EXTRA_CATEGORY_NAME, categoryName == null ? "" : categoryName);
