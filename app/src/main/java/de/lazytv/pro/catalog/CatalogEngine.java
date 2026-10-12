@@ -69,6 +69,14 @@ public class CatalogEngine {
         return out;
     }
 
+    public Map<String,String> loadMovieInfo(Playlist p, StreamItem movie) throws CatalogException {
+        if (p.getType() == PlaylistType.XTREAM_CODES)
+            return new XtreamVodInfoSource().load(p, movie.id);
+        if (p.getType() == PlaylistType.STALKER_PORTAL)
+            return stalker(p).loadMovieInfo(p, movie);
+        return movie.metadata;
+    }
+
     public SeriesDetails loadSeries(Playlist p, Series s) throws CatalogException {
         if (p.getType() == PlaylistType.XTREAM_CODES) return new XtreamCatalogSource().loadSeries(p, s.id);
         if (p.getType() == PlaylistType.STALKER_PORTAL) return stalker(p).loadSeries(p, s);
@@ -88,7 +96,7 @@ public class CatalogEngine {
     private ResolvedStream enrichXtreamSelection(Playlist p, StreamItem i, ResolvedStream r) {
         if (p == null || i == null || r == null || p.getType() != PlaylistType.XTREAM_CODES) return r;
         if (i.type == CatalogType.LIVE) return enrichXtreamLiveEpg(p, i, r);
-        if (i.type == CatalogType.MOVIES) return enrichXtreamVodInfo(p, i, r);
+        // Movie details are loaded on the details page, before explicit PLAY.
         return r;
     }
 
