@@ -1,0 +1,18 @@
+{
+  "commit": "c78e4868bc60b8ea5f3c8c454f0297993f77248f",
+  "ci_run": 657,
+  "sha256": {
+    "app/src/main/java/de/lazytv/pro/catalog/SheetServerCatalogSource.java": "43a888cd0aa94a781eced60458f438b35950120ae76c2152dc1447d250889a5b",
+    "app/src/main/java/de/lazytv/pro/catalog/ServerTenPlaybackResolver.java": "78b4fb1a9db531d308b05872ce022889ca325624e031d9d4413d7fcf99f35c50",
+    "app/src/main/java/de/lazytv/pro/catalog/CountryResolver.java": "9037165ddfd9bc0f9a7687b07e6b8e8863d3992ead0a7b64e9bb7b3a8a0212dd",
+    "app/src/main/java/de/lazytv/pro/activation/package-info.java": "20ab2b264bd14873f3313af0a45c06be02d0d1f58e04bb4f7d7fb6a61c62380f",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationGuard.java": "6ecc648b87f94eab0228478dff3c2eb03c01125d26fe9bf8e64c85035acdd12d",
+    "app/src/main/java/de/lazytv/pro/activation/DeviceIdentityManager.java": "a0db9254cb27cb0b929ba3ac8135567b71324a033d68f87d569bb0e1b5563362",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationActivity.java": "4e4df6b41e2bb21df720792fc8e1a15ade72d4210ffa236c13c9fcae5ade55f0",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationApiClient.java": "432c7ba013637e7adf3c5c0cf37f9e405da9dd3cedf7428c829d4bfae3661789",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationCache.java": "3e120282876268d958d4c03e7fb58d47cf1fd53b5b6f6f7e232633347f48913c",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationStatus.java": "fc09d18a4e62ac3edc92e025f9a96de0bee6425b4da52ce5044060b9d9a4498c",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationGateActivity.java": "2d0913f9e72375ec0bc8da104e6f6846f3cf0c84ca165402940780efa942652f",
+    "app/src/main/java/de/lazytv/pro/activation/ActivationResult.java": "36bc46139626a3e7431faf8fdab29da09926f0d2b3ba799bd4589dd2bbd7c5db"
+  }
+}

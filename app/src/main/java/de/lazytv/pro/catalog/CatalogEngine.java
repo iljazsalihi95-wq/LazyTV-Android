@@ -18,7 +18,7 @@ public class CatalogEngine {
         String key = p.getId() + "\n" + p.getUrl() + "\n" + p.getMacAddress();
         StalkerCatalogSource source = STALKER_SESSIONS.get(key);
         if (source == null) {
-            source = new StalkerCatalogSource();
+            source = new StalkerNativePortalClient();
             STALKER_SESSIONS.put(key, source);
             if (STALKER_SESSIONS.size() > 8)
                 STALKER_SESSIONS.remove(STALKER_SESSIONS.keySet().iterator().next());
