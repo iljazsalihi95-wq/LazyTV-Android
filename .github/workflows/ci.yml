@@ -85,6 +85,8 @@ jobs:
           echo "HTTPS_8080_GETPHP:"
           curl -skv --connect-timeout 10 --max-time 20 -o /dev/null https://euiptv.live:8080/get.php 2>&1 | head -35
           echo "HTTPS_RC=${PIPESTATUS[0]}"
+      - name: Provider session and HTTP regression tests
+        run: gradle --no-daemon testDebugUnitTest
       - name: Assemble debug APK
         env:
           LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
