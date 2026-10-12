@@ -33,7 +33,7 @@ import de.lazytv.pro.catalog.StreamItem;
 import de.lazytv.pro.playlist.Playlist;
 import de.lazytv.pro.playlist.PlaylistType;
 
-/** Owns one persistent Live TV player and one video surface. */
+/** Owns exactly one persistent Live TV player and one video surface. */
 @UnstableApi
 final class LivePlaybackSession {
     interface RetryResolver { ResolvedStream refresh(StreamItem item) throws Exception; }
@@ -88,8 +88,7 @@ final class LivePlaybackSession {
                     listener.onReady();
                 } else {
                     cancelStableReset();
-                    if (state == Player.STATE_ENDED && !retryRunning)
-                        retryCurrent(generation, currentItem);
+                    if (state == Player.STATE_ENDED && !retryRunning) retryCurrent(generation, currentItem);
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
@@ -97,8 +96,13 @@ final class LivePlaybackSession {
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
-                lastHttpStatus=ProviderPlaybackPolicy.status(error);
-                if(lastHttpStatus==402){fatalNotified=true;listener.onBuffering(false);listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(402));return;}
+                lastHttpStatus = ProviderPlaybackPolicy.status(error);
+                if (lastHttpStatus == 402) {
+                    fatalNotified = true;
+                    listener.onBuffering(false);
+                    listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(402));
+                    return;
+                }
                 if (!retryRunning) retryCurrent(generation, currentItem);
             }
         });
@@ -107,7 +111,8 @@ final class LivePlaybackSession {
     void play(StreamItem item, ResolvedStream stream) {
         if (released || item == null || !validStream(stream)) return;
         if (sameActiveStream(item, stream)) {
-            playerView.setPlayer(player);
+            // Preview/fullscreen/back must never rebuild or re-resolve the active player.
+            if (playerView.getPlayer() != player) playerView.setPlayer(player);
             if (!player.isPlaying()) player.play();
             return;
         }
@@ -132,7 +137,8 @@ final class LivePlaybackSession {
     }
 
     boolean isActive() {
-        return !released && (player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
+        return !released && callbackBelongsToCurrentGeneration()
+                && (player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
                 || player.getPlaybackState() == Player.STATE_READY);
     }
 
@@ -177,24 +183,27 @@ final class LivePlaybackSession {
                     && retryCount >= MAX_RETRIES && !fatalNotified) {
                 fatalNotified = true;
                 listener.onBuffering(false);
-                listener.onFatalPlaybackError(lastHttpStatus>0?ProviderPlaybackPolicy.message(lastHttpStatus):"Rilidhja e stream-it dështoi");
+                listener.onFatalPlaybackError(lastHttpStatus > 0
+                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : "Rilidhja e stream-it dështoi");
             }
             return;
         }
         final ResolvedStream fallbackStream = currentStream;
         final int attempt = ++retryCount;
-        final int httpStatus=lastHttpStatus;
+        final int httpStatus = lastHttpStatus;
         retryRunning = true;
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
+                if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 ResolvedStream refreshed = refreshExpiredStalkerLink(fallbackStream, expectedItem);
                 if (refreshed == null) {
                     refreshed = retryResolver == null ? fallbackStream : retryResolver.refresh(expectedItem);
+                    if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     ResolvedStream stalkerRetry = refreshExpiredStalkerLink(refreshed, expectedItem);
                     if (stalkerRetry != null) refreshed = stalkerRetry;
                 }
-                final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed,expectedItem,httpStatus,attempt);
+                final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
@@ -204,24 +213,30 @@ final class LivePlaybackSession {
                     }
                     apply(expectedGeneration, expectedItem, result, false);
                 });
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                main.post(() -> {
+                    if (!released && expectedGeneration == generation && expectedItem == currentItem)
+                        retryRunning = false;
+                });
             } catch (Exception error) {
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
-                    int code=ProviderPlaybackPolicy.status(error);
-                    if(code>0)lastHttpStatus=code;
-                    if(code==402){fatalNotified=true;listener.onBuffering(false);listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(code));return;}
+                    int code = ProviderPlaybackPolicy.status(error);
+                    if (code > 0) lastHttpStatus = code;
+                    if (code == 402) {
+                        fatalNotified = true;
+                        listener.onBuffering(false);
+                        listener.onFatalPlaybackError(ProviderPlaybackPolicy.message(code));
+                        return;
+                    }
                     retryCurrent(expectedGeneration, expectedItem);
                 });
             }
         });
     }
 
-    /**
-     * LazyMapper Server 10 can contain Stalker create_link results. Their play_token is temporary.
-     * When such a URL expires, rebuild the Stalker session and request a fresh create_link instead
-     * of replaying the stale token. No MAC/token is written to logs.
-     */
     private ResolvedStream refreshExpiredStalkerLink(ResolvedStream stream, StreamItem item) {
         if (stream == null || stream.url == null || !stream.url.contains("play_token=")) return null;
         try {
@@ -233,7 +248,8 @@ final class LivePlaybackSession {
             Playlist stalker = new Playlist("server10-stalker", "Server 10", PlaylistType.STALKER_PORTAL,
                     portal, "", "", mac, System.currentTimeMillis());
             StreamItem reference = new StreamItem(item.id, item.name, item.categoryId, item.logo,
-                    "ffmpeg http://localhost/ch/" + streamId + "_", item.tvgId, CatalogType.LIVE, new ArrayList<String>());
+                    "ffmpeg http://localhost/ch/" + streamId + "_", item.tvgId,
+                    CatalogType.LIVE, new ArrayList<String>());
             StalkerCatalogSource.LinkResult link = new StalkerCatalogSource().resolve(stalker, reference);
             return new ResolvedStream(link.url, stream.streamType, stream.title, stream.artwork,
                     stream.epgId, link.headers, stream.metadata);
@@ -257,7 +273,8 @@ final class LivePlaybackSession {
         if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
         currentStream = stream;
         http.setDefaultRequestProperties(stream.headers);
-        MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url)).setTag(Long.valueOf(expectedGeneration));
+        MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url))
+                .setTag(Long.valueOf(expectedGeneration));
         String url = stream.url.toLowerCase(Locale.US);
         String type = stream.streamType == null ? "" : stream.streamType.toLowerCase(Locale.US);
         if (url.contains(".m3u8") || type.contains("hls") || type.contains("m3u8"))
