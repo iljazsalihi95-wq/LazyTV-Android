@@ -231,7 +231,7 @@ final class LivePlaybackSession {
                 }
                 // Retain Server 10's existing recovery; a real Stalker playlist already used
                 // its shared provider session and must not handshake/resolve a second time.
-                ResolvedStream stalkerRetry = stalkerPlayback ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
+                ResolvedStream stalkerRetry = stalkerPlayback || "true".equals(refreshed.metadata.get("server10_fresh_link")) ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
                 if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
                 main.post(() -> {
