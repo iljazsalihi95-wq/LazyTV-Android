@@ -14,7 +14,7 @@ public class PortalSessionTest {
     private HttpServer server;
     private String base;
     private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();
-    private boolean rejectOnce,blocked,expiredToken;
+    private boolean rejectOnce,rejectAlways,rejectBody,blocked,expiredToken,rotateLinks;
     private String lastLinkQuery;
     @Before public void start()throws Exception{
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -27,7 +27,7 @@ public class PortalSessionTest {
             if(cookie==null||!cookie.contains("session=local"+handshakes.get())||!cookie.contains("mac=")){reply(e,403,"{}");return;}
             if(q.contains("action=get_main_info")){reply(e,200,blocked?"{\"js\":{\"status\":\"expired\"}}":"{\"js\":{\"status\":\"active\"}}");return;}
             if(q.contains("action=get_profile")){reply(e,200,"{\"js\":{\"id\":1}}");return;}
-            if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectOnce){rejectOnce=false;reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4\"}}");return;}
+            if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectOnce||rejectAlways||rejectBody){rejectOnce=false;if(rejectBody)reply(e,200,"{\"js\":{\"error\":\"invalid token\"}}");else reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4"+(rotateLinks?"?play_token=fixture"+links.get():"")+"\"}}");return;}
             if(q.contains("get_categories")||q.contains("get_genres")){reply(e,200,"{\"js\":[{\"id\":\"1\",\"title\":\"Provider category\"}]}");return;}
             if(q.contains("movie_id=series-fixture")){reply(e,200,"{\"js\":{\"data\":[{\"id\":\"season-2\",\"season\":2,\"name\":\"Season 2\",\"cmd\":\"ffmpeg /provider/season\",\"series\":[1,3]}]}}");return;}
             reply(e,200,"{\"js\":{\"total_items\":1,\"data\":[{\"id\":\"9\",\"name\":\"Provider title\",\"category_id\":\"1\",\"tv_genre_id\":\"1\",\"cmd\":\"ffmpeg /provider/ref\",\"description\":\"Provider plot\"}]}}");
@@ -91,6 +91,29 @@ public class PortalSessionTest {
     @Test public void explicitProviderExpiryTriggersRefresh()throws Exception{
         expiredToken=true;StalkerCatalogSource source=new StalkerCatalogSource();Playlist p=playlist();source.loadType(p,CatalogType.LIVE);
         expiredToken=false;source.loadType(p,CatalogType.MOVIES);assertEquals(2,handshakes.get());
+    }
+    @Test public void liveSelectionAlwaysUsesOriginalCmdAndFreshLink()throws Exception {
+        rotateLinks=true;Playlist p=playlist();StalkerCatalogSource source=new StalkerCatalogSource();
+        StreamItem channel=source.load(p).items.get(0);String original=channel.streamUrl;
+        String first=source.resolve(p,channel).url,second=source.resolve(p,channel).url;
+        assertNotEquals(first,second);assertEquals(original,channel.streamUrl);
+        assertTrue(lastLinkQuery.contains("cmd=ffmpeg /provider/ref"));assertEquals(1,handshakes.get());assertEquals(2,links.get());
+    }
+    @Test public void repeatedAuthRefusalStopsAfterOneSessionRefresh()throws Exception {
+        Playlist p=playlist();StalkerCatalogSource source=new StalkerCatalogSource();source.load(p);rejectAlways=true;
+        try{source.resolve(p,new Channel("9","Channel","1","","original cmd",""));fail();}
+        catch(ProviderHttpException expected){assertEquals(403,expected.status);}
+        assertEquals(2,handshakes.get());assertEquals(2,links.get());
+    }
+    @Test public void repeatedBodyTokenExpiryAlsoStopsAfterOneRefresh()throws Exception {
+        Playlist p=playlist();StalkerCatalogSource source=new StalkerCatalogSource();source.load(p);rejectBody=true;
+        try{source.resolve(p,new Channel("9","Channel","1","","original cmd",""));fail();}
+        catch(CatalogException expected){assertTrue(expected.getMessage().contains("unauthorized"));}
+        assertEquals(2,handshakes.get());assertEquals(2,links.get());
+    }
+    @Test public void signedAndRelativeCreateLinksArePreserved()throws Exception {
+        assertEquals("https://provider.invalid/play?a=1%2F2&token=x+y",StalkerLinkParser.url("ffmpeg \"https://provider.invalid/play?a=1%2F2&token=x+y\"",base+"/server/load.php"));
+        assertEquals(base+"/media.ts?x=1",StalkerLinkParser.url("auto /media.ts?x=1",base+"/server/load.php"));
     }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
