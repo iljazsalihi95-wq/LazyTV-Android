@@ -14,18 +14,15 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <TextView
-        android:id="@+id/series_details"
-        android:textColor="#D1E4F5"
-        android:textSize="15sp"
-        android:maxLines="3"
-        android:ellipsize="end"
-        android:padding="8dp"
-        android:focusable="true"
-        android:clickable="true"
-        android:background="@drawable/bg_player_button"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+    <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">
+        <ImageView android:id="@+id/series_poster" android:contentDescription="Series poster" android:scaleType="fitCenter" android:layout_width="70dp" android:layout_height="100dp" android:layout_marginEnd="12dp"/>
+        <TextView android:id="@+id/series_details" android:textColor="#D1E4F5" android:textSize="15sp" android:maxLines="4" android:ellipsize="end" android:padding="8dp" android:focusable="true" android:clickable="true" android:background="@drawable/bg_player_button" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"/>
+        <ImageView android:id="@+id/series_backdrop" android:contentDescription="Series backdrop" android:scaleType="centerCrop" android:layout_width="150dp" android:layout_height="90dp" android:layout_marginStart="8dp" android:visibility="gone"/>
+    </LinearLayout>
+    <LinearLayout android:orientation="horizontal" android:layout_width="match_parent" android:layout_height="wrap_content">
+        <Button android:id="@+id/episode_play" android:text="PLAY EPISODE" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:nextFocusDown="@id/series_episodes" android:layout_width="160dp" android:layout_height="48dp"/>
+        <Button android:id="@+id/episode_resume" android:text="RESUME" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:nextFocusDown="@id/series_episodes" android:layout_marginStart="12dp" android:layout_width="180dp" android:layout_height="48dp"/>
+    </LinearLayout>
 
     <TextView
         android:id="@+id/series_status"
@@ -56,6 +53,8 @@
             <ListView
                 android:id="@+id/series_seasons"
                 android:choiceMode="singleChoice"
+                android:listSelector="@drawable/bg_catalog_item"
+                android:drawSelectorOnTop="true"
                 android:focusable="true"
                 android:nextFocusRight="@id/series_episodes"
                 android:layout_width="match_parent"
@@ -79,6 +78,8 @@
             <ListView
                 android:id="@+id/series_episodes"
                 android:choiceMode="singleChoice"
+                android:listSelector="@drawable/bg_catalog_item"
+                android:drawSelectorOnTop="true"
                 android:focusable="true"
                 android:nextFocusLeft="@id/series_seasons"
                 android:layout_width="match_parent"

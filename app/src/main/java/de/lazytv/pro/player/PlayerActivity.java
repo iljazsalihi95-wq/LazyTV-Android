@@ -133,6 +133,7 @@ public class PlayerActivity extends Activity {
         currentResolved = (ResolvedStream) getIntent().getSerializableExtra(EXTRA_RESOLVED);
         categoryName = safe(getIntent().getStringExtra(EXTRA_CATEGORY_NAME));
         if (playlist == null || currentItem == null || currentResolved == null || isBlank(currentResolved.url)) { showFatal("Stream-i nuk mund të hapet"); return; }
+        if(!PlayerContentPolicy.playable(currentItem)){showFatal("Zgjidhni sezonin dhe episodin");return;}
         live = currentItem.type == CatalogType.LIVE;
         contentKey = stableContentKey(currentItem);
         setupButtons(); initializePlayer(); playResolved(currentResolved, true);

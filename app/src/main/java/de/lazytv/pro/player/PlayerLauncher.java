@@ -28,6 +28,11 @@ public final class PlayerLauncher {
             return;
         }
 
+        if (!PlayerContentPolicy.playable(item)) {
+            Toast.makeText(activity,"Zgjidhni sezonin dhe episodin",Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         if (item.type == CatalogType.MOVIES) {
             de.lazytv.pro.catalog.MovieDetailActivity.open(activity, playlistId, item, resolved, categoryName);
             return;
@@ -46,6 +51,10 @@ public final class PlayerLauncher {
     public static void playMovie(Activity activity,String playlistId,StreamItem item,ResolvedStream resolved,String categoryName,boolean resume){
         launch(activity,playlistId,item,resolved,categoryName,MoviePlayerActivity.class,resume?"resume":"start");
     }
+    public static void playEpisode(Activity activity,String provider,Episode episode,ResolvedStream stream,String seriesName,boolean resume){
+        launch(activity,provider,episode,stream,seriesName,EpisodePlayerActivity.class,resume?"resume":"start");
+    }
+
     private static void launch(Activity activity, String playlistId, StreamItem item,
                                ResolvedStream resolved, String categoryName,
                                Class<? extends PlayerActivity> target) {
