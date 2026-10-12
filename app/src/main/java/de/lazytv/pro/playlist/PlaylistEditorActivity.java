@@ -128,6 +128,8 @@ public class PlaylistEditorActivity extends Activity {
         try {
             int offeredFlags = data.getFlags();
             if ((offeredFlags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) getContentResolver().takePersistableUriPermission(selectedFile, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            boolean persistent=false;for(android.content.UriPermission permission:getContentResolver().getPersistedUriPermissions())if(selectedFile.equals(permission.getUri())&&permission.isReadPermission()){persistent=true;break;}
+            if(!persistent)throw new SecurityException("Persistent read permission unavailable");
             try (InputStream stream = getContentResolver().openInputStream(selectedFile)) { if (stream == null) throw new IllegalStateException("File cannot be opened"); }
         } catch (Exception error) {
             Toast.makeText(this, "Skedari nuk mund të lexohet. Zgjidhe përsëri.", Toast.LENGTH_LONG).show(); return;

@@ -21,6 +21,20 @@ ActivationGuard, ActivationApiClient, ActivationCache and DeviceIdentityManager 
 CatalogEngine creates StalkerNativePortalClient exclusively for user Stalker playlists. ServerTenPlaybackResolver continues to create the original StalkerCatalogSource. The native client reuses the existing handshake/profile/cookie lifetime but separately handles numeric JSON auth refusals, endpoint variants, command encoding and fresh link response parsing. One initial create_link plus at most one authorization refresh retry; never store a resolved URL in a channel.
 MAG profile parameters only come from the existing provider identity; new serial/device credentials are not fabricated. Provider-specific profile requirements still require an authorized test portal.
 
-## Remaining verified code gaps
+## Implemented milestones
 
-Live browser still covers video with an overlay. EPG is queried before Live resolution returns and may delay selection. Movie and Episode entry points and position storage exist, but Movie Detail lacks an explicit Resume button. These require functional implementation and tests, followed by physical TV/mobile verification.
+1. Native-only Stalker endpoint/session/link resolution, including numeric auth expiry and one refresh retry.
+2. Provider genres/keyed payloads/metadata are mapped by stable channel ID, ISO countries isolated to native Stalker.
+3. One Live session survives Preview/Fullscreen/Back/browser, media and callback generations invalidate old selections.
+4. Browser occupies categories/channels/large preview columns, not a video overlay; same PlayerView survives configuration changes.
+5. Native Previous/Next/Favorite/EPG/List/Back controls; optional EPG on a separate executor with generation checks and actual current/next timestamps.
+6. One Xtream URL builder for API/catalog/series details/EPG/M3U/stream URLs, preserving scheme and nondefault ports and encoding credentials.
+7. Movie Play/Resume seeks and saves the active Exo/VLC/IJK engine, not an inactive Exo instance. Resume keys retain the previous provider/content contract.
+8. Series containers cannot play; episode metadata now reaches StreamItem; native details/artwork and per-episode Play/Resume/progress.
+9. M3U EXTINF titles respect the first unquoted separator, retain provider metadata/headers, and build seasons/episodes from explicit metadata or clear SxxExx/1xNN markers. Unknown season/episode numbers remain unknown. SAF requires persisted URI read permission; no local-file copying. Existing Live M3U IDs remain unchanged.
+
+API 23 compatibility uses core-library desugaring (AGP 8.7.3, desugar_jdk_libs 2.1.4) for collection/stream APIs already used in this application. Official configuration reference: https://developer.android.com/studio/write/java8-support ; dependency compatibility: https://github.com/google/desugar_jdk_libs/blob/master/CHANGELOG.md . Min SDK remains 23.
+
+## Verification limits
+
+CI tests/builds are not physical playback verification. No authorized Stalker portal runtime trace was supplied; actual provider genre coverage, profile requirements, codecs, TV D-pad focus, surface transitions, resumed seeking and token-expiry playback still require owner tests. The specific previously reported 685 channels were not downloaded or counted from a live portal. Fixture tests demonstrate metadata enrichment rather than a fabricated count.

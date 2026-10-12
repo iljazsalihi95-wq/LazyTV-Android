@@ -78,6 +78,7 @@ public class CatalogEngine {
     }
 
     public SeriesDetails loadSeries(Playlist p, Series s) throws CatalogException {
+        if(s instanceof M3uSeries)return ((M3uSeries)s).details();
         if (p.getType() == PlaylistType.XTREAM_CODES) return new XtreamCatalogSource().loadSeries(p, s.id);
         if (p.getType() == PlaylistType.STALKER_PORTAL) return stalker(p).loadSeries(p, s);
         throw new CatalogException("Ky burim nuk ekspozon seasons/episodes të strukturuara");

@@ -2,18 +2,30 @@ package de.lazytv.pro.catalog;
 import java.io.*;import java.net.*;import java.util.*;import java.util.regex.*;import org.json.*;
 public final class M3uParser{
  private static final Pattern ATTR=Pattern.compile("([\\w-]+)\\s*=\\s*(?:\\\"([^\\\"]*)\\\"|'([^']*)'|([^\\s,]+))");private M3uParser(){}
- public static Catalog parse(BufferedReader r)throws Exception{Catalog c=new Catalog();Map<String,String> cats=new LinkedHashMap<>();String line,info=null;Map<String,String> pending=new LinkedHashMap<>();
-  while((line=r.readLine())!=null){line=line.trim();
-   if(line.startsWith("#EXTINF:")){info=line;pending.clear();}
+ public static Catalog parse(BufferedReader r)throws Exception{Catalog c=new Catalog();Map<String,String> cats=new LinkedHashMap<>();Map<String,M3uSeries> series=new LinkedHashMap<>();String line,info=null;String extraGroup="";Map<String,String> pending=new LinkedHashMap<>();
+  while((line=r.readLine())!=null){line=line.trim();if(line.startsWith("\uFEFF"))line=line.substring(1);
+   if(line.startsWith("#EXTINF:")){info=line;pending.clear();extraGroup="";}
+   else if(info!=null&&line.startsWith("#EXTGRP:")){extraGroup=line.substring(8).trim();}
    else if(info!=null&&line.startsWith("#EXTVLCOPT:")){option(pending,line.substring(11));}
    else if(info!=null&&line.startsWith("#KODIPROP:")){option(pending,line.substring(10));}
    else if(info!=null&&line.startsWith("#EXTHTTP:")){extHttp(pending,line.substring(9));}
-   else if(info!=null&&!line.isEmpty()&&!line.startsWith("#")){Map<String,String>m=parseAttrs(info);int comma=info.lastIndexOf(',');String name=m.get("tvg-name");if(name==null||name.isEmpty())name=comma>=0?info.substring(comma+1).trim():"Stream";String group=m.get("group-title");if(group==null||group.isEmpty())group=inferGroup(name,m);CatalogType type=type(group,line,m);String country=country(m,group);String key=type.name()+"|"+country+"|"+group;if(!cats.containsKey(key)){String id="m3u-"+Integer.toHexString(key.hashCode());cats.put(key,id);c.categories.add(new Category(id,group,type,"OTHER".equals(country)?"":country));}
-    String url=line;int pipe=url.indexOf('|');if(pipe>0){pipeHeaders(pending,url.substring(pipe+1));url=url.substring(0,pipe);}String id="m3u-"+Integer.toHexString((name+url).hashCode());c.items.add(new M3uStreamItem(id,name,cats.get(key),m.get("tvg-logo"),url,m.get("tvg-id"),type,pending));info=null;pending=new LinkedHashMap<>();
+   else if(info!=null&&!line.isEmpty()&&!line.startsWith("#")){Map<String,String>m=parseAttrs(info);int comma=separator(info);String name=m.get("tvg-name");if(name==null||name.isEmpty())name=comma>=0?info.substring(comma+1).trim():"Stream";String group=m.get("group-title");if(group==null||group.isEmpty())group=extraGroup.isEmpty()?inferGroup(name,m):extraGroup;CatalogType type=type(group,line,m);String country=country(m,group);String key=type.name()+"|"+country+"|"+group;if(!cats.containsKey(key)){String id="m3u-"+Integer.toHexString(key.hashCode());cats.put(key,id);c.categories.add(new Category(id,group,type,"OTHER".equals(country)?"":country));}
+    String url=line;int pipe=url.indexOf('|');if(pipe>0){pipeHeaders(pending,url.substring(pipe+1));url=url.substring(0,pipe);}String id="m3u-"+Integer.toHexString((name+url).hashCode());Map<String,String> metadata=metadata(m);if(type==CatalogType.SERIES){
+     EpisodeIdentity identity=episode(name,m);String seriesKey=cats.get(key)+"|"+identity.series.toLowerCase(Locale.ROOT);M3uSeries parent=series.get(seriesKey);
+     if(parent==null){parent=new M3uSeries("m3u-series-"+Integer.toHexString(seriesKey.hashCode()),identity.series,cats.get(key),m.get("tvg-logo"),metadata);series.put(seriesKey,parent);c.items.add(parent);}
+     String duration=first(m,"duration","duration-secs");parent.add(new M3uEpisode(id,name,parent.id,cats.get(key),m.get("tvg-logo"),url,extension(url),duration,identity.season,identity.episode,metadata,pending));
+    }else c.items.add(new M3uStreamItem(id,name,cats.get(key),m.get("tvg-logo"),url,m.get("tvg-id"),type,pending,metadata));info=null;pending=new LinkedHashMap<>();
    }
   }if(c.items.isEmpty())throw new CatalogException("Playlist M3U është bosh ose e pavlefshme");return c;
  }
- private static Map<String,String> parseAttrs(String info){Map<String,String>m=new HashMap<>();Matcher x=ATTR.matcher(info);while(x.find()){String v=x.group(2)!=null?x.group(2):x.group(3)!=null?x.group(3):x.group(4);m.put(x.group(1).toLowerCase(Locale.US),v==null?"":v.trim());}return m;}
+ private static Map<String,String> parseAttrs(String info){Map<String,String>m=new HashMap<>();int boundary=separator(info);Matcher x=ATTR.matcher(boundary<0?info:info.substring(0,boundary));while(x.find()){String v=x.group(2)!=null?x.group(2):x.group(3)!=null?x.group(3):x.group(4);m.put(x.group(1).toLowerCase(Locale.US),v==null?"":v.trim());}return m;}
+ private static int separator(String info){char quote=0;for(int n=0;n<info.length();n++){char c=info.charAt(n);if(c=='"'||c=='\''){if(quote==0)quote=c;else if(quote==c)quote=0;}else if(c==','&&quote==0)return n;}return -1;}
+ private static Map<String,String> metadata(Map<String,String> attrs){Map<String,String> result=new LinkedHashMap<>();for(String key:new String[]{"plot","description","rating","year","genre","duration","poster","backdrop","country"}){String value=first(attrs,key);if(!value.isEmpty())result.put(key,value);}String seconds=first(attrs,"duration-secs");if(!seconds.isEmpty())result.put("duration_secs",seconds);return result;}
+ private static String first(Map<String,String> attrs,String... keys){for(String key:keys){String value=attrs.get(key);if(value!=null&&!value.trim().isEmpty())return value.trim();}return "";}
+ private static int number(String value){try{return Math.max(0,Integer.parseInt(value));}catch(Exception missing){return 0;}}
+ private static String extension(String url){int query=url.indexOf('?');String path=query<0?url:url.substring(0,query);int dot=path.lastIndexOf('.');return dot>path.lastIndexOf('/')?path.substring(dot+1):"";}
+ private static final class EpisodeIdentity {String series;int season,episode;}
+ private static EpisodeIdentity episode(String name,Map<String,String> attrs){EpisodeIdentity identity=new EpisodeIdentity();identity.series=first(attrs,"series-name","series-title","show-name");identity.season=number(first(attrs,"season","season-number"));identity.episode=number(first(attrs,"episode","episode-number"));Matcher pattern=Pattern.compile("(?i)^(.*?)\\s*(?:S(\\d{1,3})[ ._-]*E(\\d{1,4})|(\\d{1,3})x(\\d{1,4}))(?:\\b.*)$").matcher(name);if(pattern.matches()){if(identity.series.isEmpty())identity.series=pattern.group(1).replaceAll("[\\s._-]+$","").trim();if(identity.season==0)identity.season=number(pattern.group(2)==null?pattern.group(4):pattern.group(2));if(identity.episode==0)identity.episode=number(pattern.group(3)==null?pattern.group(5):pattern.group(3));}if(identity.series.isEmpty())identity.series=name;return identity;}
  private static String inferGroup(String name,Map<String,String>m){String n=name==null?"":name.trim();String tvg=m.get("tvg-id");if(tvg!=null&&!tvg.trim().isEmpty()){String id=tvg.trim();int dot=id.indexOf('.');if(dot>1)n=id.substring(0,dot)+" | "+n;}Matcher a=Pattern.compile("^\\s*\\[([^\\]]{2,32})\\]\\s*").matcher(n);if(a.find())return a.group(1).trim();Matcher b=Pattern.compile("^\\s*([^|:•»>\\-]{2,32})\\s*[|:•»>]\\s*").matcher(n);if(b.find())return b.group(1).trim();Matcher d=Pattern.compile("^\\s*([A-Za-z]{2,3})\\s*[-–—]\\s*").matcher(n);if(d.find())return d.group(1).trim();return "Të tjera";}
  private static void option(Map<String,String>h,String s){int q=s.indexOf('=');if(q<1)return;String k=s.substring(0,q).trim().toLowerCase(Locale.US),v=s.substring(q+1).trim();if(k.equals("http-user-agent")||k.equals("user-agent"))h.put("User-Agent",v);else if(k.equals("http-referrer")||k.equals("http-referer")||k.equals("referer"))h.put("Referer",v);else if(k.equals("http-origin")||k.equals("origin"))h.put("Origin",v);else if(k.equals("http-cookie")||k.equals("cookie"))h.put("Cookie",v);}
  private static void extHttp(Map<String,String>h,String s){try{JSONObject j=new JSONObject(s.trim());Iterator<String>it=j.keys();while(it.hasNext()){String k=it.next();String v=j.optString(k,"");if(!v.isEmpty())h.put(header(k),v);}}catch(Exception ignored){}}
@@ -23,8 +35,8 @@ public final class M3uParser{
  private static CatalogType type(String g,String u,Map<String,String>m){
   String s=(g==null?"":g).toLowerCase(Locale.US),url=(u==null?"":u).toLowerCase(Locale.US);
   String meta=(String.valueOf(m.get("type"))+" "+String.valueOf(m.get("content-type"))+" "+String.valueOf(m.get("stream-type"))+" "+String.valueOf(m.get("media-type"))).toLowerCase(Locale.US);
-  if(meta.contains("series")||meta.contains("episode")||url.contains("/series/"))return CatalogType.SERIES;
-  if(meta.contains("movie")||meta.contains("vod")||url.contains("/movie/"))return CatalogType.MOVIES;
+  if(meta.contains("series")||meta.contains("episode")||url.contains("/series/")||s.matches(".*\\b(series|seriale|serialet|episodes)\\b.*"))return CatalogType.SERIES;
+  if(meta.contains("movie")||meta.contains("vod")||url.contains("/movie/")||s.matches(".*\\b(movies|vod|filma|filme|films)\\b.*"))return CatalogType.MOVIES;
   return CatalogType.LIVE;
  }
 }

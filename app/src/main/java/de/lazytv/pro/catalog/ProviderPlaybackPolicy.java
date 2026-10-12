@@ -19,7 +19,7 @@ public final class ProviderPlaybackPolicy {
     public static String message(int code){return new ProviderHttpException(code).getMessage();}
     public static ResolvedStream retryHeaders(ResolvedStream stream,StreamItem item,int code,int attempt){
         if(stream==null||attempt!=1||(code!=403&&code!=409)||stream.headers.containsKey("X-User-Agent"))return stream;
-        if(item instanceof M3uStreamItem)for(String key:((M3uStreamItem)item).requestHeaders.keySet())if(key.equalsIgnoreCase("User-Agent"))return stream;
+        if(item instanceof M3uHeaders)for(String key:((M3uHeaders)item).requestHeaders().keySet())if(key.equalsIgnoreCase("User-Agent"))return stream;
         String ua=stream.headers.get("User-Agent");
         // Change only the app's default UA; preserve every provider-specific header.
         if(ua==null||!ua.contains("Android TV")||!ua.contains("Chrome/120.0"))return stream;

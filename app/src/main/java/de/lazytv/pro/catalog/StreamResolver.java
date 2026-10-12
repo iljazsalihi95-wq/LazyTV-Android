@@ -8,7 +8,7 @@ public class StreamResolver {
  public StreamResolver(StalkerCatalogSource source,Context context,boolean epgEnabled){this.stalker=source;this.context=context==null?null:context.getApplicationContext();this.epgEnabled=epgEnabled;}
  public ResolvedStream resolve(Playlist p,StreamItem i)throws CatalogException{
   String url=i.streamUrl;Map<String,String> headers=new LinkedHashMap<>(),meta=new LinkedHashMap<>();
-  if(p.getType()==PlaylistType.M3U_URL||p.getType()==PlaylistType.M3U_FILE||p.getType()==PlaylistType.XTREAM_CODES&&i instanceof M3uStreamItem){if(i instanceof M3uStreamItem)headers.putAll(((M3uStreamItem)i).requestHeaders);}
+  if(p.getType()==PlaylistType.M3U_URL||p.getType()==PlaylistType.M3U_FILE||p.getType()==PlaylistType.XTREAM_CODES&&i instanceof M3uHeaders){if(i instanceof M3uHeaders){headers.putAll(((M3uHeaders)i).requestHeaders());meta.putAll(i.metadata);}}
   if(p.getType()==PlaylistType.STALKER_PORTAL){
    meta.putAll(i.metadata);meta.put("stalker_session","true");
    // Resolve last: optional EPG network calls must not consume a short-lived playback URL.
