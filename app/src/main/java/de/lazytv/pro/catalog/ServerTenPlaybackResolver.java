@@ -16,7 +16,21 @@ public final class ServerTenPlaybackResolver {
    for(String pair:parsed.getQuery().split("&")){int eq=pair.indexOf('=');if(eq>0)query.put(URLDecoder.decode(pair.substring(0,eq),"UTF-8"),URLDecoder.decode(pair.substring(eq+1),"UTF-8"));}
    String mac=query.get("mac"),stream=query.get("stream");
    if(mac==null||!mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")||stream==null||!stream.matches("[0-9]+"))return null;
-   return new Reference(parsed.getProtocol()+"://"+parsed.getAuthority(),mac,"ffmpeg http://localhost/ch/"+stream+"_");
+   // Server 10 references may point at a Stalker portal installed below the host root
+   // (for example /stalker_portal/c/ or /portal.php). Dropping that path makes the
+   // subsequent handshake/create_link hit the wrong endpoint even though the row itself
+   // was valid. Keep the portal path, but strip the runtime query/fragment.
+   String path=parsed.getPath();
+   if(path==null)path="";
+   int cut=path.length();
+   String lower=path.toLowerCase(Locale.US);
+   for(String marker:new String[]{"/server/load.php","/portal.php","/c/"}){
+    int at=lower.indexOf(marker);if(at>=0)cut=Math.min(cut,at+(marker.equals("/c/")?marker.length():0));
+   }
+   path=path.substring(0,cut);
+   while(path.endsWith("/")&&path.length()>1)path=path.substring(0,path.length()-1);
+   String portal=parsed.getProtocol()+"://"+parsed.getAuthority()+path;
+   return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
  private static synchronized StalkerCatalogSource session(String key){
