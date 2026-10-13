@@ -3,10 +3,9 @@ import org.json.*;import java.net.*;import java.util.*;
 import de.lazytv.pro.playlist.Playlist;
 /** Native provider client. Managed Server 10 keeps its existing StalkerCatalogSource. */
 public class StalkerNativePortalClient extends StalkerCatalogSource {
- private final CookieManager linkCookies=new CookieManager(null,CookiePolicy.ACCEPT_ORIGINAL_SERVER);
  private String selectedEndpoint="";
  private Map<String,String> lastPortalHeaders=Collections.emptyMap();
- @Override public synchronized void clear(){super.clear();linkCookies.getCookieStore().removeAll();selectedEndpoint="";lastPortalHeaders=Collections.emptyMap();}
+ @Override public synchronized void clear(){super.clear();selectedEndpoint="";lastPortalHeaders=Collections.emptyMap();}
  @Override public synchronized Catalog load(Playlist playlist)throws CatalogException{return loadNativeLive(playlist);}
  @Override public synchronized Catalog loadType(Playlist playlist,CatalogType wanted)throws CatalogException{return wanted==CatalogType.LIVE?loadNativeLive(playlist):super.loadType(playlist,wanted);}
  private Catalog loadNativeLive(Playlist playlist)throws CatalogException {
@@ -56,8 +55,8 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
     command=command.replace("\\/","/").replace("&amp;","&");
     String endpoint=selectedEndpoint.isEmpty()?StalkerPortalAddress.normalize(playlist.getUrl()):selectedEndpoint;
     String url=StalkerLinkParser.url(command,endpoint);if(url.isEmpty())throw new CatalogException("Portali nuk ktheu URL për kanalin");
+    headers=new LinkedHashMap<>(sessionHeaders(playlist));
     headers.put("User-Agent","Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp");
-    try{headers.put("Cookie",HttpClient.cookieHeader(linkCookies,new URL(endpoint),headers.get("Cookie")));}catch(Exception ignored){}
     lastPortalHeaders=new LinkedHashMap<>(headers);
     JSONObject supplied=result.optJSONObject("headers");if(supplied==null)supplied=result.optJSONObject("http_headers");
     if(supplied!=null){Iterator<String> keys=supplied.keys();while(keys.hasNext()){String key=keys.next(),value=supplied.optString(key);if(key.matches("[A-Za-z0-9-]+")&&!value.contains("\r")&&!value.contains("\n"))headers.put(key,value);}}
@@ -77,14 +76,12 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
   return HttpClient.get(endpoint+"?type=itv&action=get_short_epg&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml",headers);
  }
  protected String requestLink(Playlist playlist,String query,Map<String,String> headers)throws CatalogException {
-  LinkedHashSet<String> endpoints=new LinkedHashSet<>();if(!selectedEndpoint.isEmpty())endpoints.add(selectedEndpoint);endpoints.addAll(StalkerPortalAddress.endpoints(playlist.getUrl()));
-  CatalogException last=null;
-  for(String endpoint:endpoints)try {
-   String body=HttpClient.get(endpoint+"?"+query,headers,linkCookies);try{Object json=new JSONTokener(body.trim()).nextValue();if(!(json instanceof JSONObject)&&!(json instanceof JSONArray))throw new JSONException("not JSON");}catch(JSONException invalid){throw new CatalogException("Stalker përgjigje e pavlefshme");}selectedEndpoint=endpoint;return body;
-  }catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;last=error;}
-   catch(CatalogException invalid){last=invalid;}
-  throw last==null?new CatalogException("Stalker create_link nuk u përgjigj"):last;
+  Playlist normalized=normalized(playlist);
+  String body=sessionRequest(normalized,query);selectedEndpoint=sessionEndpoint(normalized);return body;
  }
+ @Override public synchronized Map<String,String> sessionHeaders(Playlist playlist)throws CatalogException {return super.sessionHeaders(normalized(playlist));}
+ private Playlist normalized(Playlist playlist)throws CatalogException {return new Playlist(playlist.getId(),playlist.getName(),playlist.getType(),StalkerPortalAddress.normalize(playlist.getUrl()),playlist.getUsername(),playlist.getPassword(),playlist.getMacAddress(),playlist.getUpdatedAt());}
+
  private JSONObject payload(String body)throws CatalogException {
   try{JSONObject root=new JSONObject(body);JSONObject js=root.optJSONObject("js");if(js!=null)return js;JSONObject data=root.optJSONObject("data");return data==null?root:data;}
   catch(Exception invalid){throw new CatalogException("Stalker create_link përgjigje e pavlefshme");}

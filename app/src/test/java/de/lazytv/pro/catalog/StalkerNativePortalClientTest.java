@@ -30,5 +30,5 @@ public class StalkerNativePortalClientTest {
   assertEquals("http://provider.invalid/custom/portal.php",StalkerPortalAddress.normalize("http://provider.invalid/custom/portal.php?ignored=1"));
   assertTrue(StalkerPortalAddress.endpoints("http://provider.invalid/custom/c/").contains("http://provider.invalid/custom/server/load.php"));
  }
- @Test public void liveStreamResolutionDoesNotWaitForEpg()throws Exception {Fixture source=new Fixture();new StreamResolver(source,null,false).resolve(playlist(),channel());assertEquals(1,source.headerReads);assertEquals(1,source.calls);}
+ @Test public void liveStreamResolutionDoesNotWaitForEpg()throws Exception {Fixture source=new Fixture();new StreamResolver(source,null,false).resolve(playlist(),channel());assertEquals(2,source.headerReads);assertEquals(1,source.calls);}
 }
