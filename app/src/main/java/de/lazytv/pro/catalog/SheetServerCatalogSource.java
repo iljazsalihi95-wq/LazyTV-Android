@@ -68,7 +68,7 @@ public final class SheetServerCatalogSource {
                 put(metadata,"server10_portal",value(values,portalCol));
                 put(metadata,"server10_mac",value(values,macCol));
                 put(metadata,"stalker_original_cmd",value(values,cmdCol));
-                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, metadata));
+                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>(), metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
             return out;
