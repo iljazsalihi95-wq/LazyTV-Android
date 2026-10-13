@@ -60,6 +60,7 @@ final class LivePlaybackSession {
     private long stalkerTicket;
     private int retryCount;
     private int lastHttpStatus;
+    private String lastSafeError="";
     private boolean retryRunning;
     private boolean fatalNotified;
     private boolean foreground=true, resumePlayback;
@@ -101,7 +102,7 @@ final class LivePlaybackSession {
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
-                lastHttpStatus = ProviderPlaybackPolicy.status(error);
+                lastHttpStatus = ProviderPlaybackPolicy.status(error);lastSafeError="Media3: "+error.getErrorCodeName();
                 if(LiveEnginePolicy.nativeFallback(error.errorCode,lastHttpStatus,nativeTried)){nativeTried=true;startNative(generation,currentItem,currentStream);return;}
                 if (lastHttpStatus == 402) {
                     fatalNotified = true;
@@ -137,7 +138,7 @@ final class LivePlaybackSession {
         usingNative=false;nativeTried=false;nativeBuffering=false;if(nativeEngine!=null)nativeEngine.stop();
         cancelStableReset();
         retryCount = 0;
-        lastHttpStatus = 0;
+        lastHttpStatus = 0;lastSafeError="";
         retryRunning = false;
         fatalNotified = false;
         currentItem = item;
@@ -222,7 +223,7 @@ final class LivePlaybackSession {
                 fatalNotified = true;
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError(lastHttpStatus > 0
-                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : "Rilidhja e stream-it dështoi");
+                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : lastSafeError.isEmpty()?"Rilidhja e stream-it dështoi":lastSafeError);
             }
             return;
         }
@@ -233,7 +234,7 @@ final class LivePlaybackSession {
                 fatalNotified = true;
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError(lastHttpStatus > 0
-                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : "Stalker: rilidhja e kanalit dështoi pas një prove.");
+                        ? ProviderPlaybackPolicy.message(lastHttpStatus) : lastSafeError.isEmpty()?"Stalker: rilidhja e kanalit dështoi pas një prove.":lastSafeError);
             }
             return;
         }
@@ -278,7 +279,7 @@ final class LivePlaybackSession {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
                     int code = ProviderPlaybackPolicy.status(error);
-                    if (code > 0) lastHttpStatus = code;
+                    if (code > 0) lastHttpStatus = code;else lastSafeError=LiveErrorSummary.connection(error);
                     if (code == 402) {
                         fatalNotified = true;
                         listener.onBuffering(false);
@@ -355,7 +356,7 @@ final class LivePlaybackSession {
             private boolean current(){return !released&&usingNative&&ticket==generation&&item==currentItem&&stream==currentStream;}
             public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);scheduleStableReset();listener.onReady();});}
             public void buffering(boolean value){main.post(()->{if(!current())return;nativeBuffering=value;listener.onBuffering(value);});}
-            public void failed(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
+            public void failed(int what,int extra){main.post(()->{if(!current())return;lastSafeError="IJK: what="+what+" extra="+extra;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
         });}catch(Exception|LinkageError unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
     }
     private String currentHost() {
