@@ -71,8 +71,8 @@ public class PlaylistManagerActivity extends Activity {
         storage.setActive(item.getId());
         refresh();
 
-        if (item.getType() == PlaylistType.M3U_FILE || item.getType() == PlaylistType.STALKER_PORTAL) {
-            Intent live = new Intent(this, LiveTvActivity.class);
+        if (item.getType() != PlaylistType.FREE_TV) {
+            Intent live = new Intent(this, de.lazytv.pro.live.LiveProviderRouter.activity(item));
             live.putExtra("playlist_id", item.getId());
             live.putExtra("source_scope", "PROVIDER");
             live.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
