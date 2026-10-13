@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Loads a LazyMapper server tab directly from its Google Sheet CSV export. */
 public final class SheetServerCatalogSource {
@@ -37,6 +38,9 @@ public final class SheetServerCatalogSource {
             if (headerLine == null) throw new CatalogException("Serveri Premium nuk ka të dhëna.");
             List<String> headers = csv(headerLine);
             int idCol = column(headers, "ID"), countryCol = column(headers, "COUNTRY"), countryCodeCol = column(headers, "COUNTRY_CODE"), categoryCol = column(headers, "CATEGORY"), nameCol = column(headers, "NAME"), urlCol = column(headers, "STREAM_URL_CMD"), logoCol = column(headers, "LOGO"), statusCol = column(headers, "STATUS"), serverCol = column(headers, "SERVER_ID");
+            // Optional stable MAG identity fields. They are deliberately separate from the signed
+            // playback URL so Server 10 can create a fresh link after the Sheet token expires.
+            int portalCol = firstColumn(headers, "SERVER10_PORTAL", "PORTAL_URL", "PORTAL"), macCol = firstColumn(headers, "SERVER10_MAC", "MAC"), cmdCol = firstColumn(headers, "STALKER_ORIGINAL_CMD", "ORIGINAL_CMD", "CMD");
             if (nameCol < 0 || urlCol < 0) throw new CatalogException("Formati i Serverit Premium nuk është i vlefshëm.");
             String line; int row = 0;
             while ((line = reader.readLine()) != null) {
@@ -60,7 +64,11 @@ public final class SheetServerCatalogSource {
                     cats.put(categoryId, category); out.categories.add(category);
                 }
                 String itemId = value(values, idCol).trim(); if (itemId.isEmpty()) itemId = serverId + "_" + row;
-                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>()));
+                Map<String,String> metadata=new LinkedHashMap<>();
+                put(metadata,"server10_portal",value(values,portalCol));
+                put(metadata,"server10_mac",value(values,macCol));
+                put(metadata,"stalker_original_cmd",value(values,cmdCol));
+                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
             return out;
@@ -69,7 +77,9 @@ public final class SheetServerCatalogSource {
         finally { if (connection != null) connection.disconnect(); }
     }
     private static int column(List<String> h, String name) { for (int i=0;i<h.size();i++) if (name.equalsIgnoreCase(h.get(i).trim())) return i; return -1; }
+    private static int firstColumn(List<String> h,String... names){for(String name:names){int i=column(h,name);if(i>=0)return i;}return -1;}
     private static String value(List<String> row, int i) { return i>=0 && i<row.size() ? row.get(i) : ""; }
+    private static void put(Map<String,String> metadata,String key,String value){if(value!=null&&!value.trim().isEmpty())metadata.put(key,value.trim());}
     private static List<String> csv(String line) {
         ArrayList<String> out=new ArrayList<>(); StringBuilder b=new StringBuilder(); boolean q=false;
         for(int i=0;i<line.length();i++){char c=line.charAt(i);if(c=='"'){if(q&&i+1<line.length()&&line.charAt(i+1)=='"'){b.append('"');i++;}else q=!q;}else if(c==','&&!q){out.add(b.toString());b.setLength(0);}else b.append(c);}out.add(b.toString());return out;
