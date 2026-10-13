@@ -18,9 +18,9 @@ public final class StalkerCountryResolver {
         for (String alias : new String[]{"XK", "XKX", "RKS", "KS", "KOS"}) CODES.put(alias, "XK");
         CODES.put("UK", "GB");
         NAMES.put("KOSOVO", "XK"); NAMES.put("KOSOVA", "XK");
-        NAMES.put("MACEDONIA", "MK"); NAMES.put("MAQEDONI E VERIUT", "MK");
-        NAMES.put("SHQIPERI", "AL"); NAMES.put("GJERMANI", "DE");
-        NAMES.put("GREAT BRITAIN", "GB"); NAMES.put("USA", "US");
+        NAMES.put("MACEDONIA", "MK"); NAMES.put("NORTH MACEDONIA", "MK"); NAMES.put("MAQEDONI E VERIUT", "MK");
+        NAMES.put("ALBANIA", "AL"); NAMES.put("SHQIPERI", "AL"); NAMES.put("GJERMANI", "DE");
+        NAMES.put("GREAT BRITAIN", "GB"); NAMES.put("UNITED KINGDOM", "GB"); NAMES.put("USA", "US");
     }
     private StalkerCountryResolver() {}
     private static String fold(String s) {
@@ -45,15 +45,27 @@ public final class StalkerCountryResolver {
         }
         String key=fold(raw), direct=normalize(key);
         if(!"OTHER".equals(direct)) return direct;
-        // Ignore an unrecognized prefix rather than discarding the remainder of the title.
+        // Prefer full provider country names anywhere in a category title.
         String best="OTHER"; int length=0;
         for(Map.Entry<String,String> name:NAMES.entrySet())
             if(name.getKey().length()>length && (" "+key+" ").contains(" "+name.getKey()+" ")) {
                 best=name.getValue(); length=name.getKey().length();
             }
         if(!"OTHER".equals(best)) return best;
+        // Common portal convention: ISO/alias marker at the beginning (AL | Sport, [DE] News).
         Matcher prefix=Pattern.compile("^(?:\\[[ ]*)?([A-Za-z]{2,3})(?:[ ]*\\]|[ ]*[|:•»>_–—-]|[ ]+)").matcher(raw.trim());
-        return prefix.find()?normalize(prefix.group(1)):"OTHER";
+        if(prefix.find()) {
+            String code=normalize(prefix.group(1));
+            if(!"OTHER".equals(code)) return code;
+        }
+        // Some portals suffix or embed the country marker (Sport | AL, Movies [XK]).
+        // Only accept a token next to an explicit separator/bracket so ordinary words are not mistaken for ISO codes.
+        Matcher marker=Pattern.compile("(?:^|[\\[\\](){}/|:•»>_–—-])\\s*([A-Za-z]{2,3})\\s*(?=$|[\\[\\](){}/|:•»>_–—-])").matcher(raw);
+        while(marker.find()) {
+            String code=normalize(marker.group(1));
+            if(!"OTHER".equals(code)) return code;
+        }
+        return "OTHER";
     }
     public static List<CountryGroup> groups(List<Category> categories) {
         Map<String,CountryGroup> groups=new LinkedHashMap<>();
