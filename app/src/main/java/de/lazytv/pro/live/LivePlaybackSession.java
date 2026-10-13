@@ -46,6 +46,8 @@ final class LivePlaybackSession {
     private static final int MAX_RETRIES = 3;
     private static final long STABLE_PLAYBACK_MS = 12000L;
     private final ExoPlayer player;
+    private LiveNativeEngine nativeEngine;
+    private boolean usingNative,nativeTried,nativeBuffering;
     private final PlayerView playerView;
     private final DefaultHttpDataSource.Factory http;
     private final RetryResolver retryResolver;
@@ -83,7 +85,7 @@ final class LivePlaybackSession {
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int state) {
-                if (released || !callbackBelongsToCurrentGeneration()) return;
+                if (released || usingNative || !callbackBelongsToCurrentGeneration()) return;
                 listener.onBuffering(state == Player.STATE_BUFFERING);
                 if (state == Player.STATE_READY) {
                     retryRunning = false;
@@ -95,11 +97,12 @@ final class LivePlaybackSession {
                 }
             }
             @Override public void onPlayerError(PlaybackException error) {
-                if (released || !callbackBelongsToCurrentGeneration()) return;
+                if (released || usingNative || !callbackBelongsToCurrentGeneration()) return;
                 cancelStableReset();
                 Log.e("LazyTV-LiveSession", "Playback failed host=" + currentHost()
                         + " code=" + error.getErrorCodeName());
                 lastHttpStatus = ProviderPlaybackPolicy.status(error);
+                if(LiveEnginePolicy.nativeFallback(error.errorCode,lastHttpStatus,nativeTried)){nativeTried=true;startNative(generation,currentItem,currentStream);return;}
                 if (lastHttpStatus == 402) {
                     fatalNotified = true;
                     listener.onBuffering(false);
@@ -127,10 +130,11 @@ final class LivePlaybackSession {
         if (released || item == null || !validStream(stream)) return;
         if (sameActiveStream(item, stream)) {
             if (playerView.getPlayer() != player) playerView.setPlayer(player);
-            if (!player.isPlaying() && foreground) player.play();
+            if(usingNative){if(foreground)nativeEngine.resume();}else if (!player.isPlaying() && foreground) player.play();
             return;
         }
         generation++;
+        usingNative=false;nativeTried=false;nativeBuffering=false;if(nativeEngine!=null)nativeEngine.stop();
         cancelStableReset();
         retryCount = 0;
         lastHttpStatus = 0;
@@ -146,24 +150,26 @@ final class LivePlaybackSession {
         if (currentItem == null || currentStream == null) return false;
         if (currentItem.id == null || item.id == null || !currentItem.id.equals(item.id)) return false;
         if (currentStream.url == null || !currentStream.url.equals(stream.url)) return false;
+        if(usingNative)return nativeEngine!=null&&(nativeEngine.playing()||nativeBuffering);
         int state = player.getPlaybackState();
         return callbackBelongsToCurrentGeneration()
                 && (state == Player.STATE_BUFFERING || state == Player.STATE_READY);
     }
 
     void pauseForBackground() {
-        foreground=false;resumePlayback=player.getPlayWhenReady();player.pause();
+        foreground=false;resumePlayback=usingNative||player.getPlayWhenReady();if(usingNative)nativeEngine.pause();else player.pause();
     }
     void resumeFromBackground() {
         foreground=true;
         if(resumePlayback){resumePlayback=false;stalkerTicket=stalkerGuard.begin();retryCount=0;fatalNotified=false;
-            if(player.getPlayerError()!=null&&!retryRunning)retryCurrent(generation,currentItem);else player.play();
+            if(usingNative)nativeEngine.resume();else if(player.getPlayerError()!=null&&!retryRunning)retryCurrent(generation,currentItem);else player.play();
         }
     }
 
-    boolean isBuffering() { return !released && player.getPlaybackState() == Player.STATE_BUFFERING; }
+    boolean isBuffering() { return !released && (usingNative?nativeBuffering:player.getPlaybackState() == Player.STATE_BUFFERING); }
 
     boolean isActive() {
+        if(usingNative)return !released&&nativeEngine!=null&&(nativeEngine.playing()||nativeBuffering);
         return !released && callbackBelongsToCurrentGeneration()
                 && (player.isPlaying() || player.getPlaybackState() == Player.STATE_BUFFERING
                 || player.getPlaybackState() == Player.STATE_READY);
@@ -319,12 +325,15 @@ final class LivePlaybackSession {
     private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream, boolean resetPosition) {
         if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
         currentStream = stream;
+        if(usingNative){startNative(expectedGeneration,item,stream);return;}
         http.setDefaultRequestProperties(stream.headers);
         MediaItem.Builder media = new MediaItem.Builder().setUri(Uri.parse(stream.url))
                 .setTag(Long.valueOf(expectedGeneration));
         String url = stream.url.toLowerCase(Locale.US);
         String type = stream.streamType == null ? "" : stream.streamType.toLowerCase(Locale.US);
-        if (url.contains(".m3u8") || type.contains("hls") || type.contains("m3u8"))
+        if(url.contains(".mpd")||type.equals("dash"))media.setMimeType(MimeTypes.APPLICATION_MPD);
+        else if(url.contains(".ism/manifest")||url.contains(".isml/manifest")||type.equals("smoothstreaming"))media.setMimeType(MimeTypes.APPLICATION_SS);
+        else if (url.contains(".m3u8") || type.contains("hls") || type.contains("m3u8"))
             media.setMimeType(MimeTypes.APPLICATION_M3U8);
         else if (url.matches(".*\\.(ts|mpeg|mpegts)(\\?.*)?$") || url.contains("extension=ts")
                 || url.contains("extension=mpegts") || type.equals("ts")
@@ -332,11 +341,22 @@ final class LivePlaybackSession {
             media.setMimeType(MimeTypes.VIDEO_MP2T);
         else if (url.matches(".*\\.(mp4|m4v)(\\?.*)?$") || url.contains("extension=mp4")
                 || type.equals("mp4")) media.setMimeType(MimeTypes.VIDEO_MP4);
+        if(playerView.getPlayer()!=player)playerView.setPlayer(player);
         player.setMediaItem(media.build(), resetPosition);
         player.prepare();
         if (foreground) player.play(); else resumePlayback=true;
     }
 
+    private void startNative(long ticket,StreamItem item,ResolvedStream stream){
+        if(released||ticket!=generation||item!=currentItem||!validStream(stream))return;
+        usingNative=true;nativeBuffering=true;player.stop();playerView.setPlayer(null);listener.onBuffering(true);
+        try{if(nativeEngine==null)nativeEngine=new LiveNativeEngine(playerView);nativeEngine.play(stream,foreground,new LiveNativeEngine.Events(){
+            private boolean current(){return !released&&usingNative&&ticket==generation&&item==currentItem&&stream==currentStream;}
+            public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);listener.onReady();});}
+            public void buffering(boolean value){main.post(()->{if(!current())return;nativeBuffering=value;listener.onBuffering(value);});}
+            public void failed(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
+        });}catch(Exception unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
+    }
     private String currentHost() {
         try { return currentStream == null ? "n/a" : new URL(currentStream.url).getHost(); }
         catch (Exception ignored) { return "n/a"; }
@@ -352,5 +372,6 @@ final class LivePlaybackSession {
         retryWorker.shutdownNow();
         playerView.setPlayer(null);
         player.release();
+        if(nativeEngine!=null)nativeEngine.release();
     }
 }
