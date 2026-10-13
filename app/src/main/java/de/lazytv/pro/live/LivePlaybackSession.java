@@ -356,7 +356,7 @@ final class LivePlaybackSession {
             public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);scheduleStableReset();listener.onReady();});}
             public void buffering(boolean value){main.post(()->{if(!current())return;nativeBuffering=value;listener.onBuffering(value);});}
             public void failed(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
-        });}catch(Exception unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
+        });}catch(Exception|LinkageError unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
     }
     private String currentHost() {
         try { return currentStream == null ? "n/a" : new URL(currentStream.url).getHost(); }
