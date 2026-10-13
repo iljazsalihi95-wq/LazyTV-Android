@@ -184,7 +184,11 @@ final class LivePlaybackSession {
             if (!released && expectedGeneration == generation && currentItem == expectedItem
                     && callbackBelongsToCurrentGeneration()
                     && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
-                if (!isStalker(currentStream)) retryCount = 0;
+                retryCount = 0;
+                // A Stalker channel that has played stably earned a fresh bounded recovery
+                // allowance. Rotate only the Stalker guard ticket; keep the same ExoPlayer,
+                // MediaItem and playback generation so Preview/Fullscreen/Back never rebuilds.
+                if (isStalker(currentStream)) stalkerTicket = stalkerGuard.begin();
                 fatalNotified = false;
             }
         };
