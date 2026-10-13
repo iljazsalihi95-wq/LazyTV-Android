@@ -14,4 +14,16 @@ public class ServerTenPlaybackResolverTest {
   StreamItem item=new StreamItem("stable-id","Fixture","category","",url,"epg",CatalogType.LIVE);
   assertTrue(ServerTenPlaybackResolver.canRefresh(item));assertEquals(url,item.streamUrl);assertEquals("stable-id",item.id);
  }
+ @Test public void encodedQueryOrderAndExtraSignedFieldsStillUseStablePortalIdentity() {
+  String url="https://provider.invalid:9443/play/live.php?play_token=expired%2Btoken&signature=a%2Fb%3D%3D&stream=73&mac=AA%3Abb%3ACC%3Add%3AEE%3Aff&expires=1";
+  ServerTenPlaybackResolver.Reference ref=ServerTenPlaybackResolver.reference(url);
+  assertNotNull(ref);assertEquals("https://provider.invalid:9443",ref.portal);assertEquals("AA:bb:CC:dd:EE:ff",ref.mac);assertEquals("ffmpeg http://localhost/ch/73_",ref.command);
+  assertFalse(ref.command.contains("expired"));assertFalse(ref.command.contains("signature"));assertFalse(ref.command.contains("expires"));
+ }
+ @Test public void staleSheetTokenNeverBecomesTheRefreshCommand() {
+  String stale="http://provider.invalid/play?stream=9&play_token=old-token&mac=00%3A11%3A22%3A33%3A44%3A55";
+  StreamItem item=new StreamItem("sheet-id","Premium","cat","",stale,"",CatalogType.LIVE);
+  ServerTenPlaybackResolver.Reference ref=ServerTenPlaybackResolver.reference(item.streamUrl);
+  assertNotNull(ref);assertEquals("ffmpeg http://localhost/ch/9_",ref.command);assertEquals(stale,item.streamUrl);
+ }
 }
