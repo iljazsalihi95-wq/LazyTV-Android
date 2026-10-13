@@ -14,7 +14,7 @@ public class PortalSessionTest {
     private HttpServer server;
     private String base;
     private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();
-    private boolean rejectOnce,rejectAlways,rejectBody,blocked,expiredToken,rotateLinks;
+    private boolean rejectOnce,rejectAlways,rejectBody,blocked,expiredToken,rotateLinks,rejectNumericOnce,rejectNumericAlways,profileNumericRefused;
     private String lastLinkQuery;
     @Before public void start()throws Exception{
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -26,8 +26,8 @@ public class PortalSessionTest {
             String cookie=e.getRequestHeaders().getFirst("Cookie");
             if(cookie==null||!cookie.contains("session=local"+handshakes.get())||!cookie.contains("mac=")){reply(e,403,"{}");return;}
             if(q.contains("action=get_main_info")){reply(e,200,blocked?"{\"js\":{\"status\":\"expired\"}}":"{\"js\":{\"status\":\"active\"}}");return;}
-            if(q.contains("action=get_profile")){reply(e,200,"{\"js\":{\"id\":1}}");return;}
-            if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectOnce||rejectAlways||rejectBody){rejectOnce=false;if(rejectBody)reply(e,200,"{\"js\":{\"error\":\"invalid token\"}}");else reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4"+(rotateLinks?"?play_token=fixture"+links.get():"")+"\"}}");return;}
+            if(q.contains("action=get_profile")){reply(e,200,profileNumericRefused?"{\"js\":{\"status\":401}}":"{\"js\":{\"id\":1}}");return;}
+            if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectNumericOnce||rejectNumericAlways){rejectNumericOnce=false;reply(e,200,"{\"js\":{\"status\":401}}");return;}if(rejectOnce||rejectAlways||rejectBody){rejectOnce=false;if(rejectBody)reply(e,200,"{\"js\":{\"error\":\"invalid token\"}}");else reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4"+(rotateLinks?"?play_token=fixture"+links.get():"")+"\"}}");return;}
             if(q.contains("get_categories")||q.contains("get_genres")){reply(e,200,"{\"js\":[{\"id\":\"1\",\"title\":\"Provider category\"}]}");return;}
             if(q.contains("movie_id=series-fixture")){reply(e,200,"{\"js\":{\"data\":[{\"id\":\"season-2\",\"season\":2,\"name\":\"Season 2\",\"cmd\":\"ffmpeg /provider/season\",\"series\":[1,3]}]}}");return;}
             reply(e,200,"{\"js\":{\"total_items\":1,\"data\":[{\"id\":\"9\",\"name\":\"Provider title\",\"category_id\":\"1\",\"tv_genre_id\":\"1\",\"cmd\":\"ffmpeg /provider/ref\",\"description\":\"Provider plot\"}]}}");
@@ -115,6 +115,18 @@ public class PortalSessionTest {
         assertEquals("https://provider.invalid/play?a=1%2F2&token=x+y",StalkerLinkParser.url("ffmpeg \"https://provider.invalid/play?a=1%2F2&token=x+y\"",base+"/server/load.php"));
         assertEquals(base+"/media.ts?x=1",StalkerLinkParser.url("auto /media.ts?x=1",base+"/server/load.php"));
     }
+    @Test public void premiumNumericTokenExpiryRefreshesThroughServerTenResolver()throws Exception {
+        rotateLinks=true;rejectNumericOnce=true;
+        StreamItem row=new StreamItem("sheet-stable-id","Premium","cat","",base+"/play/live.php?mac=00%3A11%3A22%3A33%3A44%3A55&stream=9&play_token=expired","",CatalogType.LIVE);
+        ResolvedStream fresh=ServerTenPlaybackResolver.resolve(row);
+        assertEquals(2,handshakes.get());assertEquals(2,links.get());assertTrue(fresh.url.contains("play_token=fixture2"));assertTrue(fresh.headers.get("Authorization").endsWith("test2"));assertTrue(fresh.headers.get("Cookie").contains("session=local2"));assertEquals("true",fresh.metadata.get("server10_fresh_link"));assertTrue(row.streamUrl.contains("play_token=expired"));
+    }
+    @Test public void premiumNumericRefusalStopsWithoutReturningOldSheetToken()throws Exception {
+        rejectNumericAlways=true;StreamItem row=new StreamItem("stable","Premium","cat","",base+"/play/live.php?mac=00:11:22:33:44:55&stream=9&play_token=expired","",CatalogType.LIVE);
+        try{ServerTenPlaybackResolver.resolve(row);fail("Old sheet token must not be returned on refusal");}catch(CatalogException expected){assertTrue(expected.getMessage().contains("unauthorized"));}
+        assertEquals(2,handshakes.get());assertEquals(2,links.get());
+    }
+    @Test public void refusedProfileNeverStartsCreateLink()throws Exception {profileNumericRefused=true;try{new StalkerCatalogSource().resolve(playlist(),new Channel("9","Fixture","1","","original cmd",""));fail("Refused profile accepted");}catch(CatalogException expected){assertTrue(expected.getMessage().contains("unauthorized"));}assertEquals(1,handshakes.get());assertEquals(0,links.get());}
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
     private static final class Headers extends TreeMap<String,List<String>> {
