@@ -35,8 +35,8 @@ public final class M3uParser{
  private static CatalogType type(String g,String u,Map<String,String>m){
   String s=(g==null?"":g).toLowerCase(Locale.US),url=(u==null?"":u).toLowerCase(Locale.US);
   String meta=(String.valueOf(m.get("type"))+" "+String.valueOf(m.get("content-type"))+" "+String.valueOf(m.get("stream-type"))+" "+String.valueOf(m.get("media-type"))).toLowerCase(Locale.US);
-  if(meta.contains("series")||meta.contains("episode")||url.contains("/series/")||s.matches(".*\\b(series|seriale|serialet|episodes)\\b.*"))return CatalogType.SERIES;
-  if(meta.contains("movie")||meta.contains("vod")||url.contains("/movie/")||s.matches(".*\\b(movies|vod|filma|filme|films)\\b.*"))return CatalogType.MOVIES;
+  if(meta.contains("series")||meta.contains("episode")||url.contains("/series/")||s.matches(".*\\b(series|seriale|serialet|episodes|episode)\\b.*"))return CatalogType.SERIES;
+  if(meta.contains("movie")||meta.contains("vod")||url.contains("/movie/")||s.matches(".*\\b(movies|movie|vod|filma|filme|films|film)\\b.*"))return CatalogType.MOVIES;
   return CatalogType.LIVE;
  }
 }
