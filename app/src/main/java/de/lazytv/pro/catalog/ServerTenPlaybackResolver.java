@@ -16,17 +16,11 @@ public final class ServerTenPlaybackResolver {
    for(String pair:parsed.getQuery().split("&")){int eq=pair.indexOf('=');if(eq>0)query.put(URLDecoder.decode(pair.substring(0,eq),"UTF-8"),URLDecoder.decode(pair.substring(eq+1),"UTF-8"));}
    String mac=query.get("mac"),stream=query.get("stream");
    if(mac==null||!mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")||stream==null||!stream.matches("[0-9]+"))return null;
-   // Keep a Stalker installation prefix from the signed Server 10 row. The old resolver
-   // reduced every reference to scheme://host, so portals installed under a prefix such as
-   // /stalker_portal/c/ refreshed against the wrong handshake/create_link endpoint.
-   String path=parsed.getPath();if(path==null)path="";
-   String lower=path.toLowerCase(Locale.US);int cut=path.length();
-   int load=lower.indexOf("/server/load.php");if(load>=0)cut=Math.min(cut,load);
-   int portalPhp=lower.indexOf("/portal.php");if(portalPhp>=0)cut=Math.min(cut,portalPhp);
-   int c=lower.indexOf("/c/");if(c>=0)cut=Math.min(cut,c+2);
-   path=path.substring(0,cut);
-   while(path.endsWith("/")&&path.length()>1)path=path.substring(0,path.length()-1);
-   String portal=parsed.getProtocol()+"://"+parsed.getAuthority()+path;
+   // Server 10 signed playback rows identify the provider by scheme/host/port. Playback
+   // paths such as /play/live.php are not Stalker installation paths; feeding them into
+   // handshake/create_link sends refresh requests to a playback endpoint. Endpoint discovery
+   // remains owned by StalkerCatalogSource and its controlled portal variants.
+   String portal=parsed.getProtocol()+"://"+parsed.getAuthority();
    return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
