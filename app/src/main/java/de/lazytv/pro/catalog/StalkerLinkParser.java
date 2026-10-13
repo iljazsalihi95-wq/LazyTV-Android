@@ -9,6 +9,11 @@ final class StalkerLinkParser {
   Matcher quoted=Pattern.compile("^[\"']([^\"']+)[\"'](?:\\s.*)?$").matcher(value);
   if(quoted.matches())value=quoted.group(1);
   else {Matcher url=Pattern.compile("https?://[^\\s\"']+").matcher(value);if(url.find())value=url.group();}
+  // Some MAG/Stalker portals append IPTV transport headers after a literal pipe
+  // (for example |User-Agent=...&Referer=...).  They are not part of the media
+  // URL and handing that suffix to Media3/ExoPlayer makes an otherwise fresh
+  // create_link fail. Encoded %7C inside signed URLs is deliberately preserved.
+  int transport=value.indexOf('|');if(transport>0)value=value.substring(0,transport);
   try {
    URL result=new URL(new URL(endpoint),value);
    if(!result.getProtocol().equalsIgnoreCase("http")&&!result.getProtocol().equalsIgnoreCase("https"))throw new Exception();
