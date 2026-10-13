@@ -20,14 +20,38 @@ public final class ServerTenPlaybackResolver {
    return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
+ /**
+  * A signed playback URL intentionally identifies only host/MAC/stream. Some managed servers
+  * are installed below a portal prefix though, so allow the catalog row to carry a stable
+  * portal identity hint separately from the expiring playback URL. Never copy play_token,
+  * signature or expiry fields into this identity.
+  */
+ static Reference reference(StreamItem item){
+  if(item==null)return null;Reference signed=reference(item.streamUrl);if(signed==null)return null;
+  String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
+  String portal=portalIdentity(hinted,signed.portal);
+  String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
+  String mac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")?hintedMac:signed.mac;
+  String command=item.meta("stalker_original_cmd");if(command.isEmpty())command=signed.command;
+  return new Reference(portal,mac,command);
+ }
+ private static String portalIdentity(String hint,String fallback){
+  if(hint==null||hint.trim().isEmpty())return fallback;
+  try{
+   URL u=new URL(hint.trim());String path=u.getPath()==null?"":u.getPath();String lower=path.toLowerCase(Locale.US);
+   for(String marker:new String[]{"/portal.php","/server/load.php","/c/portal.php","/c/server/load.php"}){int at=lower.indexOf(marker);if(at>=0){path=path.substring(0,at);break;}}
+   while(path.endsWith("/")&&path.length()>1)path=path.substring(0,path.length()-1);
+   return u.getProtocol()+"://"+u.getAuthority()+path;
+  }catch(Exception ignored){return fallback;}
+ }
  private static synchronized StalkerCatalogSource session(String key){
   StalkerCatalogSource source=SESSIONS.get(key);
   if(source==null){source=new StalkerCatalogSource();SESSIONS.put(key,source);if(SESSIONS.size()>8)SESSIONS.remove(SESSIONS.keySet().iterator().next());}
   return source;
  }
- public static boolean canRefresh(StreamItem item){return item!=null&&reference(item.streamUrl)!=null;}
+ public static boolean canRefresh(StreamItem item){return reference(item)!=null;}
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
-  Reference ref=reference(item.streamUrl);
+  Reference ref=reference(item);
   if(ref==null)return new ResolvedStream(item.streamUrl,item.type.name(),item.name,item.logo,item.tvgId,null,item.metadata);
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
@@ -36,7 +60,7 @@ public final class ServerTenPlaybackResolver {
   // Server 10 must never fall back to the expired Sheet playback token. Keep one cached
   // authenticated MAG session and let the proven Stalker flow perform exactly one auth refresh.
   synchronized(source){fresh=source.resolve(portal,original);}
-  Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("server10_fresh_link","true");
+  Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("server10_fresh_link","true");metadata.put("stalker_session","true");
   return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,fresh.headers,metadata);
  }
 }
