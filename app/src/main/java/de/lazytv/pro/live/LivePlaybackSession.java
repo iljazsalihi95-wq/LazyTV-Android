@@ -186,10 +186,11 @@ final class LivePlaybackSession {
         cancelStableReset();
         final long expectedGeneration = generation;
         final StreamItem expectedItem = currentItem;
+        final ResolvedStream expectedStream = currentStream;
         stablePlaybackReset = () -> {
             if (!released && expectedGeneration == generation && currentItem == expectedItem
-                    && callbackBelongsToCurrentGeneration()
-                    && player.getPlaybackState() == Player.STATE_READY && player.isPlaying()) {
+                    && currentStream==expectedStream
+                    && (usingNative?nativeEngine!=null&&nativeEngine.playing():callbackBelongsToCurrentGeneration()&&player.getPlaybackState()==Player.STATE_READY&&player.isPlaying())) {
                 retryCount = 0;
                 // A Stalker channel that has played stably earned a fresh bounded recovery
                 // allowance. Rotate only the Stalker guard ticket; keep the same ExoPlayer,
@@ -352,7 +353,7 @@ final class LivePlaybackSession {
         usingNative=true;nativeBuffering=true;player.stop();playerView.setPlayer(null);listener.onBuffering(true);
         try{if(nativeEngine==null)nativeEngine=new LiveNativeEngine(playerView);nativeEngine.play(stream,foreground,new LiveNativeEngine.Events(){
             private boolean current(){return !released&&usingNative&&ticket==generation&&item==currentItem&&stream==currentStream;}
-            public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);listener.onReady();});}
+            public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);scheduleStableReset();listener.onReady();});}
             public void buffering(boolean value){main.post(()->{if(!current())return;nativeBuffering=value;listener.onBuffering(value);});}
             public void failed(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
         });}catch(Exception unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
