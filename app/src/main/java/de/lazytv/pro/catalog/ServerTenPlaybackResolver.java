@@ -30,7 +30,12 @@ public final class ServerTenPlaybackResolver {
   if(ref==null)return new ResolvedStream(item.streamUrl,item.type.name(),item.name,item.logo,item.tvgId,null,item.metadata);
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
-  StalkerCatalogSource.LinkResult fresh=session(ref.portal+"\n"+ref.mac).resolve(portal,original);
+  StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
+  StalkerCatalogSource.LinkResult fresh;
+  // A cached portal session owns mutable token/cookie state. Initial channel selection and
+  // playback recovery run on different workers, so never let two create_link refreshes mutate
+  // the same Server 10 session concurrently. This keeps each retry tied to one fresh token.
+  synchronized(source){fresh=source.resolve(portal,original);}
   Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("server10_fresh_link","true");
   return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,fresh.headers,metadata);
  }
