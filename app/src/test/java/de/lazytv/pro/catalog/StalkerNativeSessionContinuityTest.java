@@ -1,5 +1,5 @@
 package de.lazytv.pro.catalog;
-import org.junit.*;import static org.junit.Assert.*;import com.sun.net.httpserver.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.atomic.AtomicInteger;import de.lazytv.pro.playlist.*;
+import org.junit.*;import static org.junit.Assert.*;import java.net.*;import java.nio.charset.StandardCharsets;import java.util.concurrent.atomic.AtomicInteger;import de.lazytv.pro.playlist.*;
 public class StalkerNativeSessionContinuityTest {
  private HttpServer server;private String base;private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();private String expectedCookie="handshake";
  @Before public void start()throws Exception {server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);base="http://127.0.0.1:"+server.getAddress().getPort();
