@@ -115,6 +115,10 @@ public class PortalSessionTest {
         assertEquals("https://provider.invalid/play?a=1%2F2&token=x+y",StalkerLinkParser.url("ffmpeg \"https://provider.invalid/play?a=1%2F2&token=x+y\"",base+"/server/load.php"));
         assertEquals(base+"/media.ts?x=1",StalkerLinkParser.url("auto /media.ts?x=1",base+"/server/load.php"));
     }
+    @Test public void stalkerTransportHeadersAreRemovedButEncodedPipeIsPreserved()throws Exception {
+        assertEquals("https://provider.invalid/live.ts?token=a%7Cb",StalkerLinkParser.url("ffmpeg https://provider.invalid/live.ts?token=a%7Cb|User-Agent=MAG254&Referer=https://portal.invalid/",base+"/server/load.php"));
+        assertEquals(base+"/media.ts?x=1",StalkerLinkParser.url("ffrt /media.ts?x=1|User-Agent=MAG254",base+"/server/load.php"));
+    }
     @Test public void premiumNumericTokenExpiryRefreshesThroughServerTenResolver()throws Exception {
         rotateLinks=true;rejectNumericOnce=true;
         StreamItem row=new StreamItem("sheet-stable-id","Premium","cat","",base+"/play/live.php?mac=00%3A11%3A22%3A33%3A44%3A55&stream=9&play_token=expired","",CatalogType.LIVE);
@@ -158,17 +162,14 @@ public class PortalSessionTest {
     }
     private static final class HttpServer {
         private final ServerSocket socket;
-        private final Map<String,Handler> handlers=new ConcurrentHashMap<>();
-        private final ExecutorService worker=Executors.newSingleThreadExecutor();
-        private HttpServer(InetSocketAddress address)throws IOException{socket=new ServerSocket();socket.bind(address);}
-        static HttpServer create(InetSocketAddress address,int backlog)throws IOException{return new HttpServer(address);}
+        private final Map<String,Handler> contexts=new ConcurrentHashMap<>();
+        private volatile boolean running;
+        private Thread accept;
+        private HttpServer(ServerSocket socket){this.socket=socket;}
+        static HttpServer create(InetSocketAddress bind,int backlog)throws IOException{ServerSocket socket=new ServerSocket();socket.bind(bind,backlog<=0?50:backlog);return new HttpServer(socket);}
         InetSocketAddress getAddress(){return (InetSocketAddress)socket.getLocalSocketAddress();}
-        void createContext(String path,Handler handler){handlers.put(path,handler);}
-        void start(){worker.execute(()->{while(!socket.isClosed())try(Socket client=socket.accept()){
-            HttpExchange e=new HttpExchange(client);Handler h=handlers.get(e.getRequestURI().getPath());
-            if(h==null)reply(e,404,"{}");else h.handle(e);
-        }catch(IOException ignored){}});}
-        void stop(int delay){try{socket.close();}catch(IOException ignored){}worker.shutdownNow();}
+        void createContext(String path,Handler handler){contexts.put(path,handler);}
+        void start(){running=true;accept=new Thread(()->{while(running)try{Socket client=socket.accept();new Thread(()->{try{HttpExchange e=new HttpExchange(client);Handler h=contexts.get(e.getRequestURI().getPath());if(h==null)reply(e,404,"{}");else h.handle(e);}catch(Exception ignored){try{client.close();}catch(IOException ignored2){}}}).start();}catch(IOException e){if(running)throw new RuntimeException(e);}},"fixture-http");accept.setDaemon(true);accept.start();}
+        void stop(int delay){running=false;try{socket.close();}catch(IOException ignored){}if(accept!=null)try{accept.join(1000);}catch(InterruptedException ignored){Thread.currentThread().interrupt();}}
     }
-
 }
