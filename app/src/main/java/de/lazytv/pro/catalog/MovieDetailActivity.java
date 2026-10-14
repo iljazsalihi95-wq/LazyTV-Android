@@ -41,7 +41,7 @@ public final class MovieDetailActivity extends Activity {
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);if(!ActivationGuard.enforce(this))return;
         playlist=new PlaylistStorage(this).get(getIntent().getStringExtra("playlist_id"));
-        movie=(StreamItem)getIntent().getSerializableExtra("movie");category=getIntent().getStringExtra("category");
+        movie=(StreamItem)getIntent().getSerializableExtra("movie");if(playlist==null&&ManagedProviderContext.owns(movie))playlist=ManagedProviderContext.playlist(movie);category=getIntent().getStringExtra("category");
         if(playlist==null||movie==null){finish();return;}
         metadata.putAll(movie.metadata);buildPage();render();loadDetails();
     }
@@ -93,12 +93,12 @@ public final class MovieDetailActivity extends Activity {
     private String first(String... keys){for(String key:keys){String v=clean(metadata.get(key));if(!v.isEmpty())return v;}return "";}
     private boolean current(int token){return token==generation.get()&&!isFinishing()&&!isDestroyed();}
     private void loadDetails(){final int token=generation.get();worker.execute(()->{
-        try{Map<String,String> info=engine.loadMovieInfo(playlist,movie);runOnUiThread(()->{if(!current(token))return;metadata.putAll(info);render();if(!preparing)status.setText(info.isEmpty()?"Provideri nuk ka dhënë detaje shtesë.":"");});}
+        try{Map<String,String> info=ManagedProviderContext.owns(movie)?movie.metadata:engine.loadMovieInfo(playlist,movie);runOnUiThread(()->{if(!current(token))return;metadata.putAll(info);render();if(!preparing)status.setText(info.isEmpty()?"Provideri nuk ka dhënë detaje shtesë.":"");});}
         catch(Exception e){runOnUiThread(()->{if(current(token)&&!preparing)status.setText("Detajet shtesë nuk u ngarkuan. "+clean(e.getMessage()));});}
     });}
     private void play(boolean resumeRequested){if(preparing)return;preparing=true;play.setEnabled(false);resume.setEnabled(false);status.setText("Duke përgatitur stream-in…");final int token=generation.get();
         worker.execute(()->{try{
-            ResolvedStream r=engine.resolveStream(this,playlist,movie);runOnUiThread(()->{
+            ResolvedStream r=ManagedProviderContext.owns(movie)?ManagedProviderContext.resolve(this,movie,true):engine.resolveStream(this,playlist,movie);runOnUiThread(()->{
                 if(!current(token))return;preparing=false;play.setEnabled(true);resume.setEnabled(true);status.setText("");
                 Map<String,String> m=new LinkedHashMap<>(r.metadata);m.putAll(metadata);
                 String art=first("poster");if(art.isEmpty())art=r.artwork;

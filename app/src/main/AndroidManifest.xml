@@ -14,6 +14,7 @@
 <activity android:name=".player.MoviePlayerActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".player.EpisodePlayerActivity" android:exported="false" android:screenOrientation="landscape" android:configChanges="keyboardHidden|orientation|screenSize"/>
 <activity android:name=".catalog.MovieDetailActivity" android:exported="false"/>
+<activity android:name=".catalog.ManagedCatalogActivity" android:exported="false"/>
 <activity android:name=".catalog.CatalogActivity" android:exported="false"/>
 <activity android:name=".cms.IslamicHubActivity" android:exported="false" android:screenOrientation="landscape"/>
 <activity android:name=".cms.IslamicCatalogActivity" android:exported="false"/>

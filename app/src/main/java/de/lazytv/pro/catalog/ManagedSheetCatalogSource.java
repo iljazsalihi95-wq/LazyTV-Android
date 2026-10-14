@@ -28,7 +28,7 @@ final class ManagedSheetCatalogSource {
         Map<String,String> identity=new LinkedHashMap<>();for(Map<String,String> row:rows(fetch(server.sheet,"INFO")))identity.put(get(row,"KEY").toUpperCase(Locale.ROOT),get(row,"VALUE"));
         Catalog out=parse(server,"LIVE",fetch(server.sheet,"LIVE"));
         Catalog linear=parse(server,"24_7",fetch(server.sheet,"24_7"));
-        merge(out,linear);for(String tab:new String[]{"VOD","SERIES"}){Catalog imported=parse(server,tab,fetch(server.sheet,tab));Catalog live=new Catalog();for(StreamItem item:imported.items)if(item.type==CatalogType.LIVE)live.items.add(item);for(Category category:imported.categories)if(category.type==CatalogType.LIVE)live.categories.add(category);merge(out,live);}
+        merge(out,linear);for(String tab:new String[]{"VOD","SERIES"})merge(out,parse(server,tab,fetch(server.sheet,tab)));
         // These tabs are part of the server contract, not a fallback to Sheet1.
         rows(fetch(server.sheet,"CATEGORIES"));rows(fetch(server.sheet,"STATUS"));
         Catalog enriched=new Catalog();enriched.categories.addAll(out.categories);for(StreamItem item:out.items){Map<String,String> metadata=new LinkedHashMap<>(item.metadata);String portal=get(identity,"PORTAL_URL","PORTAL"),mac=get(identity,"MAC");if(!portal.isEmpty()&&!metadata.containsKey("portal_url"))metadata.put("portal_url",portal);if(!mac.isEmpty()&&!metadata.containsKey("mac"))metadata.put("mac",mac);enriched.items.add(new StreamItem(item.id,item.name,item.categoryId,item.logo,item.streamUrl,item.tvgId,item.type,item.fallbackUrls,metadata));}Set<String> used=new HashSet<>();for(StreamItem item:enriched.items)used.add(item.categoryId);enriched.categories.removeIf(c->!used.contains(c.id));return enriched;
@@ -45,7 +45,7 @@ final class ManagedSheetCatalogSource {
         Catalog out=new Catalog();Map<String,Category> cats=new LinkedHashMap<>();Map<String,StreamItem> items=new LinkedHashMap<>();
         for(Map<String,String> row:rows(csv)){
             String rowServer=get(row,"SERVER_ID");if(!rowServer.isEmpty()&&!server.id.equals(rowServer)||off(get(row,"STATUS")))continue;
-            String name=get(row,"NAME"),cmd=get(row,"STREAM_URL_CMD");if(name.isEmpty()||cmd.isEmpty()||"STREAM_URL_CMD".equalsIgnoreCase(cmd))continue;
+            String name=get(row,"NAME"),cmd=get(row,"STREAM_URL_CMD");if(name.isEmpty()||"STREAM_URL_CMD".equalsIgnoreCase(cmd)||cmd.isEmpty()&&!"SERIES".equals(tab))continue;
             String source=get(row,"SOURCE_ID");if(source.isEmpty())source=get(row,"ID");
             if(source.isEmpty())throw new CatalogException("Katalogu nuk ka identitet të qëndrueshëm kanali");
             String category=get(row,"CATEGORY");if(category.isEmpty())category="Të tjera";
@@ -53,15 +53,25 @@ final class ManagedSheetCatalogSource {
             CatalogType rowType=linearCommand(cmd)?CatalogType.LIVE:type;String rowTab=rowType==CatalogType.LIVE&&!"24_7".equals(tab)?"LIVE":tab;
             String categoryId=server.id+"|"+rowTab+"|"+country+"|"+category;
             if(!cats.containsKey(categoryId)){Category value=new Category(categoryId,("24_7".equals(tab)?"24/7 • ":"")+category,rowType,country);cats.put(categoryId,value);out.categories.add(value);}
-            Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server_id",server.id);metadata.put("managed_source_id",source);metadata.put("managed_tab",rowTab);metadata.put("managed_import_tab",tab);
+            Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server_id",server.id);metadata.put("managed_server",server.name);metadata.put("managed_source_id",source);metadata.put("managed_tab",rowTab);metadata.put("managed_import_tab",tab);
             put(metadata,"portal_url",get(row,"PORTAL_URL","PORTAL"));put(metadata,"mac",get(row,"MAC"));put(metadata,"stalker_original_cmd",get(row,"ORIGINAL_CMD","CMD"));
             if(cmd.startsWith("ffmpeg ")||cmd.contains("localhost/ch/"))metadata.put("stalker_original_cmd",cmd);
-            put(metadata,"plot",get(row,"PLOT"));put(metadata,"year",get(row,"YEAR"));put(metadata,"rating",get(row,"RATING"));
+            for(String field:new String[]{"PLOT","DESCRIPTION","YEAR","RATING","DURATION","POSTER","BACKDROP","GENRE","DIRECTOR","CAST"})put(metadata,field.toLowerCase(Locale.ROOT),get(row,field));
             StreamItem item=new StreamItem(server.id+"|"+source,name,categoryId,get(row,"LOGO"),cmd,get(row,"TVG_ID","EPG_ID"),rowType,Collections.emptyList(),metadata);
+            if(rowType==CatalogType.SERIES){
+                String parent=get(row,"SERIES_ID"),season=get(row,"SEASON","SEASON_NUMBER"),episode=get(row,"EPISODE","EPISODE_NUMBER");
+                if(!cmd.isEmpty()&&!parent.isEmpty()&&!episode.isEmpty()){
+                    item=new Episode(item.id,get(row,"EPISODE_TITLE").isEmpty()?name:get(row,"EPISODE_TITLE"),server.id+"|series|"+parent,categoryId,get(row,"POSTER","LOGO"),cmd,get(row,"EXTENSION"),get(row,"DURATION"),number(season,1),number(episode,1),metadata);
+                    String parentKey=server.id+"|series|"+parent;
+                    if(!items.containsKey(parentKey))items.put(parentKey,new Series(parentKey,name,categoryId,get(row,"POSTER","LOGO"),"","",metadata));
+                }else if(cmd.isEmpty())item=new Series(server.id+"|series|"+(parent.isEmpty()?source:parent),name,categoryId,get(row,"POSTER","LOGO"),"","",metadata);
+                else continue; // A generic series object or unstructured stream is never an episode.
+            }
             items.put(item.id,item); // upsert by SERVER_ID + SOURCE_ID, independent of token/country/row order
         }
         out.items.addAll(items.values());return out;
     }
+    private static int number(String raw,int fallback){try{return Math.max(1,Integer.parseInt(raw));}catch(Exception ignored){return fallback;}}
     static boolean linearCommand(String command){
         String cmd=command.toLowerCase(Locale.ROOT);
         if(cmd.contains("localhost/ch/"))return true;

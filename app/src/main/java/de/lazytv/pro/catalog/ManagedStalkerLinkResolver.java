@@ -4,6 +4,7 @@ import de.lazytv.pro.playlist.*;
 /** Separate sessions per managed server, even when two servers share an upstream portal. */
 final class ManagedStalkerLinkResolver {
  private static final Map<String,StalkerCatalogSource> sessions=new LinkedHashMap<>();
+ static boolean canRefresh(StreamItem item){return item!=null&&(item.type==CatalogType.LIVE||!item.meta("stalker_original_cmd").isEmpty())&&ServerTenPlaybackResolver.canRefresh(item);}
  static ResolvedStream resolve(StreamItem item)throws CatalogException {
   ServerTenPlaybackResolver.Reference ref=ServerTenPlaybackResolver.reference(item);
   if(ref==null)throw new CatalogException("Mungon identiteti i portalit për fresh create_link");

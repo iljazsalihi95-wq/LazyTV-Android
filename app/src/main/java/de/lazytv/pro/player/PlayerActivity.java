@@ -130,6 +130,7 @@ public class PlayerActivity extends Activity {
         playlistId = getIntent().getStringExtra(EXTRA_PLAYLIST_ID);
         playlist = new PlaylistStorage(this).get(playlistId);
         currentItem = (StreamItem) getIntent().getSerializableExtra(EXTRA_ITEM);
+        if(playlist==null&&de.lazytv.pro.catalog.ManagedProviderContext.owns(currentItem))playlist=de.lazytv.pro.catalog.ManagedProviderContext.playlist(currentItem);
         currentResolved = (ResolvedStream) getIntent().getSerializableExtra(EXTRA_RESOLVED);
         categoryName = safe(getIntent().getStringExtra(EXTRA_CATEGORY_NAME));
         if (playlist == null || currentItem == null || currentResolved == null || isBlank(currentResolved.url)) { showFatal("Stream-i nuk mund të hapet"); return; }
@@ -177,7 +178,7 @@ public class PlayerActivity extends Activity {
     private boolean currentPlayback(){MediaItem media=player==null?null:player.getCurrentMediaItem();return media!=null&&media.localConfiguration!=null&&Long.valueOf(selectionGeneration).equals(media.localConfiguration.tag);}
     private void resolveAndPlay(StreamItem item,boolean forceRefresh){
         if(item==null||destroyed)return;if(!live&&item==currentItem)pendingSeekMs=playbackPosition();final long token=++selectionGeneration;providerRetries=0;providerRetryRunning=false;loading.setVisibility(View.VISIBLE);
-        worker.execute(()->{try{ResolvedStream resolved=forceRefresh?engine.refreshStream(playlist,item):engine.resolveStream(playlist,item);
+        worker.execute(()->{try{ResolvedStream resolved=de.lazytv.pro.catalog.ManagedProviderContext.owns(item)?de.lazytv.pro.catalog.ManagedProviderContext.resolve(this,item,forceRefresh):forceRefresh?engine.refreshStream(playlist,item):engine.resolveStream(playlist,item);
             ui.post(()->{if(destroyed||isFinishing()||token!=selectionGeneration)return;currentItem=item;live=item.type==CatalogType.LIVE;contentKey=stableContentKey(item);prev.setVisibility(live?View.VISIBLE:View.GONE);next.setVisibility(live?View.VISIBLE:View.GONE);playResolved(resolved,true);});
         }catch(Exception e){ui.post(()->{if(!destroyed&&!isFinishing()&&token==selectionGeneration)showSafeError(e.getMessage()==null?"Stream-i nuk mund të përgatitet":e.getMessage());});}});
     }
@@ -189,7 +190,7 @@ public class PlayerActivity extends Activity {
         if(providerRetryRunning)return true;
         providerRetryRunning=true;final int attempt=++providerRetries;final long token=++selectionGeneration;final StreamItem expected=currentItem;
         final long position=playbackPosition();loading.setVisibility(View.VISIBLE);
-        worker.execute(()->{try{Thread.sleep(350L*attempt);ResolvedStream resolved=engine.refreshStream(playlist,expected);
+        worker.execute(()->{try{Thread.sleep(350L*attempt);ResolvedStream resolved=de.lazytv.pro.catalog.ManagedProviderContext.owns(expected)?de.lazytv.pro.catalog.ManagedProviderContext.resolve(this,expected,true):engine.refreshStream(playlist,expected);
             final ResolvedStream ready=ProviderPlaybackPolicy.retryHeaders(resolved,expected,code,attempt);
             ui.post(()->{if(destroyed||isFinishing()||token!=selectionGeneration||expected!=currentItem)return;providerRetryRunning=false;playResolved(ready,true);if(!live&&position>0)seekPlayback(position);});
         }catch(Exception e){ui.post(()->{if(destroyed||isFinishing()||token!=selectionGeneration)return;providerRetryRunning=false;showSafeError(e.getMessage()==null?ProviderPlaybackPolicy.message(code):e.getMessage());});}});
