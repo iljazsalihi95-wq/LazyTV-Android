@@ -134,7 +134,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_12",
@@ -146,7 +153,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_13",
@@ -158,7 +172,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_14",
@@ -170,7 +191,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_15",
@@ -182,7 +210,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_16",
@@ -194,7 +229,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_17",
@@ -206,7 +248,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_18",
@@ -218,7 +267,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_19",
@@ -230,7 +286,14 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     },
     {
       "server_id": "SERVER_20",
@@ -242,7 +305,15 @@
         "SERIES": "HTTPError",
         "CATEGORIES": "HTTPError",
         "STATUS": "HTTPError"
-      }
+      },
+      "catalog_counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "registered": false
     }
-  ]
+  ],
+  "private_catalog_check": "Authenticated bounded reads of all seven named tabs confirm Server 11\u201320 catalogs have headers only. Anonymous CSV export is unavailable."
 }
