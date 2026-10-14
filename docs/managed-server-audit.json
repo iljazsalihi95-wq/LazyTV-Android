@@ -2,7 +2,7 @@
   "checked_utc": "2026-10-14",
   "source": "Live named Google Sheets tabs; no Sheet1 reads",
   "runtime": "NOT VERIFIED",
-  "registry": "SOURCES currently registers SERVER_01 through SERVER_10; 11-20 not registered and CSV export unavailable (not confirmed empty).",
+  "registry": "Owner-authorized update: SOURCES now registers SERVER_01 through SERVER_20; Server 09 display name 4Y OTT. Twenty unique IDs verified by connector and anonymous CSV registry export.",
   "servers": [
     {
       "server_id": "SERVER_01",
@@ -141,7 +141,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_12",
@@ -160,7 +160,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_13",
@@ -179,7 +179,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_14",
@@ -198,7 +198,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_15",
@@ -217,7 +217,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_16",
@@ -236,7 +236,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_17",
@@ -255,7 +255,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_18",
@@ -274,7 +274,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_19",
@@ -293,7 +293,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     },
     {
       "server_id": "SERVER_20",
@@ -312,7 +312,7 @@
         "VOD": 0,
         "SERIES": 0
       },
-      "registered": false
+      "registered": true
     }
   ],
   "private_catalog_check": "Authenticated bounded reads of all seven named tabs confirm Server 11\u201320 catalogs have headers only. Anonymous CSV export is unavailable.",
@@ -327,7 +327,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_02",
@@ -339,7 +340,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_03",
@@ -351,7 +353,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_04",
@@ -363,7 +366,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_05",
@@ -375,7 +379,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_06",
@@ -387,7 +392,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_07",
@@ -399,7 +405,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_08",
@@ -411,7 +418,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_09",
@@ -423,7 +431,8 @@
         "SERIES": 0
       },
       "series_parent_metadata": 0,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     },
     {
       "server_id": "SERVER_10",
@@ -435,8 +444,9 @@
         "SERIES": 0
       },
       "series_parent_metadata": 3,
-      "errors": []
+      "errors": [],
+      "signed_media_counts": "Previous exploratory projection only; generic signed URLs no longer imply Live. Actual VOD display requires native provider confirmation."
     }
   ],
-  "inventory_note": "Read-only CSV inventory, filtered by server and upserted by SOURCE_ID/ID; counts do not prove playback. VOD/SERIES URL rows currently identify linear streams; Server 10 has 3 series parent metadata records but no episode streams."
+  "inventory_note": "Only explicit localhost/ch commands prove wrong Live imports (2,317 VOD/Series commands). Signed VOD rows require provider VOD confirmation; shared Live identities are traced explicitly. Server 09 retains 1,222 unique rows (1,150 Live +72 linear24); Server 10 has populated Live/VOD and three series parent metadata records, with no Sheet episodes."
 }

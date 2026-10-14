@@ -14,10 +14,18 @@ public final class ManagedBackendCatalogSource {
  }
 
  public Catalog load(String server)throws CatalogException {ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;if(registered!=null)return sheets.load(registered);return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));}
- public Catalog loadType(String server,CatalogType type)throws CatalogException {Catalog all=load(server),out=new Catalog();for(Category c:all.categories)if(c.type==type)out.categories.add(c);for(StreamItem item:all.items)if(item.type==type&&!(item instanceof Episode))out.items.add(item);return out;}
+ public Catalog loadType(String server,CatalogType type)throws CatalogException {
+  Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
+  for(Category c:all.categories)if(c.type==type)out.categories.add(c);
+  for(StreamItem item:all.items)if(item.type==type&&!(item instanceof Episode)){
+   if(type==CatalogType.MOVIES&&ManagedStalkerLinkResolver.needsMovieCommand(item)){try{out.items.add(ManagedStalkerLinkResolver.verifyMovie(item));}catch(CatalogException unverified){if(firstFailure==null)firstFailure=unverified;}}else out.items.add(item);
+  }
+  if(out.isEmpty()&&firstFailure!=null)throw firstFailure;return out;
+ }
+
  public SeriesDetails loadSeries(String server,Series series)throws CatalogException {Catalog all=load(server);SeriesDetails out=new SeriesDetails();out.metadata.putAll(series.metadata);Set<Integer> seasons=new TreeSet<>();for(StreamItem item:all.items)if(item instanceof Episode){Episode episode=(Episode)item;if(series.id.equals(episode.seriesId)){seasons.add(episode.seasonNumber);out.episodes.computeIfAbsent(episode.seasonNumber,n->new ArrayList<>()).add(episode);}}for(int number:seasons){out.seasons.add(new Season(series.id+"|"+number,"Sezoni "+number,series.id,number,series.logo));out.episodes.get(number).sort((a,b)->Integer.compare(a.episodeNumber,b.episodeNumber));}return out;}
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
-  if(!forceFresh&&ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);StreamItem item=selected;if(forceFresh||expiring(selected.streamUrl)){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.id.equals(selected.id)){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
+  if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);StreamItem item=selected;if(forceFresh||expiring(selected.streamUrl)){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);String url=item.streamUrl;if(url==null||!url.matches("(?i)^https?://.*"))throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,item.metadata);
  }
  static boolean expiring(String url){if(url==null)return false;String lower=url.toLowerCase(Locale.ROOT);return lower.contains("play_token=")||lower.contains("token=")||lower.contains("expires=")||lower.startsWith("ffmpeg ");}

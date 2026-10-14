@@ -31,7 +31,7 @@ final class ManagedSheetCatalogSource {
         Map<String,String> identity=new LinkedHashMap<>();for(Map<String,String> row:rows(fetch(server.sheet,"INFO")))identity.put(get(row,"KEY").toUpperCase(Locale.ROOT),get(row,"VALUE"));
         Catalog out=parse(server,"LIVE",fetch(server.sheet,"LIVE"));
         Catalog linear=parse(server,"24_7",fetch(server.sheet,"24_7"));
-        merge(out,linear);for(String tab:new String[]{"VOD","SERIES"})merge(out,parse(server,tab,fetch(server.sheet,tab)));
+        merge(out,linear);Map<String,StreamItem> liveReferences=new LinkedHashMap<>();for(StreamItem item:out.items){String key=referenceKey(item);if(!key.isEmpty())liveReferences.put(key,item);}for(String tab:new String[]{"VOD","SERIES"})merge(out,parse(server,tab,fetch(server.sheet,tab),liveReferences));
         // These tabs are part of the server contract, not a fallback to Sheet1.
         rows(fetch(server.sheet,"CATEGORIES"));rows(fetch(server.sheet,"STATUS"));
         Catalog enriched=new Catalog();enriched.categories.addAll(out.categories);for(StreamItem item:out.items){Map<String,String> metadata=new LinkedHashMap<>(item.metadata);String portal=get(identity,"PORTAL_URL","PORTAL"),mac=get(identity,"MAC");if(!portal.isEmpty()&&!metadata.containsKey("portal_url"))metadata.put("portal_url",portal);if(!mac.isEmpty()&&!metadata.containsKey("mac"))metadata.put("mac",mac);enriched.items.add(new StreamItem(item.id,item.name,item.categoryId,item.logo,item.streamUrl,item.tvgId,item.type,item.fallbackUrls,metadata));}Set<String> used=new HashSet<>();for(StreamItem item:enriched.items)used.add(item.categoryId);enriched.categories.removeIf(c->!used.contains(c.id));return enriched;
@@ -39,10 +39,11 @@ final class ManagedSheetCatalogSource {
     static void merge(Catalog into,Catalog more){
         Set<String> categories=new HashSet<>();for(Category c:into.categories)categories.add(c.id);
         for(Category c:more.categories)if(categories.add(c.id))into.categories.add(c);
-        LinkedHashMap<String,StreamItem> items=new LinkedHashMap<>();for(StreamItem i:into.items)items.put(i.id,i);for(StreamItem i:more.items)items.put(i.id,i);
+        LinkedHashMap<String,StreamItem> items=new LinkedHashMap<>();for(StreamItem i:into.items)items.put(i.type.name()+"|"+i.id,i);for(StreamItem i:more.items)items.put(i.type.name()+"|"+i.id,i);
         into.items.clear();into.items.addAll(items.values());
     }
-    static Catalog parse(Server server,String tab,String csv)throws CatalogException {
+    static Catalog parse(Server server,String tab,String csv)throws CatalogException {return parse(server,tab,csv,Collections.emptyMap());}
+    static Catalog parse(Server server,String tab,String csv,Map<String,StreamItem> knownLive)throws CatalogException {
         if(!Arrays.asList("LIVE","24_7","VOD","SERIES").contains(tab))throw new CatalogException("Tab katalogu i pavlefshëm");
         CatalogType type="VOD".equals(tab)?CatalogType.MOVIES:"SERIES".equals(tab)?CatalogType.SERIES:CatalogType.LIVE;
         Catalog out=new Catalog();Map<String,Category> cats=new LinkedHashMap<>();Map<String,StreamItem> items=new LinkedHashMap<>();
@@ -60,7 +61,8 @@ final class ManagedSheetCatalogSource {
             put(metadata,"portal_url",get(row,"PORTAL_URL","PORTAL"));put(metadata,"mac",get(row,"MAC"));put(metadata,"stalker_original_cmd",get(row,"ORIGINAL_CMD","CMD"));
             if(cmd.startsWith("ffmpeg ")||cmd.contains("localhost/ch/"))metadata.put("stalker_original_cmd",cmd);
             for(String field:new String[]{"PLOT","DESCRIPTION","YEAR","RATING","DURATION","POSTER","BACKDROP","GENRE","DIRECTOR","CAST"})put(metadata,field.toLowerCase(Locale.ROOT),get(row,field));
-            StreamItem item=new StreamItem(server.id+"|"+source,name,categoryId,get(row,"LOGO"),cmd,get(row,"TVG_ID","EPG_ID"),rowType,Collections.emptyList(),metadata);
+            StreamItem item=new StreamItem(server.id+"|"+source,name,categoryId,get(row,"LOGO","POSTER"),cmd,get(row,"TVG_ID","EPG_ID"),rowType,Collections.emptyList(),metadata);
+            StreamItem sameLive=knownLive.get(referenceKey(item));if(sameLive!=null){items.put(sameLive.id,sameLive);continue;}
             if(rowType==CatalogType.SERIES){
                 String parent=get(row,"SERIES_ID"),season=get(row,"SEASON","SEASON_NUMBER"),episode=get(row,"EPISODE","EPISODE_NUMBER");
                 if(!cmd.isEmpty()&&!parent.isEmpty()&&!episode.isEmpty()){
@@ -80,7 +82,13 @@ final class ManagedSheetCatalogSource {
         String cmd=command.toLowerCase(Locale.ROOT);
         if(cmd.contains("localhost/ch/"))return true;
         if(cmd.contains("/movie/")||cmd.contains("/vod/")||cmd.contains("type=vod")||cmd.contains("type=movie")||cmd.contains("movie.php"))return false;
-        return ServerTenPlaybackResolver.reference(command)!=null;
+        return false; // A signed URL alone cannot identify Live versus VOD.
+    }
+    static String referenceKey(StreamItem item){
+        String cmd=item.meta("stalker_original_cmd");if(cmd.isEmpty())cmd=item.streamUrl;
+        ServerTenPlaybackResolver.Reference ref=ServerTenPlaybackResolver.reference(item);
+        if(ref!=null){String path="",kind="";try{java.net.URL url=new java.net.URL(item.streamUrl);path=url.getPath();String query=url.getQuery();if(query!=null)for(String part:query.split("&"))if(part.startsWith("type="))kind=part;}catch(Exception ignored){}return ref.portal+"\n"+ref.mac.toUpperCase(Locale.ROOT)+"\n"+ref.command+"\n"+path+"\n"+kind;}
+        return cmd.contains("localhost/ch/")?"cmd|"+cmd.trim():"";
     }
     private static void put(Map<String,String> m,String k,String v){if(!v.isEmpty())m.put(k,v);}
     static String get(Map<String,String> row,String... keys){for(String key:keys){String v=row.get(key);if(v!=null&&!v.trim().isEmpty())return v.trim();}return "";}

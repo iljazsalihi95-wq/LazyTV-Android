@@ -31,3 +31,9 @@ The live original API returned MASTER country metadata SHQIPERIA, KOSOVA, MAQEDO
 Server 09 has 72 linear entries with explicit provider category 24/7 inside LIVE. A managed-only 24/7 section now selects these and actual 24_7 tab rows; Live selects the remaining linear rows. IDs stay unchanged and no Google Sheet rows are moved or duplicated. API type live24 is also respected. Real Movie/VOD items do not become linear solely from a 24/7 category title. Old AL may become XK from clear Kosovo category/country/channel evidence, while mixed Albania/Kosovo genres alone and authoritative non-AL provider countries remain intact.
 
 Managed catalog navigation binds the existing official tile artwork. Long OK toggles provider-scoped Favorites; episode searches stay within the selected season. The adaptive column count follows the existing catalog browser. No STBEmu/IBO assets or new proprietary graphics are used.
+
+## Final signed-media provenance correction
+
+A signed MAG URL alone is insufficient to distinguish Live from VOD. Only explicit localhost/ch commands or a match to a known Live reference may recover a wrong VOD/Series import as Live. Content kinds cannot overwrite one another when provider numeric IDs overlap. Generic signed VOD candidates are shown as movies only after the actual Stalker VOD catalog confirms both provider ID and title and supplies an original VOD command; playback uses fresh type=vod create_link, never an invented localhost/ch command. Only original catalog commands are cached briefly, not resolved playback URLs.
+
+The owner-authorized SOURCES update registered Server 11–20 with their existing spreadsheet identities, and updated Server 09 display name to 4Y OTT. Readback and anonymous registry export both confirm twenty unique server registrations. Spreadsheet sharing and private credentials were unchanged.
