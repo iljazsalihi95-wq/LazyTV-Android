@@ -11,3 +11,7 @@ Rows are upserted by SERVER_ID + SOURCE_ID, with existing ID as a fallback only 
 Country mapping is isolated in ManagedCountryResolver. Provider codes/country, category names/prefixes and channel-name fallback use the ISO resolver. Explicit Kosovo markers may correct an old AL import to XK; a mixed Albania + Kosovo category alone does not reclassify all Albanian channels.
 
 Runtime remains NOT VERIFIED. In particular, Server 10's owner-reported physical playback failure is still open. Existing ServerTenPlaybackResolver, Premium access, Activation and device identity were not changed by this integration.
+
+## Refresh milestone
+
+The visible Live Refresh control reloads the selected managed registry identity and catalog. Generation guards reject stale catalog completion. The active channel keeps playing in the retained session, and stable IDs restore browser selection without resolving or starting playback again. Favorites/History stores are not cleared. Home RELOAD remembers the managed server selected in the current Home session, provided the personal active provider has not changed.
