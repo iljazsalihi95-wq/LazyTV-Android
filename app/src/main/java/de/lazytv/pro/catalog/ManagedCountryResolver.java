@@ -9,10 +9,11 @@ public final class ManagedCountryResolver {
  private static String fold(String value){return Normalizer.normalize(value==null?"":value,Normalizer.Form.NFD).replaceAll("\\p{M}","").toUpperCase(Locale.ROOT).trim();}
  private static String provider(String value){
   String iso=StalkerCountryResolver.normalize(value);if(!"OTHER".equals(iso))return iso;
+  String exact=LOCAL_NAMES.get(fold(value));if(exact!=null)return exact;
   // Reuse existing aliases read-only, without changing the shared resolver or its consumers.
   String legacy=CountryResolver.key(new Category("",value,CatalogType.LIVE,value));
   if("EXYU".equals(legacy))return legacy;iso=StalkerCountryResolver.normalize(legacy);if(!"OTHER".equals(iso))return iso;
-  return LOCAL_NAMES.getOrDefault(fold(value),"OTHER");
+  return "OTHER";
  }
  public static String resolve(String code,String country,String category,String name){
   String explicit=(category+" "+name).toUpperCase(Locale.ROOT);
