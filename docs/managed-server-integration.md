@@ -29,3 +29,5 @@ The live original API returned MASTER country metadata SHQIPERIA, KOSOVA, MAQEDO
 ## Provider 24/7 and Kosovo evidence
 
 Server 09 has 72 linear entries with explicit provider category 24/7 inside LIVE. A managed-only 24/7 section now selects these and actual 24_7 tab rows; Live selects the remaining linear rows. IDs stay unchanged and no Google Sheet rows are moved or duplicated. API type live24 is also respected. Real Movie/VOD items do not become linear solely from a 24/7 category title. Old AL may become XK from clear Kosovo category/country/channel evidence, while mixed Albania/Kosovo genres alone and authoritative non-AL provider countries remain intact.
+
+Managed catalog navigation binds the existing official tile artwork. Long OK toggles provider-scoped Favorites; episode searches stay within the selected season. The adaptive column count follows the existing catalog browser. No STBEmu/IBO assets or new proprietary graphics are used.
