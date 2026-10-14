@@ -315,5 +315,128 @@
       "registered": false
     }
   ],
-  "private_catalog_check": "Authenticated bounded reads of all seven named tabs confirm Server 11\u201320 catalogs have headers only. Anonymous CSV export is unavailable."
+  "private_catalog_check": "Authenticated bounded reads of all seven named tabs confirm Server 11\u201320 catalogs have headers only. Anonymous CSV export is unavailable.",
+  "native_identity_inventory": [
+    {
+      "server_id": "SERVER_01",
+      "unique_rows": 0,
+      "counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_02",
+      "unique_rows": 17932,
+      "counts": {
+        "LIVE": 17853,
+        "24_7": 79,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_03",
+      "unique_rows": 13166,
+      "counts": {
+        "LIVE": 12112,
+        "24_7": 1054,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_04",
+      "unique_rows": 4742,
+      "counts": {
+        "LIVE": 4742,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_05",
+      "unique_rows": 4703,
+      "counts": {
+        "LIVE": 4703,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_06",
+      "unique_rows": 24724,
+      "counts": {
+        "LIVE": 23066,
+        "24_7": 1658,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_07",
+      "unique_rows": 0,
+      "counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_08",
+      "unique_rows": 0,
+      "counts": {
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_09",
+      "unique_rows": 1222,
+      "counts": {
+        "LIVE": 1150,
+        "24_7": 72,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 0,
+      "errors": []
+    },
+    {
+      "server_id": "SERVER_10",
+      "unique_rows": 6427,
+      "counts": {
+        "LIVE": 6367,
+        "24_7": 60,
+        "VOD": 0,
+        "SERIES": 0
+      },
+      "series_parent_metadata": 3,
+      "errors": []
+    }
+  ],
+  "inventory_note": "Read-only CSV inventory, filtered by server and upserted by SOURCE_ID/ID; counts do not prove playback. VOD/SERIES URL rows currently identify linear streams; Server 10 has 3 series parent metadata records but no episode streams."
 }

@@ -25,3 +25,7 @@ Server selection uses SERVER_ID, while display names come dynamically from SOURC
 ## Country metadata verification
 
 The live original API returned MASTER country metadata SHQIPERIA, KOSOVA, MAQEDONIA E VERIUT, MALI I ZI, SERBIA, BOSNIA, KROACIA, TURQIA, ITALIA and GJERMANIA. Managed-only normalization now covers these actual values, ISO codes/names and Albanian definite forms generated from the ISO locale data. Existing EXYU regional grouping remains available. The global CountryResolver and Premium country parsing were not edited.
+
+## Provider 24/7 and Kosovo evidence
+
+Server 09 has 72 linear entries with explicit provider category 24/7 inside LIVE. A managed-only 24/7 section now selects these and actual 24_7 tab rows; Live selects the remaining linear rows. IDs stay unchanged and no Google Sheet rows are moved or duplicated. API type live24 is also respected. Real Movie/VOD items do not become linear solely from a 24/7 category title. Old AL may become XK from clear Kosovo category/country/channel evidence, while mixed Albania/Kosovo genres alone and authoritative non-AL provider countries remain intact.

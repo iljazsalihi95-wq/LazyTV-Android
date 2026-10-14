@@ -53,9 +53,9 @@ final class ManagedSheetCatalogSource {
             if(source.isEmpty())throw new CatalogException("Katalogu nuk ka identitet të qëndrueshëm kanali");
             String category=get(row,"CATEGORY");if(category.isEmpty())category="Të tjera";
             String country=ManagedCountryResolver.resolve(get(row,"COUNTRY_CODE"),get(row,"COUNTRY"),category,name);
-            CatalogType rowType=linearCommand(cmd)?CatalogType.LIVE:type;String rowTab=rowType==CatalogType.LIVE&&!"24_7".equals(tab)?"LIVE":tab;
+            CatalogType rowType=linearCommand(cmd)?CatalogType.LIVE:type;String rowTab=rowType==CatalogType.LIVE?("24_7".equals(tab)||twentyFourCategory(category)?"24_7":"LIVE"):tab;
             String categoryId=server.id+"|"+rowTab+"|"+country+"|"+category;
-            if(!cats.containsKey(categoryId)){Category value=new Category(categoryId,("24_7".equals(tab)?"24/7 • ":"")+category,rowType,country);cats.put(categoryId,value);out.categories.add(value);}
+            if(!cats.containsKey(categoryId)){Category value=new Category(categoryId,("24_7".equals(rowTab)?"24/7 • ":"")+category,rowType,country);cats.put(categoryId,value);out.categories.add(value);}
             Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server_id",server.id);metadata.put("managed_server",server.id);metadata.put("managed_label",server.name);metadata.put("managed_source_id",source);metadata.put("managed_tab",rowTab);metadata.put("managed_import_tab",tab);
             put(metadata,"portal_url",get(row,"PORTAL_URL","PORTAL"));put(metadata,"mac",get(row,"MAC"));put(metadata,"stalker_original_cmd",get(row,"ORIGINAL_CMD","CMD"));
             if(cmd.startsWith("ffmpeg ")||cmd.contains("localhost/ch/"))metadata.put("stalker_original_cmd",cmd);
@@ -75,6 +75,7 @@ final class ManagedSheetCatalogSource {
         out.items.addAll(items.values());return out;
     }
     private static int number(String raw,int fallback){try{return Math.max(1,Integer.parseInt(raw));}catch(Exception ignored){return fallback;}}
+    static boolean twentyFourCategory(String title){return title!=null&&java.util.regex.Pattern.compile("(?i)(?:^|[^0-9])24\\s*[/_-]\\s*7(?:$|[^0-9])").matcher(title).find();}
     static boolean linearCommand(String command){
         String cmd=command.toLowerCase(Locale.ROOT);
         if(cmd.contains("localhost/ch/"))return true;

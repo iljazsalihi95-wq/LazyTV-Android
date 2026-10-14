@@ -16,12 +16,15 @@ public final class ManagedCountryResolver {
   return "OTHER";
  }
  public static String resolve(String code,String country,String category,String name){
-  String explicit=(category+" "+name).toUpperCase(Locale.ROOT);
-  boolean mixed=explicit.contains("ALBANIA + KOSOVO")||explicit.contains("ALBANIA/KOSOVO");
-  if(!mixed&&explicit.matches("(?s).*\\b(KOSOVO|KOSOVA|KOSOVË|XK|RKS)\\b.*"))return "XK";
-  for(String value:new String[]{code,country}){String found=provider(value);if(!"OTHER".equals(found))return found;}
+  String primary="OTHER";for(String value:new String[]{code,country}){String found=provider(value);if(!"OTHER".equals(found)){primary=found;break;}}
+  // Correct old AL imports only with unambiguous Kosovo evidence; a mixed genre alone
+  // must not move every Albanian channel. A Kosovo-only channel name still takes priority.
+  boolean kosovo=clearKosovo(country)||clearKosovo(category)||clearKosovo(name);
+  if(kosovo&&("AL".equals(primary)||"OTHER".equals(primary)||"EXYU".equals(primary)))return "XK";
+  if(!"OTHER".equals(primary))return primary;
   String categoryCountry=StalkerCountryResolver.resolve("","",category,name);if(!"OTHER".equals(categoryCountry))return categoryCountry;
   String regional=CountryResolver.key(category);return "EXYU".equals(regional)?regional:"OTHER";
  }
+ private static boolean clearKosovo(String value){String text=fold(value);boolean kosovo=text.matches("(?s).*\\b(KOSOVO|KOSOVA|KOSOVE|XK|RKS|KS)\\b.*");boolean albania=text.matches("(?s).*\\b(ALBANIA|SHQIPERI|SHQIPERIA)\\b.*");return kosovo&&!albania;}
  public static List<CountryGroup> groups(List<Category> categories){List<Category> iso=new ArrayList<>();CountryGroup regional=new CountryGroup("EXYU","🌐 EXYU");for(Category c:categories){if("EXYU".equals(c.country))regional.categories.add(c);else iso.add(c);}List<CountryGroup> groups=StalkerCountryResolver.groups(iso);if(!regional.categories.isEmpty())groups.add(0,regional);return groups;}
 }
