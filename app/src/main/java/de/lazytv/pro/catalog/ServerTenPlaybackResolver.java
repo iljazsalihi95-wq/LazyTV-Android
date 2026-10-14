@@ -27,12 +27,23 @@ public final class ServerTenPlaybackResolver {
   * signature or expiry fields into this identity.
   */
  static Reference reference(StreamItem item){
-  if(item==null)return null;Reference signed=reference(item.streamUrl);if(signed==null)return null;
+  if(item==null)return null;
+  Reference signed=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
-  String portal=portalIdentity(hinted,signed.portal);
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
-  String mac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")?hintedMac:signed.mac;
-  String command=item.meta("stalker_original_cmd");if(command.isEmpty())command=signed.command;
+  String command=item.meta("stalker_original_cmd");
+  boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
+  // A Server 10 row may deliberately contain only stable MAG identity metadata while its
+  // STREAM_URL_CMD is expired or no longer parseable. Do not fall back to that stale URL:
+  // rebuild create_link from portal + MAC + original command when all three are available.
+  if(signed==null){
+   if(hinted.isEmpty()||!validHintedMac||command.isEmpty())return null;
+   String portal=portalIdentity(hinted,"");if(portal.isEmpty())return null;
+   return new Reference(portal,hintedMac,command);
+  }
+  String portal=portalIdentity(hinted,signed.portal);
+  String mac=validHintedMac?hintedMac:signed.mac;
+  if(command.isEmpty())command=signed.command;
   return new Reference(portal,mac,command);
  }
  private static String portalIdentity(String hint,String fallback){
