@@ -16,4 +16,8 @@ public class ManagedSheetCatalogSourceTest {
   String body="ID,SOURCE_ID,SERVER_ID,NAME,STREAM_URL_CMD,SERIES_ID,SEASON,EPISODE,EPISODE_TITLE\nparent,1,SERVER_09,Fixture,,10,,,\nepisode,2,SERVER_09,Fixture,http://fixture.invalid/series/u/p/2.mp4,10,2,3,Episode Three\n";
   Catalog c=ManagedSheetCatalogSource.parse(server,"SERIES",body);assertEquals(2,c.items.size());Series parent=null;Episode episode=null;for(StreamItem i:c.items){if(i instanceof Series)parent=(Series)i;if(i instanceof Episode)episode=(Episode)i;}assertNotNull(parent);assertNotNull(episode);assertEquals("",parent.streamUrl);assertEquals(parent.id,episode.seriesId);assertEquals(2,episode.seasonNumber);assertEquals(3,episode.episodeNumber);assertFalse(de.lazytv.pro.player.PlayerContentPolicy.playable(parent));assertTrue(de.lazytv.pro.player.PlayerContentPolicy.playable(episode));
  }
+ @Test public void registryUsesServerIdsDespiteRenamesAndDuplicateDisplayNames()throws Exception {
+  String body="ID,Emri,Aktiv,Spreadsheet_ID,Sheet_Name\nSERVER_09,Renamed,TRUE,fixture9,LIVE\nSERVER_10,Renamed,TRUE,fixture10,LIVE\nSERVER_11,Off,FALSE,fixture11,LIVE\n";
+  java.util.Map<String,ManagedSheetCatalogSource.Server> registry=ManagedSheetCatalogSource.registry(body);assertEquals(2,registry.size());assertEquals("fixture9",registry.get("SERVER_09").sheet);assertEquals("fixture10",registry.get("SERVER_10").sheet);assertFalse(registry.containsKey("Renamed"));
+ }
 }

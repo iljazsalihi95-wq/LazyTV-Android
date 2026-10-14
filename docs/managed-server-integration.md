@@ -17,3 +17,7 @@ Runtime remains NOT VERIFIED. In particular, Server 10's owner-reported physical
 The visible Live Refresh control reloads the selected managed registry identity and catalog. Generation guards reject stale catalog completion. The active channel keeps playing in the retained session, and stable IDs restore browser selection without resolving or starting playback again. Favorites/History stores are not cleared. Home RELOAD remembers the managed server selected in the current Home session, provided the personal active provider has not changed.
 
 Managed on-demand player contexts are ephemeral and scoped to the managed server. They do not create/edit saved personal playlists. Signed movie links without an original VOD command are refreshed through the catalog, not rewritten as a Live channel command.
+
+## Stable registry selection and Free TV
+
+Server selection uses SERVER_ID, while display names come dynamically from SOURCES. Renaming a server or giving two servers the same display name cannot change its source identity, Favorites/History key, or sheet target. Original API and registry discovery are independent; one unavailable source reports a warning while the other remains usable. Home Live with no personal provider now opens the existing MASTER API catalog (observed 1,001 active rows), matching the owner system; the separate public FREE_TV playlist source remains available.

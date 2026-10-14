@@ -10,12 +10,15 @@ final class ManagedSheetCatalogSource {
         Server(String id,String name,String sheet){this.id=id;this.name=name;this.sheet=sheet;}
     }
     Map<String,Server> servers() throws CatalogException {
+        return registry(fetch(REGISTRY,"SOURCES"));
+    }
+    static Map<String,Server> registry(String body)throws CatalogException {
         Map<String,Server> result=new LinkedHashMap<>();
-        for(Map<String,String> row:rows(fetch(REGISTRY,"SOURCES"))){
+        for(Map<String,String> row:rows(body)){
             String id=get(row,"ID"),sheet=get(row,"SPREADSHEET_ID");
             if(!id.matches("SERVER_[0-9]+")||!sheet.matches("[A-Za-z0-9_-]+")||off(get(row,"AKTIV")))continue;
             String name=get(row,"EMRI");if(name.isEmpty())name=id;
-            result.put(name,new Server(id,name,sheet));
+            result.put(id,new Server(id,name,sheet));
         }
         return result;
     }
@@ -53,7 +56,7 @@ final class ManagedSheetCatalogSource {
             CatalogType rowType=linearCommand(cmd)?CatalogType.LIVE:type;String rowTab=rowType==CatalogType.LIVE&&!"24_7".equals(tab)?"LIVE":tab;
             String categoryId=server.id+"|"+rowTab+"|"+country+"|"+category;
             if(!cats.containsKey(categoryId)){Category value=new Category(categoryId,("24_7".equals(tab)?"24/7 • ":"")+category,rowType,country);cats.put(categoryId,value);out.categories.add(value);}
-            Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server_id",server.id);metadata.put("managed_server",server.name);metadata.put("managed_source_id",source);metadata.put("managed_tab",rowTab);metadata.put("managed_import_tab",tab);
+            Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server_id",server.id);metadata.put("managed_server",server.id);metadata.put("managed_label",server.name);metadata.put("managed_source_id",source);metadata.put("managed_tab",rowTab);metadata.put("managed_import_tab",tab);
             put(metadata,"portal_url",get(row,"PORTAL_URL","PORTAL"));put(metadata,"mac",get(row,"MAC"));put(metadata,"stalker_original_cmd",get(row,"ORIGINAL_CMD","CMD"));
             if(cmd.startsWith("ffmpeg ")||cmd.contains("localhost/ch/"))metadata.put("stalker_original_cmd",cmd);
             for(String field:new String[]{"PLOT","DESCRIPTION","YEAR","RATING","DURATION","POSTER","BACKDROP","GENRE","DIRECTOR","CAST"})put(metadata,field.toLowerCase(Locale.ROOT),get(row,field));
