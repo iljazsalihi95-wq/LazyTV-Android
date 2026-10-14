@@ -1,0 +1,248 @@
+{
+  "checked_utc": "2026-10-14",
+  "source": "Live named Google Sheets tabs; no Sheet1 reads",
+  "runtime": "NOT VERIFIED",
+  "registry": "SOURCES currently registers SERVER_01 through SERVER_10; 11-20 not registered and CSV export unavailable (not confirmed empty).",
+  "servers": [
+    {
+      "server_id": "SERVER_01",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0,
+        "CATEGORIES": 0,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_02",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 62572,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0,
+        "CATEGORIES": 0,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_03",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 14664,
+        "24_7": 1092,
+        "VOD": 1886,
+        "SERIES": 51,
+        "CATEGORIES": 345,
+        "STATUS": 7
+      }
+    },
+    {
+      "server_id": "SERVER_04",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 4728,
+        "24_7": 0,
+        "VOD": 12,
+        "SERIES": 2,
+        "CATEGORIES": 141,
+        "STATUS": 2
+      }
+    },
+    {
+      "server_id": "SERVER_05",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 8935,
+        "24_7": 0,
+        "VOD": 380,
+        "SERIES": 0,
+        "CATEGORIES": 139,
+        "STATUS": 5
+      }
+    },
+    {
+      "server_id": "SERVER_06",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 44427,
+        "24_7": 2632,
+        "VOD": 732,
+        "SERIES": 434,
+        "CATEGORIES": 3,
+        "STATUS": 4
+      }
+    },
+    {
+      "server_id": "SERVER_07",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0,
+        "CATEGORIES": 0,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_08",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 0,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0,
+        "CATEGORIES": 0,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_09",
+      "tabs": {
+        "INFO": 0,
+        "LIVE": 1222,
+        "24_7": 0,
+        "VOD": 0,
+        "SERIES": 0,
+        "CATEGORIES": 23,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_10",
+      "tabs": {
+        "INFO": 2,
+        "LIVE": 6281,
+        "24_7": 60,
+        "VOD": 94,
+        "SERIES": 3,
+        "CATEGORIES": 109,
+        "STATUS": 0
+      }
+    },
+    {
+      "server_id": "SERVER_11",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_12",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_13",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_14",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_15",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_16",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_17",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_18",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_19",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    },
+    {
+      "server_id": "SERVER_20",
+      "tabs": {
+        "INFO": "HTTPError",
+        "LIVE": "HTTPError",
+        "24_7": "HTTPError",
+        "VOD": "HTTPError",
+        "SERIES": "HTTPError",
+        "CATEGORIES": "HTTPError",
+        "STATUS": "HTTPError"
+      }
+    }
+  ]
+}
