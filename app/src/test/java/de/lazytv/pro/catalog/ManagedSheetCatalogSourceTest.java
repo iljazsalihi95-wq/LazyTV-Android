@@ -20,4 +20,5 @@ public class ManagedSheetCatalogSourceTest {
   String body="ID,Emri,Aktiv,Spreadsheet_ID,Sheet_Name\nSERVER_09,Renamed,TRUE,fixture9,LIVE\nSERVER_10,Renamed,TRUE,fixture10,LIVE\nSERVER_11,Off,FALSE,fixture11,LIVE\n";
   java.util.Map<String,ManagedSheetCatalogSource.Server> registry=ManagedSheetCatalogSource.registry(body);assertEquals(2,registry.size());assertEquals("fixture9",registry.get("SERVER_09").sheet);assertEquals("fixture10",registry.get("SERVER_10").sheet);assertFalse(registry.containsKey("Renamed"));
  }
+ @Test public void actualMasterCountryMetadataAndRegionalGroupsRemainUsable(){String[] names={"SHQIPERIA","KOSOVA","MAQEDONIA E VERIUT","MALI I ZI","SERBIA","BOSNIA","KROACIA","TURQIA","ITALIA","GJERMANIA"},codes={"AL","XK","MK","ME","RS","BA","HR","TR","IT","DE"};for(int n=0;n<names.length;n++)assertEquals(names[n],codes[n],ManagedCountryResolver.resolve("",names[n],"General","Fixture"));assertEquals("EXYU",ManagedCountryResolver.resolve("","EXYU","Cinema","Fixture"));assertEquals("EXYU",ManagedCountryResolver.groups(java.util.Collections.singletonList(new Category("id","Cinema",CatalogType.LIVE,"EXYU"))).get(0).key);}
 }

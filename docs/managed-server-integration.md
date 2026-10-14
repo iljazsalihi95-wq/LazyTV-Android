@@ -21,3 +21,7 @@ Managed on-demand player contexts are ephemeral and scoped to the managed server
 ## Stable registry selection and Free TV
 
 Server selection uses SERVER_ID, while display names come dynamically from SOURCES. Renaming a server or giving two servers the same display name cannot change its source identity, Favorites/History key, or sheet target. Original API and registry discovery are independent; one unavailable source reports a warning while the other remains usable. Home Live with no personal provider now opens the existing MASTER API catalog (observed 1,001 active rows), matching the owner system; the separate public FREE_TV playlist source remains available.
+
+## Country metadata verification
+
+The live original API returned MASTER country metadata SHQIPERIA, KOSOVA, MAQEDONIA E VERIUT, MALI I ZI, SERBIA, BOSNIA, KROACIA, TURQIA, ITALIA and GJERMANIA. Managed-only normalization now covers these actual values, ISO codes/names and Albanian definite forms generated from the ISO locale data. Existing EXYU regional grouping remains available. The global CountryResolver and Premium country parsing were not edited.
