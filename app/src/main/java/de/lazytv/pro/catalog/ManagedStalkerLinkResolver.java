@@ -29,7 +29,17 @@ final class ManagedStalkerLinkResolver {
   if(ref==null)throw new CatalogException("Mungon identiteti i portalit për fresh create_link");
   StalkerCatalogSource source=session(key(item,ref));Playlist portal=portal(item,ref);
   StreamItem original;if(item instanceof Episode){Episode ep=(Episode)item;original=new Episode(item.id,item.name,ep.seriesId,item.categoryId,item.logo,ref.command,ep.extension,ep.duration,ep.seasonNumber,ep.episodeNumber,item.metadata);}else original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,item.type);
-  StalkerCatalogSource.LinkResult fresh;synchronized(source){fresh=source.resolve(portal,original);}
+  StalkerCatalogSource.LinkResult fresh;
+  synchronized(source){
+   try{fresh=source.resolve(portal,original);}
+   catch(ProviderHttpException e){
+    if(e.status!=456)throw e;
+    // Some MAG/Stalker portals use HTTP 456 for a stale/invalid device session.
+    // Clear token/cookies and perform exactly one fresh handshake + create_link retry.
+    source.clear();
+    fresh=source.resolve(portal,original);
+   }
+  }
   Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("stalker_session","true");
   return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,fresh.headers,metadata);
  }
