@@ -13,14 +13,13 @@ public final class ManagedBackendCatalogSource {
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
  public Catalog load(String server)throws CatalogException {
+  // Method B: every managed server first uses the exact owner API contract used by LazyIPTV.
+  // No create_link is performed here. Sheets are catalog fallback only when that API has no usable rows.
+  CatalogException apiFailure=null;
+  try{Catalog api=parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
-  if(registered!=null){
-   CatalogException sheetFailure=null;
-   try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}
-   try{return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));}
-   catch(CatalogException apiFailure){if(sheetFailure!=null)throw sheetFailure;throw apiFailure;}
-  }
-  return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));
+  if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException sheetFailure){if(apiFailure!=null)throw apiFailure;throw sheetFailure;}}
+  if(apiFailure!=null)throw apiFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
  }
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
   Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
@@ -33,11 +32,6 @@ public final class ManagedBackendCatalogSource {
  public SeriesDetails loadSeries(String server,Series series)throws CatalogException {Catalog all=load(server);SeriesDetails out=new SeriesDetails();out.metadata.putAll(series.metadata);Set<Integer> seasons=new TreeSet<>();for(StreamItem item:all.items)if(item instanceof Episode){Episode episode=(Episode)item;if(series.id.equals(episode.seriesId)){seasons.add(episode.seasonNumber);out.episodes.computeIfAbsent(episode.seasonNumber,n->new ArrayList<>()).add(episode);}}for(int number:seasons){out.seasons.add(new Season(series.id+"|"+number,"Sezoni "+number,series.id,number,series.logo));out.episodes.get(number).sort((a,b)->Integer.compare(a.episodeNumber,b.episodeNumber));}return out;}
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
   StreamItem item=selected;
-  // Managed servers follow the same proven route as the original LazyIPTV backend: when the
-  // catalog already supplies a playable HTTP(S) URL, play that URL directly. Do not replace a
-  // working backend URL with a second MAG create_link merely because portal metadata is present.
-  // Refresh an expiring backend row when requested, and reserve native Stalker resolution for
-  // original non-HTTP MAG commands only.
   if(forceFresh||expiring(selected.streamUrl)){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
   String url=item.streamUrl;
   if(url!=null&&url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,item.metadata);}
