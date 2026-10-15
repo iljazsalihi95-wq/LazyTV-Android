@@ -13,7 +13,16 @@ public final class ManagedBackendCatalogSource {
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
 
- public Catalog load(String server)throws CatalogException {ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;if(registered!=null)return sheets.load(registered);return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));}
+ public Catalog load(String server)throws CatalogException {
+  ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
+  if(registered!=null){
+   CatalogException sheetFailure=null;
+   try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}
+   try{return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));}
+   catch(CatalogException apiFailure){if(sheetFailure!=null)throw sheetFailure;throw apiFailure;}
+  }
+  return parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));
+ }
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
   Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
   for(Category c:all.categories)if(c.type==type)out.categories.add(c);
