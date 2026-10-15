@@ -12,7 +12,6 @@ public final class ManagedBackendCatalogSource {
   try{for(ManagedSheetCatalogSource.Server server:sheets.servers().values()){if(!result.contains(server.id))result.add(server.id);labels.put(server.id,server.name.equals(server.id)?server.id:server.id+" • "+server.name);}}catch(CatalogException unavailable){registryError=registryError.isEmpty()?"Regjistri SOURCES nuk mund të lexohet":registryError+"; SOURCES nuk mund të lexohet";}
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
-
  public Catalog load(String server)throws CatalogException {
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
   if(registered!=null){
@@ -31,16 +30,13 @@ public final class ManagedBackendCatalogSource {
   }
   if(out.isEmpty()&&firstFailure!=null)throw firstFailure;return out;
  }
-
  public SeriesDetails loadSeries(String server,Series series)throws CatalogException {Catalog all=load(server);SeriesDetails out=new SeriesDetails();out.metadata.putAll(series.metadata);Set<Integer> seasons=new TreeSet<>();for(StreamItem item:all.items)if(item instanceof Episode){Episode episode=(Episode)item;if(series.id.equals(episode.seriesId)){seasons.add(episode.seasonNumber);out.episodes.computeIfAbsent(episode.seasonNumber,n->new ArrayList<>()).add(episode);}}for(int number:seasons){out.seasons.add(new Season(series.id+"|"+number,"Sezoni "+number,series.id,number,series.logo));out.episodes.get(number).sort((a,b)->Integer.compare(a.episodeNumber,b.episodeNumber));}return out;}
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
-  // Managed LIVE rows with stable portal+MAC+command now use exactly the same proven
-  // fresh create_link/session path as Server 10. The Sheet URL remains only a reference;
-  // expiring playback tokens are never reused as the primary managed LIVE path.
-  if(selected!=null&&selected.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(selected))return ServerTenPlaybackResolver.resolve(selected);
+  // Managed servers keep their own isolated Stalker/MAG session. Do not route every managed
+  // LIVE row through the dedicated Server 10 resolver: doing so aliases provider sessions and
+  // can invalidate otherwise working Server 10/other-server playback.
   if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;if(forceFresh||expiring(selected.streamUrl)){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
-  if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);String url=item.streamUrl;if(url==null||!url.matches("(?i)^https?://.*"))throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,item.metadata);
  }
  static boolean expiring(String url){if(url==null)return false;String lower=url.toLowerCase(Locale.ROOT);return lower.contains("play_token=")||lower.contains("token=")||lower.contains("expires=")||lower.startsWith("ffmpeg ");}
