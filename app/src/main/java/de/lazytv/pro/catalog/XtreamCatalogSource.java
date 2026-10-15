@@ -1,7 +1,7 @@
 package de.lazytv.pro.catalog;
 import org.json.*;import java.util.*;import android.content.Context;import de.lazytv.pro.playlist.Playlist;
 public class XtreamCatalogSource {private final Context context;public XtreamCatalogSource(){this.context=null;}public XtreamCatalogSource(Context c){this.context=c==null?null:c.getApplicationContext();}public Catalog load(Playlist p)throws CatalogException {
- try{return loadApi(p);}catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;return loadM3u(p,null);}
+ try{return loadApi(p);}catch(ProviderHttpException error){if(error.status==401||error.status==403)throw error;return loadM3u(p,null);}
 }
 public Catalog loadType(Playlist p,CatalogType type)throws CatalogException {
  try{return loadApiType(p,type);}catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;return loadM3u(p,type);}
