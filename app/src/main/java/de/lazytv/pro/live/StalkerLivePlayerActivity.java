@@ -96,17 +96,18 @@ public final class StalkerLivePlayerActivity extends Activity {
     private void selectChannel(int pos){if(pos<0||pos>=channels.size())return;play(channels.get(pos));}
     private void adjacent(int delta){if(channels.isEmpty())return;int i=current==null?-1:channels.indexOf(current);i=(i+delta+channels.size())%channels.size();channelsView.setSelection(i);play(channels.get(i));}
 
-    /** One selection = one resolver/create_link path. LivePlaybackSession owns resolve, retry and fallback. */
+    /** Resolve create_link once off the UI thread; LivePlaybackSession owns playback and bounded retry. */
     private void play(StreamItem item){
         final long ticket=++selectionGeneration;
-        if(playbackSession==null||ticket!=selectionGeneration)return;
-        current=item;
-        idle.setVisibility(View.GONE);
-        loading.setVisibility(View.VISIBLE);
-        status.setVisibility(View.VISIBLE);
-        status.setText("LAZY STB • create_link…");
+        if(playbackSession==null)return;
+        playbackSession.beginSelection();
+        loading.setVisibility(View.VISIBLE);status.setVisibility(View.VISIBLE);status.setText("LAZY STB • create_link…");
         title.setText(item.name==null?"LAZY STB":item.name);
-        playbackSession.play(item);
+        worker.execute(()->{try{
+            StalkerCatalogSource.LinkResult link=source.resolve(playlist,item);
+            ResolvedStream stream=resolved(item,link);
+            runOnUiThread(()->{if(ticket!=selectionGeneration||isFinishing()||playbackSession==null)return;current=item;idle.setVisibility(View.GONE);playbackSession.play(item,stream);});
+        }catch(Exception e){runOnUiThread(()->{if(ticket!=selectionGeneration||isFinishing())return;loading.setVisibility(View.GONE);status.setVisibility(View.VISIBLE);status.setText("LAZY STB • Kanali nuk u hap");Toast.makeText(this,safe(e),Toast.LENGTH_LONG).show();});}});
     }
 
     private ArrayAdapter<String> adapter(List<String> data){return new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,data);}
