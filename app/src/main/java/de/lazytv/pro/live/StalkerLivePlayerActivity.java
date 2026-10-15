@@ -1,6 +1,7 @@
 package de.lazytv.pro.live;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.View;
@@ -29,8 +30,8 @@ import de.lazytv.pro.playlist.PlaylistType;
 /**
  * Dedicated native STB/MAG entry point.
  *
- * Identity is intentionally Portal + MAC only.  LazyTV does not require a
- * user-entered serial number for this mode.  The MAG session, catalog and
+ * Identity is intentionally Portal + MAC only. LazyTV does not require a
+ * user-entered serial number for this mode. The MAG session, catalog and
  * playback surface live here and are not backed by LivePlaybackSession.
  */
 @UnstableApi
@@ -91,8 +92,16 @@ public final class StalkerLivePlayerActivity extends Activity {
         playerView.setUseController(false); playerView.setFocusable(true);
         playerView.setOnClickListener(v->setFullscreen(!fullscreen));
         findViewById(R.id.live_player_panel).setOnClickListener(v->setFullscreen(!fullscreen));
-        // STB owns LIVE first. VOD/SERIES continue through their dedicated catalog/player flows.
         findViewById(R.id.live_nav_live).setOnClickListener(v->countriesView.requestFocus());
+        findViewById(R.id.live_nav_movies).setOnClickListener(v->openCatalog(CatalogType.MOVIES));
+        findViewById(R.id.live_nav_series).setOnClickListener(v->openCatalog(CatalogType.SERIES));
+    }
+
+    private void openCatalog(CatalogType type) {
+        Intent intent=new Intent(this,CatalogActivity.class);
+        intent.putExtra(CatalogActivity.EXTRA_PLAYLIST_ID,playlist.getId());
+        intent.putExtra(CatalogActivity.EXTRA_TYPE,type==CatalogType.SERIES?"SERIES":"MOVIES");
+        startActivity(intent);
     }
 
     private void createPlayer() {
