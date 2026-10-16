@@ -49,20 +49,20 @@ final class LazyStbPlaybackSession {
         surface=new SurfaceView(context);surface.setVisibility(View.GONE);surface.setFocusable(false);frame.addView(surface,new FrameLayout.LayoutParams(-1,-1));
         player=new ExoPlayer.Builder(context).setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context,http))).build();view.setPlayer(player);
         surface.getHolder().addCallback(new SurfaceHolder.Callback(){
-            public void surfaceCreated(SurfaceHolder holder){if(closed)return;if(active==Engine.IJK&&ijk!=null)ijk.setDisplay(holder);if(active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.setDisplay(holder);}
+            public void surfaceCreated(SurfaceHolder holder){if(closed)return;if(active==Engine.IJK&&ijk!=null)StbNativeCalls.run(()->ijk.setDisplay(holder));if(active==Engine.ANDROID&&androidPlayer!=null)StbNativeCalls.run(()->androidPlayer.setDisplay(holder));}
             public void surfaceChanged(SurfaceHolder h,int f,int w,int height){if(active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.getVLCVout().setWindowSize(w,height);}
-            public void surfaceDestroyed(SurfaceHolder holder){if(ijk!=null)ijk.setDisplay(null);if(androidPlayer!=null)androidPlayer.setDisplay(null);}
+            public void surfaceDestroyed(SurfaceHolder holder){if(ijk!=null)StbNativeCalls.run(()->ijk.setDisplay(null));if(androidPlayer!=null)StbNativeCalls.run(()->androidPlayer.setDisplay(null));}
         });
         frame.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(vlcPlayer!=null&&active==Engine.VLC)vlcPlayer.getVLCVout().setWindowSize(r-l,b-t);});
     }
-    void setEngine(Engine value){engine=value;if(channel!=null)select(channel);}
+    void setEngine(Engine value){if(closed)return;engine=value;if(channel!=null)select(channel);}
     Engine engine(){return engine;}
     StbProtocol.Channel current(){return channel;}
     long ticket(){return ticket;}
     boolean accepts(long value){return generation.accepts(value);}
     private boolean current(long selected,long engineAttempt){return generation.accepts(selected)&&attempt==engineAttempt;}
     void select(StbProtocol.Channel next){
-        cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;reloadAttempted=false;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
+        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;reloadAttempted=false;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
     }
     private void resolve(long selected,boolean reload){
         StbProtocol.Channel item=channel;
@@ -120,10 +120,10 @@ final class LazyStbPlaybackSession {
         if(!current(selected,engineAttempt))return;cancelWatchdog();attempt++;stopEngines();
         if(expired&&!reloadAttempted){reloadAttempted=true;events.loading();resolve(selected,true);}else next(selected);
     }
-    private void stopEngines(){prepared=false;player.stop();try{if(vlcPlayer!=null){vlcPlayer.setEventListener(null);vlcPlayer.stop();vlcPlayer.getVLCVout().detachViews();}}catch(Exception ignored){}try{if(ijk!=null)ijk.reset();}catch(Exception ignored){}try{if(androidPlayer!=null)androidPlayer.reset();}catch(Exception ignored){}}
+    private void stopEngines(){prepared=false;StbNativeCalls.run(player::stop);try{if(vlcPlayer!=null){vlcPlayer.setEventListener(null);vlcPlayer.stop();vlcPlayer.getVLCVout().detachViews();}}catch(Exception|LinkageError ignored){}try{if(ijk!=null)ijk.reset();}catch(Exception|LinkageError ignored){}try{if(androidPlayer!=null)androidPlayer.reset();}catch(Exception|LinkageError ignored){}}
     private void cancelWatchdog(){if(watchdog!=null){ui.removeCallbacks(watchdog);watchdog=null;}}
     private void watch(long selected,long engineAttempt){cancelWatchdog();watchdog=()->{if(foreground)failed(selected,engineAttempt,false);};ui.postDelayed(watchdog,25000);}
-    void pause(){foreground=false;cancelWatchdog();player.pause();try{if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.pause();if(prepared&&active==Engine.IJK&&ijk!=null)ijk.pause();if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.pause();}catch(Exception ignored){}}
-    void resume(){foreground=true;if(channel==null)return;try{if(active==Engine.MEDIA3)player.play();else if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.play();else if(prepared&&active==Engine.IJK&&ijk!=null)ijk.start();else if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.start();if(active!=null&&!prepared)watch(ticket,attempt);}catch(Exception ignored){}}
-    void close(){if(closed)return;closed=true;generation.close();attempt++;resolver.shutdownNow();ui.removeCallbacksAndMessages(null);stopEngines();view.setPlayer(null);player.release();if(vlcPlayer!=null)vlcPlayer.release();if(vlc!=null)vlc.release();if(ijk!=null)ijk.release();if(androidPlayer!=null)androidPlayer.release();}
+    void pause(){if(closed)return;foreground=false;cancelWatchdog();player.pause();try{if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.pause();if(prepared&&active==Engine.IJK&&ijk!=null)ijk.pause();if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.pause();}catch(Exception|LinkageError ignored){}}
+    void resume(){if(closed)return;foreground=true;if(channel==null)return;try{if(active==Engine.MEDIA3)player.play();else if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.play();else if(prepared&&active==Engine.IJK&&ijk!=null)ijk.start();else if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.start();if(active!=null&&!prepared)watch(ticket,attempt);}catch(Exception|LinkageError ignored){}}
+    void close(){if(closed)return;closed=true;generation.close();attempt++;resolver.shutdownNow();ui.removeCallbacksAndMessages(null);stopEngines();view.setPlayer(null);StbNativeCalls.run(player::release);if(vlcPlayer!=null)StbNativeCalls.run(vlcPlayer::release);if(vlc!=null)StbNativeCalls.run(vlc::release);if(ijk!=null)StbNativeCalls.run(ijk::release);if(androidPlayer!=null)StbNativeCalls.run(androidPlayer::release);}
 }
