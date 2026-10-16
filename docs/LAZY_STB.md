@@ -4,11 +4,13 @@ Independent native module under `de.lazytv.pro.stb`.
 
 ## Boundaries
 
-The LAZY STB button opens `LazyStbActivity`, not a playlist editor or a Live activity.
+The dedicated LAZY STB card and original STB vector icon in Home open `LazyStbActivity`.
+STB is removed from the playlist-manager shortcut row. Connect authenticates, then opens a
+private portal menu with Profile, Live TV, Movies and Series; it does not auto-open Live.
 Profiles, favorites, protocol DTOs, transport, EPG and playback have private STB ownership.
 No dependency on LiveTvActivity, LivePlaybackSession, LazyTV catalog DTOs or WebView.
 Xtream, M3U, Premium, Activation and managed server implementations are unchanged.
-The manifest and the existing playlist-manager STB button are the only integration hooks.
+Home contains the entry hook. Removing the old STB shortcut does not change M3U/Xtream actions.
 Older ordinary portal playlists retain their previous route; the dedicated LAZY STB entry is independent.
 
 ## Flow
@@ -60,3 +62,27 @@ EPG/progress, stale generations, stable previous/next and favorite identity sepa
 CI establishes build/test success. Physical playback, D-pad/surface behavior and compatibility
 with a real Portal/MAC remain NOT VERIFIED until device testing. There is no claim of support
 for every codec or proprietary portal/device-binding extension.
+
+## Video club and navigation
+
+Movies request `vod/get_categories` and paginated `vod/get_ordered_list`. Series use
+`series` categories/lists where supplied; an absent/empty series category API may use
+VOD categories with explicit `is_series` metadata. A category name never turns a linear
+channel into a film. Explicit provider movie/series records are excluded from Live.
+
+Series, season, episode and file IDs are kept distinct. Series/season objects cannot be
+played. Modern `movie_id` -> `season_id` -> `episode_id` -> file navigation is supported;
+season-provided episode number arrays are also supported when an original cmd exists.
+`vod/create_link` receives the original file cmd and episode number. No synthetic file
+URL is built from an episode database ID. Pages are loaded on demand (maximum page 500).
+A movie ending normally does not trigger Live-style engine fallback.
+
+Profile cards are clickable, with full-height Connect/Edit/Delete controls. Portal-menu
+controls remain explicit in Live and video club views. System insets prevent STB content
+from drawing under the phone status/navigation bars; narrow action rows scroll horizontally.
+
+The provider's remote HTML/JavaScript UI is not rendered. That is incompatible with the
+existing no-WebView constraint. This is an original native client for its catalog services.
+The reported physical crash has not been reproduced with a device trace: decoder surface
+and release calls, closed sessions and stale list positions now have targeted guards, but
+a successful unit test or build is not evidence that the exact device crash is eliminated.
