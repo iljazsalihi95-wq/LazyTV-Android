@@ -28,6 +28,9 @@ public final class ServerTenPlaybackResolver {
   */
  static Reference reference(StreamItem item){
   if(item==null)return null;
+  // Method B rows are already resolved by the owner LazyTV API. They must be handed to the
+  // player byte-for-byte and must never be converted back into MAG/create_link requests.
+  if("true".equalsIgnoreCase(item.meta("managed_direct")))return null;
   Reference signed=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
