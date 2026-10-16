@@ -12,7 +12,14 @@ public final class HttpClient {
    HttpURLConnection c=null;
    try{
     c=(HttpURLConnection)url.openConnection();
-    c.setConnectTimeout(20000);c.setReadTimeout(45000);c.setInstanceFollowRedirects(false);
+    // Xtream catalogs and remote M3U files can be very large. Give only those provider
+    // endpoints a longer response window; managed LazyTV/Sheets/Stalker traffic keeps the
+    // existing timeouts so already-working server paths are not changed.
+    String requestPath=url.getPath()==null?"":url.getPath().toLowerCase(Locale.US);
+    boolean largePlaylistRequest=requestPath.endsWith("/player_api.php")||requestPath.endsWith("/get.php");
+    c.setConnectTimeout(largePlaylistRequest?35000:20000);
+    c.setReadTimeout(largePlaylistRequest?180000:45000);
+    c.setInstanceFollowRedirects(false);
     c.setRequestMethod("GET");c.setUseCaches(false);c.setDoInput(true);
     boolean stalker=headers!=null&&headers.containsKey("X-User-Agent");
     c.setRequestProperty("User-Agent",stalker?"Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG254 stbapp":"Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");
