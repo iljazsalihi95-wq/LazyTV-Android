@@ -17,7 +17,9 @@ public final class LazyStbActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private volatile long generation;
     private StbPortalClient client;
-    @Override protected void onCreate(Bundle state){super.onCreate(state);store=new StbProfileStore(this);build();}
+    private StbBrowser browser;
+    private volatile StbPortalClient pending;
+    @Override protected void onCreate(Bundle state){super.onCreate(state);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);store=new StbProfileStore(this);build();}
     private void build(){
         root=new LinearLayout(this);root.setOrientation(1);root.setPadding(24,16,24,16);root.setBackgroundColor(Color.rgb(3,15,28));
         TextView title=new TextView(this);title.setText("LAZY STB");title.setTextSize(26);title.setTextColor(Color.WHITE);root.addView(title);
@@ -38,7 +40,11 @@ public final class LazyStbActivity extends Activity {
     private EditText field(LinearLayout parent,String hint,String value){EditText e=new EditText(this);e.setHint(hint);e.setText(value);e.setSingleLine(true);parent.addView(e);return e;}
     private void connect(StbProfileStore.Profile p){
         long ticket=++generation;status.setText("Handshake • profile • categories • channels…");
-        worker.execute(()->{StbPortalClient connection=null;try{connection=new StbPortalClient(p.portal,p.mac);List<StbProtocol.Genre> genres=connection.genres();List<StbProtocol.Channel> channels=connection.channels();StbPortalClient ready=connection;runOnUiThread(()->{if(ticket!=generation||isFinishing()){ready.close();return;}if(client!=null)client.close();client=ready;status.setText("Portali u lidh • "+genres.size()+" kategori • "+channels.size()+" kanale");});}catch(Exception e){if(connection!=null)connection.close();runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText("Lidhja STB dështoi. Kontrollo portalin/MAC dhe provo përsëri.");});}});
+        worker.execute(()->{StbPortalClient connection=null;try{connection=new StbPortalClient(p.portal,p.mac);pending=connection;List<StbProtocol.Genre> genres=connection.genres();List<StbProtocol.Channel> channels=connection.channels();StbPortalClient ready=connection;runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed()){ready.close();return;}if(client!=null)client.close();client=ready;pending=null;browser=new StbBrowser(this,p,ready,genres,channels,this::returnToProfiles);setContentView(browser.root);});}catch(Exception e){if(connection!=null)connection.close();runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText("Lidhja STB dështoi. Kontrollo portalin/MAC dhe provo përsëri.");});}});
     }
-    @Override protected void onDestroy(){generation++;worker.shutdownNow();if(client!=null)client.close();super.onDestroy();}
+    private void returnToProfiles(){generation++;if(browser!=null){browser.close();browser=null;}if(client!=null){client.close();client=null;}build();}
+    @Override public boolean dispatchKeyEvent(KeyEvent event){if(browser!=null&&browser.key(event))return true;return super.dispatchKeyEvent(event);}
+    @Override protected void onStart(){super.onStart();if(browser!=null)browser.resume();}
+    @Override protected void onStop(){if(browser!=null)browser.pause();super.onStop();}
+    @Override protected void onDestroy(){generation++;worker.shutdownNow();if(browser!=null)browser.close();if(pending!=null)pending.close();if(client!=null)client.close();super.onDestroy();}
 }
