@@ -14,7 +14,7 @@ public final class ManagedBackendCatalogSource {
  }
  public Catalog load(String server)throws CatalogException {
   // Registered SERVER_XX entries are authoritative LazyMapper sheets. Load them first, like
-  // Premium, so a stale/partial owner-API response cannot hide a populated server (e.g. Server 06).
+  // Premium, so a stale/partial owner-API response cannot hide a populated server.
   CatalogException sheetFailure=null;
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
   if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}}
@@ -33,8 +33,12 @@ public final class ManagedBackendCatalogSource {
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
   StreamItem item=selected;
   if(forceFresh){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
-  String url=item.streamUrl;
-  if(url!=null&&url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,item.metadata);}
+  String url=item.streamUrl==null?"":item.streamUrl.trim();
+  // Premium/LazyIPTV Method B: a managed row that already carries a playable HTTP(S) URL is
+  // handed directly to the player. LazyMapper often prefixes that URL with "ffmpeg "; this is
+  // a transport hint, not a reason to run a second MAG/create_link resolver.
+  if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
+  if(url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("managed_direct","true");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,metadata);}
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);
   throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");
  }
