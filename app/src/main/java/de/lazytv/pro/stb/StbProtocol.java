@@ -10,6 +10,7 @@ public final class StbProtocol {
     public static List<String> endpoints(String input) {
         try {
             String raw=input.trim();
+            if(raw.contains("://") && !raw.matches("(?i)^https?://.*")) throw new Exception();
             if(!raw.matches("(?i)^https?://.*")) raw="http://"+raw;
             URI u=new URI(raw);
             if(u.getHost()==null || u.getUserInfo()!=null || !("http".equalsIgnoreCase(u.getScheme())||"https".equalsIgnoreCase(u.getScheme()))) throw new Exception();
