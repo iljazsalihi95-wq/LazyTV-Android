@@ -40,10 +40,10 @@ public final class ManagedBackendCatalogSource {
   StreamItem item=selected;
   if(forceFresh){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  // LazyMapper sheets can contain an old play_token. For managed SERVER_XX providers (except the
-  // already-proven SERVER_10 path), ask the owner API for the same channel before handing an
-  // expiring URL to the player. This keeps Premium-style direct playback and avoids create_link.
-  if(server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw)){
+  // First click must behave like Premium: hand a direct HTTP(S) URL to the player immediately.
+  // Refresh an expiring LazyMapper token only on the bounded retry path after playback actually
+  // fails; otherwise a slow owner-API request can make a visible channel look unclickable.
+  if(forceFresh&&server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw)){
    try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));for(StreamItem candidate:fresh.items){String source=item.meta("managed_source_id");boolean sameId=candidate.id.equals(item.id)||(!source.isEmpty()&&candidate.id.equals(source))||item.id.endsWith("|"+candidate.id);if(candidate.type==item.type&&(sameId||candidate.name.equals(item.name))){item=candidate;raw=item.streamUrl==null?"":item.streamUrl.trim();break;}}}catch(CatalogException unavailable){/* Keep the sheet row as a bounded fallback. */}
   }
   String url=raw;
