@@ -31,7 +31,10 @@ ISO-name scanning during D-pad navigation. Logo work/size/cache are bounded.
 Large preview above metadata/controls; countries 16%, categories 24%, channels 60% below.
 Country display uses codes; abbreviations are display-only. Full channel names are retained.
 One LazyStbPlaybackSession owns Media3 ExoPlayer; HLS/DASH/TS are supported through Media3.
-VLC is selectable and is attempted once as the automatic fallback. Existing global engines
+VLC, IJK/FFmpeg and Android MediaPlayer are independently selectable. Auto tries Media3,
+VLC, IJK and Android once each; it stops after that finite sequence. Engine callbacks
+have a separate attempt fence as well as the channel generation fence. IJK and Android
+receive the resolved URL and playback headers. Existing global engines
 are not changed. VLC receives the resolved URL, user agent and referrer; portals requiring
 additional protected native-engine headers require provider/device runtime verification.
 Preview/fullscreen only changes visibility and frame size; no new Activity, player or link.
