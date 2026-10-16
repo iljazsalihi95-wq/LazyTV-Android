@@ -13,12 +13,19 @@ public final class ManagedBackendCatalogSource {
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
  public Catalog load(String server)throws CatalogException {
-  CatalogException sheetFailure=null;
+  CatalogException apiFailure=null,sheetFailure=null;
+  String apiServer=legacyApiName(server);
+  // SERVER_06 carries thousands of LazyMapper rows. Prefer the owner API, like the proven Premium
+  // route, so opening Live does not block on the large Sheet. Keep the Sheet as a safe fallback.
+  if("SERVER_06".equalsIgnoreCase(server)){
+   try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
+  }
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
   if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}}
-  String apiServer=legacyApiName(server);
-  try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException apiFailure){if(sheetFailure!=null)throw sheetFailure;throw apiFailure;}
-  if(sheetFailure!=null)throw sheetFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
+  if(!"SERVER_06".equalsIgnoreCase(server)){
+   try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
+  }
+  if(sheetFailure!=null)throw sheetFailure;if(apiFailure!=null)throw apiFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
  }
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
   Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
@@ -37,7 +44,7 @@ public final class ManagedBackendCatalogSource {
   // already-proven SERVER_10 path), ask the owner API for the same channel before handing an
   // expiring URL to the player. This keeps Premium-style direct playback and avoids create_link.
   if(server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw)){
-   try{String apiServer=legacyApiName(server);Catalog fresh=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));for(StreamItem candidate:fresh.items){String source=item.meta("managed_source_id");boolean sameId=candidate.id.equals(item.id)||(!source.isEmpty()&&candidate.id.equals(source))||item.id.endsWith("|"+candidate.id);if(candidate.type==item.type&&(sameId||candidate.name.equals(item.name))){item=candidate;raw=item.streamUrl==null?"":item.streamUrl.trim();break;}}}catch(CatalogException unavailable){/* Keep the sheet row as a bounded fallback. */}
+   try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));for(StreamItem candidate:fresh.items){String source=item.meta("managed_source_id");boolean sameId=candidate.id.equals(item.id)||(!source.isEmpty()&&candidate.id.equals(source))||item.id.endsWith("|"+candidate.id);if(candidate.type==item.type&&(sameId||candidate.name.equals(item.name))){item=candidate;raw=item.streamUrl==null?"":item.streamUrl.trim();break;}}}catch(CatalogException unavailable){/* Keep the sheet row as a bounded fallback. */}
   }
   String url=raw;
   if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
