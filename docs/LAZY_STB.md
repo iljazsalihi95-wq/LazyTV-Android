@@ -86,3 +86,33 @@ existing no-WebView constraint. This is an original native client for its catalo
 The reported physical crash has not been reproduced with a device trace: decoder surface
 and release calls, closed sessions and stale list positions now have targeted guards, but
 a successful unit test or build is not evidence that the exact device crash is eliminated.
+
+## STBEmu behavior comparison: video-club transport controls
+
+Inspected the supplied STBEmu 2.0.23.01 base APK (SHA-256
+`e0504684f4717daa3c21a7d00fcd7a50eda61d2b23007a0980cc0616c932f1af`).
+A DEX method inventory found separate ExoPlayer, VLC and MPV adapters exposing
+current position, duration, seek and periodic position updates. MPV's adapter
+converts its seconds-based clock to milliseconds. This is behavioral evidence,
+not an execution trace of the owner's provider and not proof of protocol parity.
+No proprietary implementation or assets were copied.
+
+LAZY STB's native Movies/Series player now exposes its own timeline, elapsed/total
+clock, ±30-second buttons and D-pad seek. All four existing STB engines use
+milliseconds at this boundary. Unknown duration and non-seekable streams do not
+force a seek. Live channels never use video-club progress or seeking.
+
+Progress is saved in `lazy_stb_vod_progress_v1`, isolated by profile + normalized
+portal + item kind/ID + episode number. Save happens periodically and before
+pause, Back and close; completion clears the bookmark. A detail dialog offers
+Resume or Play from start. Engine fallback preserves the last known video
+position while fetching fresh links through the existing bounded session logic.
+Page navigation is hidden while playing. None of this uses ordinary LazyTV
+favorites/history, LiveTvActivity or its playback session.
+
+Still unverified physically: provider-specific portal navigation, reported device
+crash, actual stream playback/seeking across engines, remote-control focus and
+account/device compatibility. Audio/subtitle selection and the provider's remote
+HTML interface are not reproduced by this change. The latter requires resolving
+the owner's standing no-WebView constraint before identical remote rendering can
+be implemented. Build success is not runtime verification.

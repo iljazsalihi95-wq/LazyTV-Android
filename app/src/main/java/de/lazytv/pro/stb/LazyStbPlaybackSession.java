@@ -38,7 +38,7 @@ final class LazyStbPlaybackSession {
     private Runnable watchdog;
     private StbProtocol.Channel channel;
     private Engine engine=Engine.AUTO,active;
-    private long ticket,attempt;
+    private long ticket,attempt,pendingPosition;
     private String stream;
     private Map<String,String> headers=Collections.emptyMap();
     private boolean reloadAttempted,foreground=true,closed,prepared;
@@ -55,14 +55,15 @@ final class LazyStbPlaybackSession {
         });
         frame.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(vlcPlayer!=null&&active==Engine.VLC)vlcPlayer.getVLCVout().setWindowSize(r-l,b-t);});
     }
-    void setEngine(Engine value){if(closed)return;engine=value;if(channel!=null)select(channel);}
+    void setEngine(Engine value){if(closed)return;long position=position();engine=value;if(channel!=null)select(channel,position);}
     Engine engine(){return engine;}
     StbProtocol.Channel current(){return channel;}
     long ticket(){return ticket;}
     boolean accepts(long value){return generation.accepts(value);}
     private boolean current(long selected,long engineAttempt){return generation.accepts(selected)&&attempt==engineAttempt;}
-    void select(StbProtocol.Channel next){
-        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;reloadAttempted=false;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
+    void select(StbProtocol.Channel next){select(next,0);}
+    void select(StbProtocol.Channel next,long resumePosition){
+        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;pendingPosition=next.linear()?0:Math.max(0,resumePosition);reloadAttempted=false;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
     }
     private void resolve(long selected,boolean reload){
         StbProtocol.Channel item=channel;
@@ -116,14 +117,27 @@ final class LazyStbPlaybackSession {
         androidPlayer.setOnInfoListener((mp,what,extra)->{if(!current(selected,engineAttempt))return false;if(what==701){events.loading();watch(selected,engineAttempt);}else if(what==702)ready(selected,engineAttempt);return false;});androidPlayer.prepareAsync();
     }
     private void completed(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;if(channel!=null&&!channel.linear()){cancelWatchdog();events.ended();}else failed(selected,engineAttempt,false);}
-    private void ready(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;prepared=true;cancelWatchdog();events.ready();}
+    private void ready(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;prepared=true;cancelWatchdog();if(pendingPosition>0){long resume=pendingPosition;pendingPosition=0;seek(resume);}events.ready();}
     private void failed(long selected,long engineAttempt,boolean expired){
-        if(!current(selected,engineAttempt))return;cancelWatchdog();attempt++;stopEngines();
+        if(!current(selected,engineAttempt))return;long position=position();if(position>0)pendingPosition=position;cancelWatchdog();attempt++;stopEngines();
         if(expired&&!reloadAttempted){reloadAttempted=true;events.loading();resolve(selected,true);}else next(selected);
     }
     private void stopEngines(){prepared=false;StbNativeCalls.run(player::stop);try{if(vlcPlayer!=null){vlcPlayer.setEventListener(null);vlcPlayer.stop();vlcPlayer.getVLCVout().detachViews();}}catch(Exception|LinkageError ignored){}try{if(ijk!=null)ijk.reset();}catch(Exception|LinkageError ignored){}try{if(androidPlayer!=null)androidPlayer.reset();}catch(Exception|LinkageError ignored){}}
     private void cancelWatchdog(){if(watchdog!=null){ui.removeCallbacks(watchdog);watchdog=null;}}
     private void watch(long selected,long engineAttempt){cancelWatchdog();watchdog=()->{if(foreground)failed(selected,engineAttempt,false);};ui.postDelayed(watchdog,25000);}
+    long position(){
+        if(closed||!prepared||channel==null||channel.linear())return 0;
+        try{switch(active){case MEDIA3:return Math.max(0,player.getCurrentPosition());case VLC:return Math.max(0,vlcPlayer.getTime());case IJK:return Math.max(0,ijk.getCurrentPosition());case ANDROID:return Math.max(0,androidPlayer.getCurrentPosition());default:return 0;}}catch(Exception|LinkageError unavailable){return 0;}
+    }
+    long duration(){
+        if(closed||!prepared||channel==null||channel.linear())return 0;
+        try{switch(active){case MEDIA3:return Math.max(0,player.getDuration());case VLC:return Math.max(0,vlcPlayer.getLength());case IJK:return Math.max(0,ijk.getDuration());case ANDROID:return Math.max(0,androidPlayer.getDuration());default:return 0;}}catch(Exception|LinkageError unavailable){return 0;}
+    }
+    boolean seek(long position){
+        long duration=duration();if(duration<=0)return false;
+        long target=StbVodProgress.clamp(position,duration);
+        try{switch(active){case MEDIA3:if(!player.isCurrentMediaItemSeekable())return false;player.seekTo(target);break;case VLC:if(!vlcPlayer.isSeekable())return false;vlcPlayer.setTime(target);break;case IJK:ijk.seekTo(target);break;case ANDROID:androidPlayer.seekTo((int)Math.min(Integer.MAX_VALUE,target));break;default:return false;}return true;}catch(Exception|LinkageError unavailable){return false;}
+    }
     void pause(){if(closed)return;foreground=false;cancelWatchdog();player.pause();try{if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.pause();if(prepared&&active==Engine.IJK&&ijk!=null)ijk.pause();if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.pause();}catch(Exception|LinkageError ignored){}}
     void resume(){if(closed)return;foreground=true;if(channel==null)return;try{if(active==Engine.MEDIA3)player.play();else if(prepared&&active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.play();else if(prepared&&active==Engine.IJK&&ijk!=null)ijk.start();else if(prepared&&active==Engine.ANDROID&&androidPlayer!=null)androidPlayer.start();if(active!=null&&!prepared)watch(ticket,attempt);}catch(Exception|LinkageError ignored){}}
     void close(){if(closed)return;closed=true;generation.close();attempt++;resolver.shutdownNow();ui.removeCallbacksAndMessages(null);stopEngines();view.setPlayer(null);StbNativeCalls.run(player::release);if(vlcPlayer!=null)StbNativeCalls.run(vlcPlayer::release);if(vlc!=null)StbNativeCalls.run(vlc::release);if(ijk!=null)StbNativeCalls.run(ijk::release);if(androidPlayer!=null)StbNativeCalls.run(androidPlayer::release);}
