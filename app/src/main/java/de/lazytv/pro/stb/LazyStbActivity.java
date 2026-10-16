@@ -1,193 +1,44 @@
 package de.lazytv.pro.stb;
 
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.SharedPreferences;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
+import android.app.*;
 import android.os.Bundle;
+import android.graphics.Color;
 import android.text.InputType;
-import android.view.Gravity;
-import android.view.View;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
+import android.view.*;
+import android.widget.*;
+import java.util.*;
+import java.util.concurrent.*;
 
-/**
- * Dedicated LazySTB shell. This module deliberately owns its profile/session UI
- * instead of reusing LazyTV playlist/player screens. Portal transport and the
- * dedicated STB player are attached here in follow-up steps.
- */
+/** Dedicated profile entry. No LazyTV playlist, catalog or playback classes. */
 public final class LazyStbActivity extends Activity {
-    private static final String PREFS = "lazy_stb_profiles";
-    private static final String KEY_NAME = "profile_name";
-    private static final String KEY_PORTAL = "portal_url";
-    private static final String KEY_MAC = "mac_address";
-
-    private SharedPreferences prefs;
-    private LinearLayout root;
+    private StbProfileStore store;
+    private LinearLayout root,profiles;
     private TextView status;
-    private Button connect;
-
-    @Override protected void onCreate(Bundle state) {
-        super.onCreate(state);
-        prefs = getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-        buildScreen();
+    private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private volatile long generation;
+    private StbPortalClient client;
+    @Override protected void onCreate(Bundle state){super.onCreate(state);store=new StbProfileStore(this);build();}
+    private void build(){
+        root=new LinearLayout(this);root.setOrientation(1);root.setPadding(24,16,24,16);root.setBackgroundColor(Color.rgb(3,15,28));
+        TextView title=new TextView(this);title.setText("LAZY STB");title.setTextSize(26);title.setTextColor(Color.WHITE);root.addView(title);
+        Button add=StbUi.button(this,"Add Profile");root.addView(add);add.setOnClickListener(v->edit(null));
+        status=new TextView(this);status.setTextColor(Color.WHITE);root.addView(status);
+        ScrollView scroll=new ScrollView(this);profiles=new LinearLayout(this);profiles.setOrientation(1);scroll.addView(profiles);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));setContentView(root);refresh();add.requestFocus();
     }
-
-    private void buildScreen() {
-        root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(28), dp(22), dp(28), dp(22));
-        root.setBackground(gradient(Color.rgb(2, 8, 26), Color.rgb(7, 43, 73), 0));
-
-        TextView title = label("LazySTB", 28, Color.WHITE, true);
-        TextView subtitle = label("MAG / Stalker Portal • profil i pavarur nga LazyTV", 14, Color.rgb(145, 205, 235), false);
-        root.addView(title, new LinearLayout.LayoutParams(-1, dp(48)));
-        root.addView(subtitle, new LinearLayout.LayoutParams(-1, dp(36)));
-
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(20), dp(18), dp(20), dp(18));
-        card.setBackground(gradient(Color.rgb(7, 30, 52), Color.rgb(3, 18, 34), dp(18)));
-
-        TextView profile = label(profileSummary(), 18, Color.WHITE, true);
-        profile.setId(View.generateViewId());
-        card.addView(profile, new LinearLayout.LayoutParams(-1, dp(74)));
-
-        Button edit = action("PROFILE • URL • MAC");
-        connect = action("CONNECT TO PORTAL");
-        card.addView(edit, buttonParams());
-        card.addView(connect, buttonParams());
-
-        status = label("Gati për lidhje", 14, Color.rgb(255, 201, 92), true);
-        status.setGravity(Gravity.CENTER_VERTICAL);
-        card.addView(status, new LinearLayout.LayoutParams(-1, dp(54)));
-        root.addView(card, new LinearLayout.LayoutParams(-1, -2));
-        setContentView(root);
-
-        edit.setOnClickListener(v -> editProfile(profile));
-        connect.setOnClickListener(v -> beginPortalConnection());
-        edit.requestFocus();
+    private void refresh(){profiles.removeAllViews();for(StbProfileStore.Profile p:store.all()){
+        LinearLayout row=new LinearLayout(this);row.setOrientation(1);TextView name=new TextView(this);name.setText(p.name);name.setTextSize(20);name.setTextColor(Color.WHITE);row.addView(name);
+        LinearLayout actions=new LinearLayout(this);for(String a:new String[]{"CONNECT","Edit Profile","Delete Profile"}){Button b=StbUi.button(this,a);actions.addView(b,new LinearLayout.LayoutParams(0,60,1));b.setOnClickListener(v->{if(a.equals("CONNECT"))connect(p);else if(a.startsWith("Edit"))edit(p);else new AlertDialog.Builder(this).setTitle("Delete Profile?").setMessage(p.name).setNegativeButton("Cancel",null).setPositiveButton("Delete",(d,w)->{store.delete(p);refresh();}).show();});}row.addView(actions);profiles.addView(row);
+    }status.setText(store.all().isEmpty()?"Add Profile • Portal URL + MAC Address":"Zgjidh profilin dhe CONNECT");}
+    private void edit(StbProfileStore.Profile p){
+        LinearLayout form=new LinearLayout(this);form.setOrientation(1);form.setPadding(20,12,20,12);
+        EditText name=field(form,"Profile Name",p==null?"":p.name),portal=field(form,"Portal URL",p==null?"":p.portal),mac=field(form,"MAC Address",p==null?"":p.mac);
+        portal.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_VARIATION_URI);mac.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("LAZY STB • Profile").setView(form).setNegativeButton("Cancel",null).setPositiveButton("Save",null).create();dialog.setOnShowListener(d->dialog.getButton(-1).setOnClickListener(v->{String n=name.getText().toString().trim(),u=portal.getText().toString().trim(),m=mac.getText().toString().trim().toUpperCase(Locale.ROOT);if(n.isEmpty()){name.setError("Profile Name");return;}try{StbProtocol.endpoints(u);}catch(Exception e){portal.setError("Portal URL nuk është valid");return;}if(!m.matches("[0-9A-F]{2}(:[0-9A-F]{2}){5}")){mac.setError("MAC Address nuk është valid");return;}store.put(new StbProfileStore.Profile(p==null?UUID.randomUUID().toString():p.id,n,u,m));dialog.dismiss();refresh();}));dialog.show();
     }
-
-    private void editProfile(TextView profileView) {
-        LinearLayout form = new LinearLayout(this);
-        form.setOrientation(LinearLayout.VERTICAL);
-        int pad = dp(16);
-        form.setPadding(pad, pad, pad, 0);
-
-        EditText name = field("Profile name", prefs.getString(KEY_NAME, "LazySTB Profile"));
-        EditText portal = field("Portal URL", prefs.getString(KEY_PORTAL, ""));
-        portal.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        EditText mac = field("MAC address", prefs.getString(KEY_MAC, ""));
-        mac.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
-        form.addView(name); form.addView(portal); form.addView(mac);
-
-        new AlertDialog.Builder(this)
-                .setTitle("LazySTB Profile")
-                .setView(form)
-                .setPositiveButton("SAVE", (d, which) -> {
-                    prefs.edit()
-                            .putString(KEY_NAME, name.getText().toString().trim())
-                            .putString(KEY_PORTAL, normalizePortal(portal.getText().toString()))
-                            .putString(KEY_MAC, mac.getText().toString().trim().toUpperCase())
-                            .apply();
-                    profileView.setText(profileSummary());
-                    status.setText("Profili u ruajt");
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+    private EditText field(LinearLayout parent,String hint,String value){EditText e=new EditText(this);e.setHint(hint);e.setText(value);e.setSingleLine(true);parent.addView(e);return e;}
+    private void connect(StbProfileStore.Profile p){
+        long ticket=++generation;status.setText("Handshake • profile • categories • channels…");
+        worker.execute(()->{StbPortalClient connection=null;try{connection=new StbPortalClient(p.portal,p.mac);List<StbProtocol.Genre> genres=connection.genres();List<StbProtocol.Channel> channels=connection.channels();StbPortalClient ready=connection;runOnUiThread(()->{if(ticket!=generation||isFinishing()){ready.close();return;}if(client!=null)client.close();client=ready;status.setText("Portali u lidh • "+genres.size()+" kategori • "+channels.size()+" kanale");});}catch(Exception e){if(connection!=null)connection.close();runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText("Lidhja STB dështoi. Kontrollo portalin/MAC dhe provo përsëri.");});}});
     }
-
-    private void beginPortalConnection() {
-        String portal = prefs.getString(KEY_PORTAL, "").trim();
-        String mac = prefs.getString(KEY_MAC, "").trim();
-        if (portal.isEmpty() || mac.isEmpty()) {
-            status.setText("Plotëso Portal URL dhe MAC Address");
-            return;
-        }
-        connect.setEnabled(false);
-        connect.setText("LOADING PORTAL…");
-        status.setText("Connecting • handshake • " + safeHost(portal));
-        ProgressBar loading = new ProgressBar(this);
-        loading.setIndeterminate(true);
-        root.addView(loading, new LinearLayout.LayoutParams(-1, dp(48)));
-
-        // Intentionally stop at the dedicated transport boundary. The next
-        // step wires MAG/Stalker handshake/profile/categories into this module;
-        // it must never silently fall back to the LazyTV player/session.
-        root.postDelayed(() -> {
-            if (isFinishing() || isDestroyed()) return;
-            root.removeView(loading);
-            connect.setEnabled(true);
-            connect.setText("CONNECT TO PORTAL");
-            status.setText("LazySTB transport po ndërtohet • profili është gati");
-        }, 700);
-    }
-
-    private String profileSummary() {
-        String name = prefs.getString(KEY_NAME, "LazySTB Profile");
-        String portal = prefs.getString(KEY_PORTAL, "");
-        String mac = prefs.getString(KEY_MAC, "");
-        if (name.trim().isEmpty()) name = "LazySTB Profile";
-        return name + "\n" + (portal.isEmpty() ? "Portal URL nuk është vendosur" : safeHost(portal))
-                + (mac.isEmpty() ? "" : "  •  " + mac);
-    }
-
-    private static String normalizePortal(String raw) {
-        String s = raw == null ? "" : raw.trim();
-        if (s.isEmpty()) return "";
-        if (!s.startsWith("http://") && !s.startsWith("https://")) s = "http://" + s;
-        while (s.endsWith("/")) s = s.substring(0, s.length() - 1);
-        return s;
-    }
-
-    private static String safeHost(String portal) {
-        try {
-            java.net.URI u = java.net.URI.create(portal);
-            return u.getHost() == null ? portal : u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "");
-        } catch (Exception ignored) { return portal; }
-    }
-
-    private EditText field(String hint, String value) {
-        EditText e = new EditText(this);
-        e.setHint(hint); e.setText(value); e.setSingleLine(true);
-        e.setTextColor(Color.WHITE); e.setHintTextColor(Color.rgb(125, 165, 190));
-        e.setPadding(dp(12), dp(8), dp(12), dp(8));
-        e.setBackground(gradient(Color.rgb(4, 23, 40), Color.rgb(4, 23, 40), dp(10)));
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(58));
-        p.setMargins(0, 0, 0, dp(10)); e.setLayoutParams(p);
-        return e;
-    }
-
-    private Button action(String text) {
-        Button b = new Button(this); b.setText(text); b.setAllCaps(false);
-        b.setTextColor(Color.WHITE); b.setTextSize(15); b.setFocusable(true);
-        b.setBackground(gradient(Color.rgb(0, 118, 190), Color.rgb(4, 57, 93), dp(14)));
-        return b;
-    }
-
-    private LinearLayout.LayoutParams buttonParams() {
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(58));
-        p.setMargins(0, dp(6), 0, dp(6)); return p;
-    }
-
-    private TextView label(String text, int size, int color, boolean bold) {
-        TextView t = new TextView(this); t.setText(text); t.setTextSize(size); t.setTextColor(color);
-        t.setGravity(Gravity.CENTER_VERTICAL);
-        if (bold) t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        return t;
-    }
-
-    private GradientDrawable gradient(int a, int b, int radius) {
-        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{a, b});
-        g.setCornerRadius(radius); g.setStroke(dp(1), Color.rgb(34, 79, 112)); return g;
-    }
-
-    private int dp(int v) { return Math.round(v * getResources().getDisplayMetrics().density); }
+    @Override protected void onDestroy(){generation++;worker.shutdownNow();if(client!=null)client.close();super.onDestroy();}
 }

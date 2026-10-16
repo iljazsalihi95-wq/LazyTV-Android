@@ -30,7 +30,7 @@ public class PlaylistManagerActivity extends Activity {
         findViewById(R.id.add_playlist).setOnClickListener(v -> startActivity(new Intent(this, PlaylistEditorActivity.class)));
         findViewById(R.id.add_m3u).setOnClickListener(v -> openPreset("M3U"));
         findViewById(R.id.add_xtream).setOnClickListener(v -> openPreset("XTREAM"));
-        findViewById(R.id.add_stalker).setOnClickListener(v -> openPreset("STALKER"));
+        findViewById(R.id.add_stalker).setOnClickListener(v -> startActivity(new Intent(this, de.lazytv.pro.stb.LazyStbActivity.class)));
         list.setOnItemClickListener((p, v, pos, id) -> connect(adapter.getItem(pos)));
         list.setOnItemLongClickListener((p, v, pos, id) -> {
             showActions(adapter.getItem(pos));
