@@ -32,7 +32,14 @@ public final class ManagedBackendCatalogSource {
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
   StreamItem item=selected;
   if(forceFresh){Catalog catalog=load(server);item=null;for(StreamItem candidate:catalog.items)if(candidate.type==selected.type&&(candidate.id.equals(selected.id)||candidate.id.equals(selected.meta("managed_original_item_id")))){item=candidate;break;}if(item==null)throw new CatalogException("Kanali nuk është më në katalogun e serverit");}
-  String url=item.streamUrl==null?"":item.streamUrl.trim();
+  String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  // LazyMapper sheets can contain an old play_token. For managed SERVER_XX providers (except the
+  // already-proven SERVER_10 path), ask the owner API for the same channel before handing an
+  // expiring URL to the player. This keeps Premium-style direct playback and avoids create_link.
+  if(server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw)){
+   try{String apiServer=legacyApiName(server);Catalog fresh=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));for(StreamItem candidate:fresh.items){String source=item.meta("managed_source_id");boolean sameId=candidate.id.equals(item.id)||(!source.isEmpty()&&candidate.id.equals(source))||item.id.endsWith("|"+candidate.id);if(candidate.type==item.type&&(sameId||candidate.name.equals(item.name))){item=candidate;raw=item.streamUrl==null?"":item.streamUrl.trim();break;}}}catch(CatalogException unavailable){/* Keep the sheet row as a bounded fallback. */}
+  }
+  String url=raw;
   if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
   if(url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("managed_direct","true");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,metadata);}
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);
