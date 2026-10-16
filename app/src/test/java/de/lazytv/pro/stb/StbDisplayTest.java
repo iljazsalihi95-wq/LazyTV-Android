@@ -1,0 +1,12 @@
+package de.lazytv.pro.stb;
+import org.junit.Test;import org.json.*;import static org.junit.Assert.*;
+public class StbDisplayTest {
+ private StbProtocol.Channel channel(String country,String name)throws Exception{return new StbProtocol.Channel(new JSONObject().put("id","7").put("name",name).put("country_code",country));}
+ @Test public void isoAndRequiredAliases()throws Exception{String[][] cases={{"AL","AL"},{"ALB","AL"},{"XK","XK"},{"RKS","XK"},{"KS","XK"},{"MKD","MK"},{"DEU","DE"},{"CHE","CH"},{"AUT","AT"},{"ITA","IT"},{"IRL","IE"},{"UK","GB"},{"GBR","GB"},{"USA","US"},{"JPN","JP"},{"BRA","BR"}};for(String[] c:cases)assertEquals(c[0],c[1],StbDisplay.country(channel(c[0],"Channel"),null));}
+ @Test public void genreMetadataBeforeChannelName()throws Exception{StbProtocol.Genre g=new StbProtocol.Genre(new JSONObject().put("title","SPORT").put("country_code","DE"));assertEquals("DE",StbDisplay.country(channel("","AL News"),g));assertEquals("CH",StbDisplay.country(channel("CHE","AL News"),g));}
+ @Test public void categoryCountryNamesAndPrefixes()throws Exception{assertEquals("DE",StbDisplay.country(channel("","Channel"),new StbProtocol.Genre(new JSONObject().put("title","Germany SPORT"))));assertEquals("XK",StbDisplay.country(channel("","Channel"),new StbProtocol.Genre(new JSONObject().put("title","XK | GENERAL"))));}
+ @Test public void unknownStaysUnknown()throws Exception{assertEquals("OTHER",StbDisplay.country(channel("","Channel 7"),new StbProtocol.Genre(new JSONObject().put("title","Unclassified"))));}
+ @Test public void displayAbbreviations(){String[][] cases={{"DE GENERAL","GEN"},{"DOCUMENTARY","DOK"},{"MOVIES / CINEMA","FILM"},{"SPORTS","SPORT"},{"NEWS","NEWS"},{"KIDS","KIDS"},{"MUSIC","MUSIC"},{"RELIGION / ISLAM","ISLAM"}};for(String[] c:cases)assertEquals(c[1],StbDisplay.abbreviation(c[0]));}
+ @Test public void staleLinkAndEpgRejected(){StbGeneration g=new StbGeneration();long a=g.next(),b=g.next();assertFalse(g.accepts(a));assertTrue(g.accepts(b));g.close();assertFalse(g.accepts(b));}
+ @Test public void epgProgressAndMissing()throws Exception{Object data=StbProtocol.payload("{\"js\":[{\"name\":\"Program\",\"start_timestamp\":1000,\"stop_timestamp\":2000}]}");java.util.List<StbEpg.Program> rows=StbEpg.parse(data,"7");assertEquals(50,StbEpg.current(rows,1500000).progress(1500000));assertNull(StbEpg.current(rows,3000000));assertTrue(StbEpg.parse(new JSONObject(),"7").isEmpty());}
+}

@@ -16,7 +16,7 @@ public final class StbPortalClient implements AutoCloseable {
     private String endpoint,token="";
     private long authenticatedAt;
     private JSONObject profile=new JSONObject(),account=new JSONObject();
-    private boolean closed;
+    private volatile boolean closed;
     public StbPortalClient(String portal,String mac) {
         if(mac==null || !mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")) throw new IllegalArgumentException("MAC Address nuk është valid");
         this.mac=mac.toUpperCase(Locale.ROOT);this.endpoints=StbProtocol.endpoints(portal);
@@ -89,6 +89,14 @@ public final class StbPortalClient implements AutoCloseable {
         return StbProtocol.link(api("itv","create_link",p),endpoint);
     }
     public Object epg(String channelId) throws IOException {Map<String,String> p=new LinkedHashMap<>();p.put("ch_id",channelId);p.put("size","2");return api("itv","get_short_epg",p);}
-    public synchronized Map<String,String> playbackHeaders(){Map<String,String> h=new HashMap<>();h.put("User-Agent",UA);h.put("Referer",endpoint);return h;}
-    @Override public synchronized void close(){closed=true;token="";cookies.clear();http.dispatcher().cancelAll();http.connectionPool().evictAll();}
+    public synchronized Map<String,String> playbackHeaders(String streamUrl){
+        Map<String,String> h=new HashMap<>();h.put("User-Agent",UA);
+        HttpUrl stream=HttpUrl.parse(streamUrl),portal=HttpUrl.parse(endpoint);
+        if(stream!=null&&portal!=null&&stream.host().equals(portal.host())&&stream.port()==portal.port()&&stream.scheme().equals(portal.scheme())){
+            h.put("Referer",portal.resolve("./c/").toString());h.put("Authorization","Bearer "+token);
+            StringBuilder c=new StringBuilder();for(Cookie cookie:http.cookieJar().loadForRequest(stream)){if(c.length()>0)c.append("; ");c.append(cookie.name()).append('=').append(cookie.value());}h.put("Cookie",c.toString());
+        }
+        return h;
+    }
+    @Override public void close(){closed=true;http.dispatcher().cancelAll();http.connectionPool().evictAll();}
 }
