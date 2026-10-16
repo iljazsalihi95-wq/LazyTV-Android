@@ -19,6 +19,7 @@ public final class LazyStbActivity extends Activity {
     private StbPortalClient client;
     private StbBrowser browser;
     private volatile StbPortalClient pending;
+    private Future<?> connectionTask;
     @Override protected void onCreate(Bundle state){super.onCreate(state);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);store=new StbProfileStore(this);build();}
     private void build(){
         root=new LinearLayout(this);root.setOrientation(1);root.setPadding(24,16,24,16);root.setBackgroundColor(Color.rgb(3,15,28));
@@ -39,8 +40,8 @@ public final class LazyStbActivity extends Activity {
     }
     private EditText field(LinearLayout parent,String hint,String value){EditText e=new EditText(this);e.setHint(hint);e.setText(value);e.setSingleLine(true);parent.addView(e);return e;}
     private void connect(StbProfileStore.Profile p){
-        long ticket=++generation;status.setText("Handshake • profile • categories • channels…");
-        worker.execute(()->{StbPortalClient connection=null;try{connection=new StbPortalClient(p.portal,p.mac);pending=connection;List<StbProtocol.Genre> genres=connection.genres();List<StbProtocol.Channel> channels=connection.channels();StbPortalClient ready=connection;runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed()){ready.close();return;}if(client!=null)client.close();client=ready;pending=null;browser=new StbBrowser(this,p,ready,genres,channels,this::returnToProfiles);setContentView(browser.root);});}catch(Exception e){if(connection!=null)connection.close();runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText("Lidhja STB dështoi. Kontrollo portalin/MAC dhe provo përsëri.");});}});
+        if(connectionTask!=null)connectionTask.cancel(true);if(pending!=null)pending.close();long ticket=++generation;status.setText("Handshake • profile • categories • channels…");
+        connectionTask=worker.submit(()->{StbPortalClient connection=null;try{connection=new StbPortalClient(p.portal,p.mac);pending=connection;List<StbProtocol.Genre> genres=connection.genres();List<StbProtocol.Channel> channels=connection.channels();Map<String,StbProtocol.Genre> map=new HashMap<>();for(StbProtocol.Genre genre:genres)map.put(genre.id,genre);Map<String,String> codes=new HashMap<>();for(StbProtocol.Channel channel:channels)codes.put(channel.id,StbDisplay.country(channel,map.get(channel.genreId)));StbPortalClient ready=connection;runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed()){ready.close();return;}if(client!=null)client.close();client=ready;pending=null;browser=new StbBrowser(this,p,ready,genres,channels,codes,this::returnToProfiles);setContentView(browser.root);});}catch(Exception e){if(connection!=null)connection.close();runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText(StbErrors.message(e));});}});
     }
     private void returnToProfiles(){generation++;if(browser!=null){browser.close();browser=null;}if(client!=null){client.close();client=null;}build();}
     @Override public boolean dispatchKeyEvent(KeyEvent event){if(browser!=null&&browser.key(event))return true;return super.dispatchKeyEvent(event);}

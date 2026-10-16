@@ -20,6 +20,7 @@ final class StbBrowser {
     private final List<StbProtocol.Channel> all,visible=new ArrayList<>();
     private final Map<String,StbProtocol.Genre> genres=new LinkedHashMap<>();
     private final List<String> countries=new ArrayList<>(),categoryIds=new ArrayList<>();
+    private final Map<String,String> countryCodes;
     private String country="ALL",category="ALL";
     private final LazyStbPlaybackSession session;
     private final StbPortalClient portal;
@@ -37,8 +38,8 @@ final class StbBrowser {
     private long lastEpgLoad;
     private final Runnable epgTick=new Runnable(){public void run(){if(closed)return;renderEpg();if(session.current()!=null&&System.currentTimeMillis()-lastEpgLoad>60000)loadEpg();ui.postDelayed(this,15000);}};
     private boolean fullscreen,previewFocus,controlsShown;
-    StbBrowser(Activity activity,StbProfileStore.Profile profile,StbPortalClient portal,List<StbProtocol.Genre> groups,List<StbProtocol.Channel> channels,Runnable exit){
-        this.activity=activity;this.exit=exit;this.portal=portal;this.favorites=new StbFavorites(activity,profile);this.logos=new StbLogos(profile.portal);this.all=new ArrayList<>(channels);
+    StbBrowser(Activity activity,StbProfileStore.Profile profile,StbPortalClient portal,List<StbProtocol.Genre> groups,List<StbProtocol.Channel> channels,Map<String,String> codes,Runnable exit){
+        this.countryCodes=new HashMap<>(codes);this.activity=activity;this.exit=exit;this.portal=portal;this.favorites=new StbFavorites(activity,profile);this.logos=new StbLogos(profile.portal);this.all=new ArrayList<>(channels);
         for(StbProtocol.Genre g:groups)genres.put(g.id,g);
         root=new LinearLayout(activity);root.setOrientation(1);root.setPadding(dp(8),dp(6),dp(8),dp(6));root.setBackgroundColor(0xff030f1c);
         heading=text("LAZY STB • "+profile.name,17);root.addView(heading,new LinearLayout.LayoutParams(-1,dp(26)));
@@ -57,7 +58,7 @@ final class StbBrowser {
         addControl("CH−",()->adjacent(-1));favoriteButton=addControl("☆",()->{StbProtocol.Channel c=session.current();if(c!=null){favorites.toggle(c.id);updateFavorite();if(favoritesOnly)loadChannels();}});addControl("CH+",()->adjacent(1));addControl("EPG",()->new AlertDialog.Builder(activity).setTitle("LAZY STB • EPG").setMessage(epgText.getText()).setPositiveButton("OK",null).show());addControl("Player",this::chooseEngine);addControl("List",()->{setFullscreen(false);previewFocus=false;channelView.requestFocus();});addControl("Full",()->{if(session.current()!=null)setFullscreen(true);});
         preview.setOnClickListener(v->{if(session.current()!=null)setFullscreen(!fullscreen);});
         preview.setOnFocusChangeListener((v,focused)->{if(focused)previewFocus=true;});
-        countries.add("ALL");countries.add("FAV");TreeSet<String> found=new TreeSet<>();for(StbProtocol.Channel c:all)found.add(StbDisplay.country(c,genres.get(c.genreId)));countries.addAll(found);
+        countries.add("ALL");countries.add("FAV");TreeSet<String> found=new TreeSet<>();for(StbProtocol.Channel c:all)found.add(countryCodes.getOrDefault(c.id,"OTHER"));countries.addAll(found);
         countryView.setAdapter(labels(countries));countryView.setOnItemClickListener((p,v,pos,id)->selectCountry(pos));
         categoryView.setOnItemClickListener((p,v,pos,id)->{category=categoryIds.get(pos);loadChannels();channelView.requestFocus();});
         channelView.setOnItemClickListener((p,v,pos,id)->play(visible.get(pos)));
@@ -70,12 +71,12 @@ final class StbBrowser {
     };}
     private Button addControl(String title,Runnable click){Button b=StbUi.button(activity,title);controls.addView(b,new LinearLayout.LayoutParams(0,-1,1));b.setOnClickListener(v->click.run());return b;}
     private void selectCountry(int index){country=countries.get(index);favoritesOnly=country.equals("FAV");category="ALL";categoryIds.clear();categoryIds.add("ALL");LinkedHashSet<String> ids=new LinkedHashSet<>();for(StbProtocol.Channel c:all)if(matchesCountry(c))ids.add(c.genreId);categoryIds.addAll(ids);List<String> labels=new ArrayList<>();labels.add("ALL");for(String id:ids){StbProtocol.Genre g=genres.get(id);labels.add(g==null?"OTHER":StbDisplay.abbreviation(g.title));}categoryView.setAdapter(labels(labels));loadChannels();}
-    private boolean matchesCountry(StbProtocol.Channel c){return (favoritesOnly&&favorites.contains(c.id))||country.equals("ALL")||country.equals(StbDisplay.country(c,genres.get(c.genreId)));}
+    private boolean matchesCountry(StbProtocol.Channel c){return (favoritesOnly&&favorites.contains(c.id))||country.equals("ALL")||country.equals(countryCodes.getOrDefault(c.id,"OTHER"));}
     private void loadChannels(){visible.clear();for(StbProtocol.Channel c:all)if(matchesCountry(c)&&(category.equals("ALL")||category.equals(c.genreId)))visible.add(c);channelAdapter=new BaseAdapter(){public int getCount(){return visible.size();}public Object getItem(int pos){return visible.get(pos);}public long getItemId(int pos){return pos;}
         public View getView(int pos,View old,ViewGroup parent){LinearLayout row;if(old instanceof LinearLayout)row=(LinearLayout)old;else{row=new LinearLayout(activity);row.setGravity(Gravity.CENTER_VERTICAL);ImageView logo=new ImageView(activity);logo.setScaleType(ImageView.ScaleType.FIT_CENTER);row.addView(logo,new LinearLayout.LayoutParams(dp(44),dp(44)));TextView name=text("",15);name.setPadding(dp(6),dp(4),dp(3),dp(4));row.addView(name,new LinearLayout.LayoutParams(0,-2,1));row.setMinimumHeight(dp(48));}StbProtocol.Channel c=visible.get(pos);String now=nowTitles.get(c.id);((TextView)row.getChildAt(1)).setText(c.name+(now==null?"":"\n"+now));logos.load(c.logo,(ImageView)row.getChildAt(0));return row;}};channelView.setAdapter(channelAdapter);}
     private void play(StbProtocol.Channel c){programs=Collections.emptyList();session.select(c);updateFavorite();loadEpg();previewFocus=true;preview.requestFocus();}
     private void adjacent(int delta){List<StbProtocol.Channel> list=visible.isEmpty()?all:visible;StbProtocol.Channel c=session.current();int next=StbChannelSelection.adjacent(list,c==null?"":c.id,delta);if(next>=0)play(list.get(next));}
-    private void chooseEngine(){String[] engines={"Auto • Media3 → VLC","Media3 / ExoPlayer • HLS / DASH / TS","VLC"};new AlertDialog.Builder(activity).setTitle("LAZY STB • Player").setSingleChoiceItems(engines,session.engine().ordinal(),(d,w)->{session.setEngine(LazyStbPlaybackSession.Engine.values()[w]);d.dismiss();}).setNegativeButton("Cancel",null).show();}
+    private void chooseEngine(){String[] engines={"Auto • Media3 → VLC","Media3 / ExoPlayer • HLS / DASH / TS","VLC"};new AlertDialog.Builder(activity).setTitle("LAZY STB • Player").setSingleChoiceItems(engines,session.engine().ordinal(),(d,w)->{session.setEngine(LazyStbPlaybackSession.Engine.values()[w]);loadEpg();d.dismiss();}).setNegativeButton("Cancel",null).show();}
     private void setFullscreen(boolean value){fullscreen=value;controlsShown=false;heading.setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);info.setVisibility(value?View.GONE:View.VISIBLE);epgText.setVisibility(value?View.GONE:View.VISIBLE);epgProgress.setVisibility(value?View.GONE:View.VISIBLE);controls.setVisibility(value?View.GONE:View.VISIBLE);preview.setLayoutParams(new LinearLayout.LayoutParams(-1,0,value?1:0.48f));preview.requestFocus();previewFocus=true;}
     boolean back(){if(fullscreen){setFullscreen(false);return true;}if(preview.hasFocus()&&session.current()!=null){previewFocus=false;channelView.requestFocus();return true;}exit.run();return true;}
     boolean key(KeyEvent event){if(event.getAction()!=KeyEvent.ACTION_DOWN)return false;int code=event.getKeyCode();if(code==KeyEvent.KEYCODE_BACK)return back();if(code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_CHANNEL_DOWN||code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);return true;}if(fullscreen){if(code==KeyEvent.KEYCODE_MENU){setFullscreen(false);previewFocus=false;channelView.requestFocus();return true;}if(!controlsShown&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_UP)){controlsShown=true;controls.setVisibility(View.VISIBLE);info.setVisibility(View.VISIBLE);epgText.setVisibility(View.VISIBLE);epgProgress.setVisibility(View.VISIBLE);controls.getChildAt(0).requestFocus();return true;}}return false;}
