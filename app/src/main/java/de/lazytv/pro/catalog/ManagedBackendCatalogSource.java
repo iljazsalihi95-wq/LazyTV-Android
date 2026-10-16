@@ -13,13 +13,13 @@ public final class ManagedBackendCatalogSource {
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
  public Catalog load(String server)throws CatalogException {
-  // Method B: every managed server first uses the exact owner API contract used by LazyIPTV.
-  // No create_link is performed here. Sheets are catalog fallback only when that API has no usable rows.
-  CatalogException apiFailure=null;
-  try{Catalog api=parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
+  // Registered SERVER_XX entries are authoritative LazyMapper sheets. Load them first, like
+  // Premium, so a stale/partial owner-API response cannot hide a populated server (e.g. Server 06).
+  CatalogException sheetFailure=null;
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
-  if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException sheetFailure){if(apiFailure!=null)throw apiFailure;throw sheetFailure;}}
-  if(apiFailure!=null)throw apiFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
+  if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}}
+  try{Catalog api=parse(server,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(server)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException apiFailure){if(sheetFailure!=null)throw sheetFailure;throw apiFailure;}
+  if(sheetFailure!=null)throw sheetFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
  }
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
   Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
