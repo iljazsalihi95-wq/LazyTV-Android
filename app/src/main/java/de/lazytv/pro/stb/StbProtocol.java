@@ -53,12 +53,29 @@ public final class StbProtocol {
         public final String id,title,country;
         Genre(JSONObject o) { id=o.optString("id");title=o.optString("title",o.optString("name"));country=o.optString("country_code",o.optString("country")); }
     }
+    public enum Kind { LIVE, MOVIE, SERIES, SEASON, EPISODE, FILE }
+    static boolean flag(JSONObject o,String key){Object v=o.opt(key);return Boolean.TRUE.equals(v)||"1".equals(String.valueOf(v))||"true".equalsIgnoreCase(String.valueOf(v));}
+    static String value(JSONObject o,String key,String fallback){Object v=o.opt(key);return v==null||v==JSONObject.NULL?fallback:String.valueOf(v);}
     public static final class Channel {
-        public final String id,name,genreId,cmd,logo,epgId,country;
-        Channel(JSONObject o) {
-            id=o.optString("id"); name=o.optString("name"); genreId=o.optString("tv_genre_id",o.optString("genre_id",o.optString("category_id")));
-            cmd=o.optString("cmd");logo=o.optString("logo");epgId=o.optString("xmltv_id",o.optString("epg_id"));country=o.optString("country_code",o.optString("country"));
+        public final String id,name,genreId,cmd,logo,epgId,country,protocol,movieId,seasonId,episodeId,episodeNumber,plot;
+        public final Kind kind;
+        public final JSONArray episodeNumbers;
+        Channel(JSONObject o){this(o,"itv",Kind.LIVE);}
+        Channel(JSONObject o,String protocol,Kind fallback){
+            this.protocol=protocol;id=value(o,"id","");name=value(o,"name",value(o,"title",""));genreId=value(o,"tv_genre_id",value(o,"genre_id",value(o,"category_id","")));
+            cmd=value(o,"cmd","");logo=value(o,"logo",value(o,"screenshot_uri",value(o,"cover","")));epgId=value(o,"xmltv_id",value(o,"epg_id",""));country=value(o,"country_code",value(o,"country",""));
+            movieId=value(o,"movie_id",value(o,"video_id",""));seasonId=value(o,"season_id","");episodeId=value(o,"episode_id","");episodeNumber=value(o,"series_number",value(o,"episode_number",""));plot=value(o,"description",value(o,"plot",""));episodeNumbers=o.optJSONArray("series")==null?new JSONArray():o.optJSONArray("series");
+            String type=value(o,"item_type",value(o,"type","")).toLowerCase(Locale.ROOT);
+            kind=flag(o,"is_file")?Kind.FILE:flag(o,"is_episode")?Kind.EPISODE:flag(o,"is_season")?Kind.SEASON:flag(o,"is_series")||type.equals("series")?Kind.SERIES:type.equals("vod")||type.equals("movie")?Kind.MOVIE:fallback;
         }
+        public boolean linear(){return kind==Kind.LIVE;}
+        public boolean playable(){return (kind==Kind.LIVE||kind==Kind.MOVIE||kind==Kind.FILE||kind==Kind.EPISODE)&&!cmd.trim().isEmpty();}
+        public Channel numberedEpisode(String number){try{JSONObject o=new JSONObject().put("id",id+":"+number).put("name",name+" • Episode "+number).put("cmd",cmd).put("series_number",number).put("is_episode",true);return new Channel(o,protocol,Kind.EPISODE);}catch(JSONException e){throw new IllegalArgumentException("Episodi STB jo valid");}}
+    }
+    public static final class Page {
+        public final List<Channel> items=new ArrayList<>();public final int total,pageSize;
+        public Page(Object payload,String protocol,Kind fallback){JSONArray rows=rows(payload);for(int i=0;i<rows.length();i++){JSONObject o=rows.optJSONObject(i);if(o!=null)items.add(new Channel(o,protocol,fallback));}JSONObject meta=payload instanceof JSONObject?(JSONObject)payload:new JSONObject();total=meta.optInt("total_items",items.size());pageSize=meta.optInt("max_page_items",items.size());}
+        public boolean hasNext(int page){return !items.isEmpty()&&pageSize>0&&(long)page*pageSize<total;}
     }
     public static List<Genre> genres(Object payload) {
         List<Genre> out=new ArrayList<>();JSONArray a=rows(payload);

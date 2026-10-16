@@ -19,7 +19,7 @@ import java.util.concurrent.*;
 /** Independent STB session. Fullscreen only resizes the frame; engines change only on selection/failure. */
 @UnstableApi
 final class LazyStbPlaybackSession {
-    interface Events {void loading();void ready();void error(String safeMessage);}
+    interface Events {void loading();void ready();void error(String safeMessage);default void ended(){}}
     private final StbPortalClient portal;
     private final Events events;
     private final ExecutorService resolver=Executors.newSingleThreadExecutor();
@@ -85,7 +85,7 @@ final class LazyStbPlaybackSession {
     private void playMedia3(long selected,long engineAttempt){
         if(mediaListener!=null)player.removeListener(mediaListener);
         mediaListener=new Player.Listener(){
-            @Override public void onPlaybackStateChanged(int state){if(!current(selected,engineAttempt))return;if(state==Player.STATE_READY)ready(selected,engineAttempt);else if(state==Player.STATE_BUFFERING){events.loading();watch(selected,engineAttempt);}else if(state==Player.STATE_ENDED)failed(selected,engineAttempt,false);}
+            @Override public void onPlaybackStateChanged(int state){if(!current(selected,engineAttempt))return;if(state==Player.STATE_READY)ready(selected,engineAttempt);else if(state==Player.STATE_BUFFERING){events.loading();watch(selected,engineAttempt);}else if(state==Player.STATE_ENDED)completed(selected,engineAttempt);}
             @Override public void onPlayerError(PlaybackException error){boolean expired=false;for(Throwable c=error;c!=null;c=c.getCause())if(c instanceof HttpDataSource.InvalidResponseCodeException){int code=((HttpDataSource.InvalidResponseCodeException)c).responseCode;expired=code==401||code==403;}failed(selected,engineAttempt,expired);}
         };player.addListener(mediaListener);http.setDefaultRequestProperties(headers);
         player.setMediaItem(new MediaItem.Builder().setUri(stream).setMediaId(selected+":"+engineAttempt).build());player.prepare();player.setPlayWhenReady(foreground);
@@ -97,7 +97,7 @@ final class LazyStbPlaybackSession {
         org.videolan.libvlc.Media media=new org.videolan.libvlc.Media(vlc,Uri.parse(stream));media.addOption(":network-caching=1500");media.addOption(":http-user-agent="+headers.get("User-Agent"));
         if(headers.containsKey("Referer"))media.addOption(":http-referrer="+headers.get("Referer"));
         vlcPlayer.setMedia(media);media.release();
-        vlcPlayer.setEventListener(event->ui.post(()->{if(!current(selected,engineAttempt))return;if(event.type==org.videolan.libvlc.MediaPlayer.Event.Playing){if(!foreground)vlcPlayer.pause();ready(selected,engineAttempt);}else if(event.type==org.videolan.libvlc.MediaPlayer.Event.EncounteredError||event.type==org.videolan.libvlc.MediaPlayer.Event.EndReached)failed(selected,engineAttempt,false);}));vlcPlayer.play();
+        vlcPlayer.setEventListener(event->ui.post(()->{if(!current(selected,engineAttempt))return;if(event.type==org.videolan.libvlc.MediaPlayer.Event.Playing){if(!foreground)vlcPlayer.pause();ready(selected,engineAttempt);}else if(event.type==org.videolan.libvlc.MediaPlayer.Event.EncounteredError)failed(selected,engineAttempt,false);else if(event.type==org.videolan.libvlc.MediaPlayer.Event.EndReached)completed(selected,engineAttempt);}));vlcPlayer.play();
     }
     private void playIjk(long selected,long engineAttempt)throws Exception {
         if(ijk==null){ijk=new IjkMediaPlayer();IjkMediaPlayer.native_setLogLevel(IjkMediaPlayer.IJK_LOG_SILENT);}
@@ -105,16 +105,17 @@ final class LazyStbPlaybackSession {
         StringBuilder raw=new StringBuilder();for(Map.Entry<String,String> h:headers.entrySet())if(h.getKey().matches("[A-Za-z0-9-]+")&&h.getValue()!=null&&!h.getValue().contains("\r")&&!h.getValue().contains("\n"))raw.append(h.getKey()).append(": ").append(h.getValue()).append("\r\n");
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT,"headers",raw.toString());ijk.setDisplay(surface.getHolder());ijk.setDataSource(stream);
         ijk.setOnPreparedListener(mp->ui.post(()->{if(!current(selected,engineAttempt))return;if(foreground)mp.start();ready(selected,engineAttempt);}));
-        ijk.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});ijk.setOnCompletionListener(mp->ui.post(()->failed(selected,engineAttempt,false)));
+        ijk.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});ijk.setOnCompletionListener(mp->ui.post(()->completed(selected,engineAttempt)));
         ijk.setOnInfoListener((mp,what,extra)->{if(what==701)ui.post(()->{if(current(selected,engineAttempt)){events.loading();watch(selected,engineAttempt);}});else if(what==702)ui.post(()->ready(selected,engineAttempt));return false;});ijk.prepareAsync();
     }
     private void playAndroid(long selected,long engineAttempt)throws Exception {
         if(androidPlayer==null)androidPlayer=new android.media.MediaPlayer();
         androidPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);androidPlayer.setDisplay(surface.getHolder());androidPlayer.setDataSource(view.getContext(),Uri.parse(stream),headers);
         androidPlayer.setOnPreparedListener(mp->{if(!current(selected,engineAttempt))return;if(foreground)mp.start();ready(selected,engineAttempt);});
-        androidPlayer.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});androidPlayer.setOnCompletionListener(mp->ui.post(()->failed(selected,engineAttempt,false)));
+        androidPlayer.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});androidPlayer.setOnCompletionListener(mp->ui.post(()->completed(selected,engineAttempt)));
         androidPlayer.setOnInfoListener((mp,what,extra)->{if(!current(selected,engineAttempt))return false;if(what==701){events.loading();watch(selected,engineAttempt);}else if(what==702)ready(selected,engineAttempt);return false;});androidPlayer.prepareAsync();
     }
+    private void completed(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;if(channel!=null&&!channel.linear()){cancelWatchdog();events.ended();}else failed(selected,engineAttempt,false);}
     private void ready(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;prepared=true;cancelWatchdog();events.ready();}
     private void failed(long selected,long engineAttempt,boolean expired){
         if(!current(selected,engineAttempt))return;cancelWatchdog();attempt++;stopEngines();

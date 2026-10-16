@@ -70,26 +70,36 @@ public final class StbPortalClient implements AutoCloseable {
         synchronized(this){if(token.isEmpty()||System.currentTimeMillis()-authenticatedAt>15*60*1000)authenticate();}
         try{return request(type,action,params,true);}catch(AuthExpired expired){synchronized(this){authenticate();}try{return request(type,action,params,true);}catch(AuthExpired second){throw new IOException("Sesioni STB u refuzua pas rifreskimit");}}
     }
+    public synchronized void connect() throws IOException {if(token.isEmpty())authenticate();}
+    public List<StbProtocol.Genre> categories(String type) throws IOException {checkCatalogType(type);return StbProtocol.genres(api(type,"get_categories",Collections.emptyMap()));}
+    private static void checkCatalogType(String type){if(!"vod".equals(type)&&!"series".equals(type))throw new IllegalArgumentException("STB catalog type jo valid");}
+    public StbProtocol.Page libraryPage(String type,String category,String movie,String season,String episode,int page) throws IOException {
+        checkCatalogType(type);if(page<1||page>500)throw new IllegalArgumentException("STB page jashtë kufirit");
+        Map<String,String> p=new LinkedHashMap<>();p.put("category",category);p.put("movie_id",movie);p.put("season_id",season);p.put("episode_id",episode);p.put("p",String.valueOf(page));p.put("sortby","added");
+        StbProtocol.Kind fallback=type.equals("series")?StbProtocol.Kind.SERIES:StbProtocol.Kind.MOVIE;
+        return new StbProtocol.Page(api(type,"get_ordered_list",p),type,fallback);
+    }
     public List<StbProtocol.Genre> genres() throws IOException{return StbProtocol.genres(api("itv","get_genres",Collections.emptyMap()));}
     public List<StbProtocol.Channel> channels() throws IOException {
         Object all;try{all=api("itv","get_all_channels",Collections.emptyMap());}catch(HttpFailure e){if(e.status!=404&&e.status!=405)throw e;all=new JSONArray();}
         LinkedHashMap<String,StbProtocol.Channel> result=new LinkedHashMap<>();
-        for(StbProtocol.Channel c:StbProtocol.channels(all))result.put(c.id,c);
+        for(StbProtocol.Channel c:StbProtocol.channels(all)){if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);}
         if(!result.isEmpty())return new ArrayList<>(result.values());
         // Paginated fallback only when get_all_channels explicitly yields an empty catalog.
         int pages=1;
         for(int page=1;page<=pages;page++){
             Map<String,String> p=new LinkedHashMap<>();p.put("genre","*");p.put("p",String.valueOf(page));
             Object data=api("itv","get_ordered_list",p);List<StbProtocol.Channel> batch=StbProtocol.channels(data);
-            int before=result.size();for(StbProtocol.Channel c:batch)result.put(c.id,c);
+            int before=result.size();for(StbProtocol.Channel c:batch){if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);}
             if(data instanceof JSONObject){JSONObject o=(JSONObject)data;int size=o.optInt("max_page_items",batch.size());if(size>0)pages=Math.min(500,(o.optInt("total_items",batch.size())+size-1)/size);}
             if(batch.isEmpty()||result.size()==before)break;
         }
         return new ArrayList<>(result.values());
     }
     public String resolve(StbProtocol.Channel channel) throws IOException {
-        Map<String,String> p=new LinkedHashMap<>();p.put("cmd",channel.cmd);p.put("series","");p.put("forced_storage","0");p.put("disable_ad","0");p.put("download","0");
-        return StbProtocol.link(api("itv","create_link",p),endpoint);
+        if(!channel.playable())throw new IOException("Zgjidh skedarin/episodin përpara Play");
+        Map<String,String> p=new LinkedHashMap<>();p.put("cmd",channel.cmd);p.put("series",channel.episodeNumber);p.put("forced_storage","0");p.put("disable_ad","0");p.put("download","0");
+        return StbProtocol.link(api(channel.linear()?"itv":"vod","create_link",p),endpoint);
     }
     public Object epg(String channelId) throws IOException {Map<String,String> p=new LinkedHashMap<>();p.put("ch_id",channelId);p.put("size","2");return api("itv","get_short_epg",p);}
     public synchronized Map<String,String> playbackHeaders(String streamUrl){
