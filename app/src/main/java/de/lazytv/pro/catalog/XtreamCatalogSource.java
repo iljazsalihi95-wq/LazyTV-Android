@@ -4,7 +4,7 @@ public class XtreamCatalogSource {private final Context context;public XtreamCat
  try{return loadApi(p);}catch(ProviderHttpException error){if(error.status==401||error.status==403)throw error;return loadM3u(p,null);}
 }
 public Catalog loadType(Playlist p,CatalogType type)throws CatalogException {
- try{return loadApiType(p,type);}catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;return loadM3u(p,type);}
+ try{return loadApiType(p,type);}catch(ProviderHttpException error){if(error.status==401||error.status==403)throw error;return loadM3u(p,type);}
 }
 private Catalog loadM3u(Playlist p,CatalogType wanted)throws CatalogException {
  Catalog full=new M3uCatalogSource().loadExactRemote(XtreamUrlBuilder.m3u(p));
