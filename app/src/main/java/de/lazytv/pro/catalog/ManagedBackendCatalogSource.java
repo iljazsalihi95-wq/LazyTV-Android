@@ -13,18 +13,13 @@ public final class ManagedBackendCatalogSource {
   if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
  }
  public Catalog load(String server)throws CatalogException {
-  CatalogException apiFailure=null,sheetFailure=null;
-  String apiServer=legacyApiName(server);
-  // SERVER_06 carries thousands of LazyMapper rows. Prefer the owner API, like the proven Premium
-  // route, so opening Live does not block on the large Sheet. Keep the Sheet as a safe fallback.
-  if("SERVER_06".equalsIgnoreCase(server)){
-   try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
-  }
+  CatalogException apiFailure=null,sheetFailure=null;String apiServer=legacyApiName(server);
+  // Use the owner API first for every managed server. It is the same fast path used by the
+  // working managed providers and returns the current playback URL. Sheets remain a fallback
+  // for catalog continuity when the API is temporarily unavailable or has no rows.
+  try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
   if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}}
-  if(!"SERVER_06".equalsIgnoreCase(server)){
-   try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
-  }
   if(sheetFailure!=null)throw sheetFailure;if(apiFailure!=null)throw apiFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
  }
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
