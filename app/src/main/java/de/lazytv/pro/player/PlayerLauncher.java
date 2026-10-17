@@ -49,6 +49,11 @@ public final class PlayerLauncher {
     }
 
     public static void playMovie(Activity activity,String playlistId,StreamItem item,ResolvedStream resolved,String categoryName,boolean resume){
+        if(activity==null)return;
+        if(item==null||item.type!=CatalogType.MOVIES||!PlayerContentPolicy.playable(item)){
+            Toast.makeText(activity,"Filmi nuk mund të hapet",Toast.LENGTH_SHORT).show();
+            return;
+        }
         launch(activity,playlistId,item,resolved,categoryName,MoviePlayerActivity.class,resume?"resume":"start");
     }
     public static void playEpisode(Activity activity,String provider,Episode episode,ResolvedStream stream,String seriesName,boolean resume){
