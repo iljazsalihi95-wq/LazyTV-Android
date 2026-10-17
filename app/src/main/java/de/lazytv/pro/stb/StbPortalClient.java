@@ -55,16 +55,27 @@ public final class StbPortalClient implements AutoCloseable {
     }
     private void authenticate() throws IOException {
         token="";authenticatedAt=0;
-        if(endpoint==null) {
-            IOException failure=null;
-            for(String candidate:endpoints){endpoint=candidate;try{token=StbProtocol.token(request("stb","handshake",Collections.emptyMap(),false));if(!token.isEmpty())break;failure=new IOException("Handshake nuk ktheu token");}catch(IOException e){failure=e;}token="";}
-            if(token.isEmpty()){endpoint=null;throw failure==null?new IOException("STB handshake dështoi"):failure;}
-        } else {token=StbProtocol.token(request("stb","handshake",Collections.emptyMap(),false));if(token.isEmpty())throw new IOException("Handshake nuk ktheu token");}
-        Object p=request("stb","get_profile",Collections.singletonMap("stb_type","MAG250"),true);
-        if(!(p instanceof JSONObject))throw new IOException("STB profile jo valid");
-        profile=(JSONObject)p;
-        try{Object a=request("account_info","get_main_info",Collections.emptyMap(),true);if(a instanceof JSONObject)account=(JSONObject)a;}catch(AuthExpired e){throw e;}catch(IOException ignored){/* Optional account metadata is not required for LIVE. */}
-        authenticatedAt=System.currentTimeMillis();
+        IOException failure=null;
+        List<String> candidates=new ArrayList<>();
+        if(endpoint!=null&&!endpoint.isEmpty())candidates.add(endpoint);
+        for(String candidate:endpoints)if(!candidates.contains(candidate))candidates.add(candidate);
+        String previous=endpoint;
+        for(String candidate:candidates){
+            endpoint=candidate;
+            try{
+                String candidateToken=StbProtocol.token(request("stb","handshake",Collections.emptyMap(),false));
+                if(candidateToken.isEmpty())throw new IOException("Handshake nuk ktheu token");
+                token=candidateToken;
+                Object p=request("stb","get_profile",Collections.singletonMap("stb_type","MAG250"),true);
+                if(!(p instanceof JSONObject))throw new IOException("STB profile jo valid");
+                profile=(JSONObject)p;
+                try{Object a=request("account_info","get_main_info",Collections.emptyMap(),true);if(a instanceof JSONObject)account=(JSONObject)a;}catch(AuthExpired e){throw e;}catch(IOException ignored){/* Optional account metadata is not required for LIVE. */}
+                authenticatedAt=System.currentTimeMillis();
+                return;
+            }catch(IOException e){failure=e;token="";authenticatedAt=0;}
+        }
+        endpoint=previous;
+        throw failure==null?new IOException("STB handshake dështoi"):failure;
     }
     private Object api(String type,String action,Map<String,String> params) throws IOException {
         synchronized(this){if(token.isEmpty()||System.currentTimeMillis()-authenticatedAt>15*60*1000)authenticate();}
