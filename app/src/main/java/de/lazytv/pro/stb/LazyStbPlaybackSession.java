@@ -22,7 +22,7 @@ final class LazyStbPlaybackSession {
     interface Events {void loading();void ready();void error(String safeMessage);default void ended(){}}
     private final StbPortalClient portal;
     private final Events events;
-    private final ExecutorService resolver=Executors.newSingleThreadExecutor();
+    private final ThreadPoolExecutor resolver=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(1),new ThreadPoolExecutor.DiscardOldestPolicy());
     private final Handler ui=new Handler(Looper.getMainLooper());
     private final StbGeneration generation=new StbGeneration();
     private final StbEnginePolicy policy=new StbEnginePolicy();
