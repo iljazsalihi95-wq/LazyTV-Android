@@ -16,7 +16,7 @@ final class StbLibraryBrowser {
     private final StbPortalClient portal;
     private final boolean series;
     private final Runnable exit,profiles;
-    private final ExecutorService worker=Executors.newSingleThreadExecutor();
+    private final ExecutorService worker=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<>(1),new ThreadPoolExecutor.DiscardOldestPolicy());
     private final Handler main=new Handler(Looper.getMainLooper());
     private final StbGeneration generation=new StbGeneration();
     private final TextView status,playingTitle,positionLabel;
