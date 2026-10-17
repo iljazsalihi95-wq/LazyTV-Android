@@ -22,8 +22,9 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import de.lazytv.pro.catalog.CatalogType;
 import de.lazytv.pro.catalog.ProviderPlaybackPolicy;
@@ -52,7 +53,9 @@ final class LivePlaybackSession {
     private final DefaultHttpDataSource.Factory http;
     private final RetryResolver retryResolver;
     private final Listener listener;
-    private final ExecutorService retryWorker = Executors.newSingleThreadExecutor();
+    private final ThreadPoolExecutor retryWorker = new ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS, new ArrayBlockingQueue<>(1),
+            new ThreadPoolExecutor.DiscardOldestPolicy());
     private final Handler main = new Handler(Looper.getMainLooper());
     private Runnable stablePlaybackReset;
     private volatile long generation;
@@ -193,9 +196,6 @@ final class LivePlaybackSession {
                     && currentStream==expectedStream
                     && (usingNative?nativeEngine!=null&&nativeEngine.playing():callbackBelongsToCurrentGeneration()&&player.getPlaybackState()==Player.STATE_READY&&player.isPlaying())) {
                 retryCount = 0;
-                // A Stalker channel that has played stably earned a fresh bounded recovery
-                // allowance. Rotate only the Stalker guard ticket; keep the same ExoPlayer,
-                // MediaItem and playback generation so Preview/Fullscreen/Back never rebuilds.
                 if (isStalker(currentStream)) stalkerTicket = stalkerGuard.begin();
                 fatalNotified = false;
             }
@@ -245,8 +245,6 @@ final class LivePlaybackSession {
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
-                // Server 10 may rotate Premium URLs. Always ask the catalog resolver for a
-                // fresh URL first; only fall back to the current URL when refresh is unavailable.
                 ResolvedStream refreshed = retryResolver == null ? null : retryResolver.refresh(expectedItem);
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
@@ -254,8 +252,6 @@ final class LivePlaybackSession {
                     if (stalkerPlayback) throw new IllegalStateException("Fresh Stalker URL missing");
                     refreshed = fallbackStream;
                 }
-                // Retain Server 10's existing recovery; a real Stalker playlist already used
-                // its shared provider session and must not handshake/resolve a second time.
                 ResolvedStream stalkerRetry = stalkerPlayback || "true".equals(refreshed.metadata.get("server10_fresh_link")) ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
                 if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
