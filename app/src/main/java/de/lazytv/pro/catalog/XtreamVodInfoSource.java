@@ -13,7 +13,7 @@ public final class XtreamVodInfoSource {
   Map<String,String> out=new LinkedHashMap<>();
   if(p==null||vodId==null||vodId.trim().isEmpty())return out;
   String url=XtreamUrlBuilder.api(p,"get_vod_info","vod_id",vodId.trim());
-  JSONObject root=obj(HttpClient.get(url,null));
+  JSONObject root=obj(xtreamGet(url));
   JSONObject info=root.optJSONObject("info");
   JSONObject movie=root.optJSONObject("movie_data");
   if(info!=null){
@@ -44,6 +44,19 @@ public final class XtreamVodInfoSource {
    put(out,"container_extension",first(movie,"container_extension"));
   }
   return out;
+ }
+ /** Keep get_vod_info on the same bounded HTTP/HTTPS recovery policy as the main Xtream player_api catalog. */
+ private String xtreamGet(String url)throws CatalogException{
+  try{return HttpClient.get(url,null);}catch(CatalogException first){
+   String m=first.getMessage()==null?"":first.getMessage();
+   boolean network=m.contains("ConnectException")||m.contains("TLS/SSL")||m.contains("brenda afatit");
+   if(!network)throw first;
+   String alternate;
+   if(url.regionMatches(true,0,"https://",0,8))alternate="http://"+url.substring(8);
+   else if(url.regionMatches(true,0,"http://",0,7))alternate="https://"+url.substring(7);
+   else throw first;
+   try{return HttpClient.get(alternate,null);}catch(CatalogException ignored){throw first;}
+  }
  }
  private JSONObject obj(String s)throws CatalogException{try{return new JSONObject(s);}catch(Exception e){throw new CatalogException("Përgjigje Xtream VOD e pavlefshme",e);}}
  private String first(JSONObject o,String...keys){for(String k:keys){Object raw=o.opt(k);if(raw==null||raw==JSONObject.NULL)continue;String v=String.valueOf(raw).trim();if(!v.isEmpty()&&!"null".equalsIgnoreCase(v))return v;}return "";}
