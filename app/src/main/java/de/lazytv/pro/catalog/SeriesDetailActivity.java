@@ -14,7 +14,7 @@ import de.lazytv.pro.player.PlayerLauncher;
 
 public class SeriesDetailActivity extends Activity {
     public static final String PLAYLIST="playlist_id",SERIES_ID="series_id",SERIES_NAME="series_name",SERIES_LOGO="series_logo",SERIES_CAT="series_cat";
-    private final ExecutorService pool=Executors.newSingleThreadExecutor();
+    private final ExecutorService pool=new ThreadPoolExecutor(1,1,0L,TimeUnit.MILLISECONDS,new ArrayBlockingQueue<Runnable>(1),new ThreadPoolExecutor.DiscardOldestPolicy());
     private final CatalogEngine engine=new CatalogEngine();
     private final AtomicInteger generation=new AtomicInteger();
     private Playlist p;
