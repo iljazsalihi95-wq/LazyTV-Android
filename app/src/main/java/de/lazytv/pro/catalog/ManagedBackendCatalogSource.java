@@ -7,10 +7,12 @@ public final class ManagedBackendCatalogSource {
  private final Map<String,String> labels=new LinkedHashMap<>();
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
  public List<String> servers()throws CatalogException {
+  // SERVER_01..SERVER_20 are stable LazyTV slots. Do not make the Servers menu depend on a
+  // remote registry request: every slot is immediately selectable and load() decides whether it
+  // currently has active channels. This also keeps the same Premium/Server10 playback path for all.
   List<String> result=new ArrayList<>();labels.clear();registryError="";
-  try{JSONObject data=new JSONObject(HttpClient.get(endpoint+"?action=servers&_ts="+System.currentTimeMillis(),null));if(!data.optBoolean("ok"))throw new CatalogException("API LazyTV refuzoi katalogun");JSONArray rows=data.optJSONArray("servers");if(rows!=null)for(int n=0;n<rows.length();n++){JSONObject row=rows.optJSONObject(n);String name=row==null?"":row.optString("name").trim();if(!name.isEmpty()&&!name.equalsIgnoreCase("MASTER")&&!result.contains(name))result.add(name);}}catch(CatalogException|JSONException unavailable){registryError="API LazyTV nuk mund të lexohet";}
-  try{for(ManagedSheetCatalogSource.Server server:sheets.servers().values()){if(!result.contains(server.id))result.add(server.id);labels.put(server.id,server.name.equals(server.id)?server.id:server.id+" • "+server.name);}}catch(CatalogException unavailable){registryError=registryError.isEmpty()?"Regjistri SOURCES nuk mund të lexohet":registryError+"; SOURCES nuk mund të lexohet";}
-  if(result.isEmpty()&&!registryError.isEmpty())throw new CatalogException(registryError);return result;
+  for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);result.add(id);labels.put(id,"Server "+n);}
+  return result;
  }
  public Catalog load(String server)throws CatalogException {
   CatalogException apiFailure=null,sheetFailure=null;String apiServer=legacyApiName(server);
