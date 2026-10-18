@@ -19,7 +19,23 @@ final class ManagedSheetCatalogSource {
         // CATEGORIES/EPG/STATUS were fetched here but their responses were discarded. On slow or
         // unavailable tabs that made Live wait for three unrelated network requests. Premium does
         // not block playback catalog loading on those tabs, so managed servers must not either.
-        Catalog enriched=new Catalog();enriched.categories.addAll(out.categories);for(StreamItem item:out.items){Map<String,String> metadata=new LinkedHashMap<>(item.metadata);String portal=get(identity,"PORTAL_URL","PORTAL"),mac=get(identity,"MAC");if(!portal.isEmpty()&&!metadata.containsKey("portal_url"))metadata.put("portal_url",portal);if(!mac.isEmpty()&&!metadata.containsKey("mac"))metadata.put("mac",mac);enriched.items.add(new StreamItem(item.id,item.name,item.categoryId,item.logo,item.streamUrl,item.tvgId,item.type,item.fallbackUrls,metadata));}Set<String> used=new HashSet<>();for(StreamItem item:enriched.items)used.add(item.categoryId);enriched.categories.removeIf(c->!used.contains(c.id));return enriched;
+        return enrich(out,identity);
+    }
+    /** Keep structured series/episode objects when attaching the server's INFO metadata. */
+    static Catalog enrich(Catalog out,Map<String,String> identity){
+        Catalog enriched=new Catalog();enriched.categories.addAll(out.categories);
+        for(StreamItem item:out.items){
+            Map<String,String> metadata=new LinkedHashMap<>(item.metadata);
+            String portal=get(identity,"PORTAL_URL","PORTAL"),mac=get(identity,"MAC");
+            if(!portal.isEmpty()&&!metadata.containsKey("portal_url"))metadata.put("portal_url",portal);
+            if(!mac.isEmpty()&&!metadata.containsKey("mac"))metadata.put("mac",mac);
+            StreamItem copy;
+            if(item instanceof Episode){Episode episode=(Episode)item;copy=new Episode(item.id,item.name,episode.seriesId,item.categoryId,item.logo,item.streamUrl,episode.extension,episode.duration,episode.seasonNumber,episode.episodeNumber,metadata);}
+            else if(item instanceof Series)copy=new Series(item.id,item.name,item.categoryId,item.logo,item.streamUrl,item.tvgId,metadata);
+            else copy=new StreamItem(item.id,item.name,item.categoryId,item.logo,item.streamUrl,item.tvgId,item.type,item.fallbackUrls,metadata);
+            enriched.items.add(copy);
+        }
+        Set<String> used=new HashSet<>();for(StreamItem item:enriched.items)used.add(item.categoryId);enriched.categories.removeIf(c->!used.contains(c.id));return enriched;
     }
     static void merge(Catalog into,Catalog more){Set<String> categories=new HashSet<>();for(Category c:into.categories)categories.add(c.id);for(Category c:more.categories)if(categories.add(c.id))into.categories.add(c);LinkedHashMap<String,StreamItem> items=new LinkedHashMap<>();for(StreamItem i:into.items)items.put(i.type.name()+"|"+i.id,i);for(StreamItem i:more.items)items.put(i.type.name()+"|"+i.id,i);into.items.clear();into.items.addAll(items.values());}
     static Catalog parse(Server server,String tab,String csv)throws CatalogException{return parse(server,tab,csv,Collections.emptyMap());}
