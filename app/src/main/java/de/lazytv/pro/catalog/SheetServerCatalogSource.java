@@ -67,7 +67,7 @@ public final class SheetServerCatalogSource {
                 put(metadata,"server10_mac",value(values,macCol));
                 put(metadata,"stalker_original_cmd",value(values,cmdCol));
                 boolean completeMag=metadata.containsKey("server10_portal")&&metadata.containsKey("server10_mac")&&metadata.containsKey("stalker_original_cmd");
-                if(!completeMag&&streamUrl.matches("(?i)^https?://.*"))metadata.put("managed_direct","true");
+                if(useDirectPlayback(serverId,streamUrl,completeMag))metadata.put("managed_direct","true");
                 out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>(), metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
@@ -75,6 +75,16 @@ public final class SheetServerCatalogSource {
         } catch (CatalogException e) { throw e; }
         catch (Exception e) { throw new CatalogException("Serveri Premium nuk mund të ngarkohet për momentin."); }
         finally { if (connection != null) connection.disconnect(); }
+    }
+    /** Retain the Oct 15/16 Premium refresh path, without applying it to other servers. */
+    static boolean useDirectPlayback(String serverId,String url,boolean completeMag) {
+        if(completeMag||url==null||!url.matches("(?i)^https?://.*"))return false;
+        // This legacy Sheet format is specific to the existing Server 10 integration.
+        // Ordinary direct URLs and owner API rows must never acquire a synthetic MAG identity.
+        boolean legacyPremium="SERVER_10".equalsIgnoreCase(serverId)
+                && url.toLowerCase(Locale.ROOT).contains("play_token=")
+                && ServerTenPlaybackResolver.reference(url)!=null;
+        return !legacyPremium;
     }
     private static int column(List<String> h, String name) { for (int i=0;i<h.size();i++) if (name.equalsIgnoreCase(h.get(i).trim())) return i; return -1; }
     private static int firstColumn(List<String> h,String... names){for(String name:names){int i=column(h,name);if(i>=0)return i;}return -1;}
