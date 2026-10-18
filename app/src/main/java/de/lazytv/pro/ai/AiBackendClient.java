@@ -1,5 +1,8 @@
 package de.lazytv.pro.ai;
 
+import android.content.Context;
+import de.lazytv.pro.BuildConfig;
+import de.lazytv.pro.activation.DeviceIdentityManager;
 import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -18,6 +21,12 @@ public final class AiBackendClient {
     private static final int CONNECT_TIMEOUT_MS = 15_000;
     private static final int READ_TIMEOUT_MS = 65_000;
     private static final int MAX_RESPONSE_CHARS = 2_000_000;
+    private final DeviceIdentityManager identity;
+
+    public AiBackendClient(Context context) {
+        if (context == null) throw new IllegalArgumentException("Context required");
+        identity = new DeviceIdentityManager(context.getApplicationContext());
+    }
 
     public static final class AiException extends Exception {
         public final boolean retryable;
@@ -35,6 +44,7 @@ public final class AiBackendClient {
             connection = open(action);
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/json");
+            addIdentityHeaders(connection);
             return response(connection);
         } catch (AiException e) { throw e; }
         catch (IOException e) { throw new AiException("LazyTV AI service unavailable", true); }
@@ -51,13 +61,29 @@ public final class AiBackendClient {
             connection.setDoOutput(true);
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
-            byte[] body = request.toString().getBytes(StandardCharsets.UTF_8);
+            addIdentityHeaders(connection);
+            JSONObject envelope = new JSONObject();
+            envelope.put("device_id", identity.getDeviceId());
+            envelope.put("device_key", identity.getDeviceKey());
+            envelope.put("serial", identity.getSerial());
+            envelope.put("lazytv_id", identity.getLazyTvId());
+            envelope.put("app_version", BuildConfig.VERSION_NAME);
+            envelope.put("request", request);
+            byte[] body = envelope.toString().getBytes(StandardCharsets.UTF_8);
             try (OutputStream output = connection.getOutputStream()) { output.write(body); }
             return response(connection);
         } catch (AiException e) { throw e; }
         catch (IOException e) { throw new AiException("LazyTV AI service unavailable", true); }
         catch (Exception e) { throw new AiException("Invalid LazyTV AI response", false); }
         finally { if (connection != null) connection.disconnect(); }
+    }
+
+    private void addIdentityHeaders(HttpsURLConnection connection) {
+        connection.setRequestProperty("X-LazyTV-Device-Id", identity.getDeviceId());
+        connection.setRequestProperty("X-LazyTV-Device-Key", identity.getDeviceKey());
+        connection.setRequestProperty("X-LazyTV-Serial", identity.getSerial());
+        connection.setRequestProperty("X-LazyTV-Id", identity.getLazyTvId());
+        connection.setRequestProperty("X-LazyTV-App-Version", BuildConfig.VERSION_NAME);
     }
 
     private HttpsURLConnection open(String action) throws Exception {
