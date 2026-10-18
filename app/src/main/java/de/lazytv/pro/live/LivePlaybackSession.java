@@ -245,6 +245,9 @@ final class LivePlaybackSession {
         retryWorker.execute(() -> {
             try {
                 Thread.sleep(Math.min(2500L, 400L * attempt));
+                // Do not refresh credentials/links for a selection superseded during backoff.
+                if (released || expectedGeneration != generation || expectedItem != currentItem) return;
+                if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
                 ResolvedStream refreshed = retryResolver == null ? null : retryResolver.refresh(expectedItem);
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
