@@ -3,9 +3,13 @@ package de.lazytv.pro.stb;
 import android.content.Context;
 import android.net.Uri;
 import android.os.*;
+import android.graphics.Color;
 import android.view.*;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import androidx.media3.common.*;
+import androidx.media3.common.text.Cue;
+import androidx.media3.common.text.CueGroup;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.*;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -28,6 +32,7 @@ final class LazyStbPlaybackSession {
     private final StbEnginePolicy policy=new StbEnginePolicy();
     private final ExoPlayer player;
     private final PlayerView view;
+    private final TextView subtitleView;
     private final SurfaceView surface;private final FrameLayout frame;private int videoWidth,videoHeight,sarNum=1,sarDen=1;
     private org.videolan.libvlc.LibVLC vlc;
     private org.videolan.libvlc.MediaPlayer vlcPlayer;
@@ -49,6 +54,7 @@ final class LazyStbPlaybackSession {
         this.portal=portal;this.events=events;this.frame=frame;
         view=new PlayerView(context);view.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);view.setUseController(false);view.setFocusable(false);frame.addView(view,new FrameLayout.LayoutParams(-1,-1));
         surface=new SurfaceView(context);surface.setVisibility(View.GONE);surface.setFocusable(false);frame.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+        subtitleView=new TextView(context);subtitleView.setTextColor(Color.WHITE);subtitleView.setTextSize(20);subtitleView.setGravity(Gravity.CENTER);subtitleView.setShadowLayer(5f,0,2,Color.BLACK);subtitleView.setPadding(24,8,24,24);subtitleView.setVisibility(View.GONE);FrameLayout.LayoutParams subtitleParams=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);subtitleParams.leftMargin=24;subtitleParams.rightMargin=24;subtitleParams.bottomMargin=24;frame.addView(subtitleView,subtitleParams);
         player=new ExoPlayer.Builder(context).setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context,http))).build();view.setPlayer(player);
         surface.getHolder().addCallback(new SurfaceHolder.Callback(){
             public void surfaceCreated(SurfaceHolder holder){if(closed)return;if(active==Engine.IJK&&ijk!=null)StbNativeCalls.run(()->ijk.setDisplay(holder));if(active==Engine.ANDROID&&androidPlayer!=null)StbNativeCalls.run(()->androidPlayer.setDisplay(holder));}
@@ -65,7 +71,7 @@ final class LazyStbPlaybackSession {
     private boolean current(long selected,long engineAttempt){return generation.accepts(selected)&&attempt==engineAttempt;}
     void select(StbProtocol.Channel next){select(next,0);}
     void select(StbProtocol.Channel next,long resumePosition){
-        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;pendingPosition=next.linear()?0:Math.max(0,resumePosition);reloadAttempted=false;engineStarts=0;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
+        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;pendingPosition=next.linear()?0:Math.max(0,resumePosition);reloadAttempted=false;engineStarts=0;stream=null;subtitleView.setText("");subtitleView.setVisibility(View.GONE);policy.reset(engine);events.loading();resolve(ticket,false);
     }
     private void resolve(long selected,boolean reload){
         StbProtocol.Channel item=channel;
@@ -82,7 +88,7 @@ final class LazyStbPlaybackSession {
         if(engineStarts>=MAX_ENGINE_STARTS){next(selected);return;}
         engineStarts++;
         cancelWatchdog();long engineAttempt=++attempt;stopEngines();active=selectedEngine;prepared=false;videoWidth=videoHeight=0;sarNum=sarDen=1;fitSurface();
-        view.setVisibility(active==Engine.MEDIA3?View.VISIBLE:View.GONE);surface.setVisibility(active==Engine.MEDIA3?View.GONE:View.VISIBLE);events.loading();
+        view.setVisibility(active==Engine.MEDIA3?View.VISIBLE:View.GONE);surface.setVisibility(active==Engine.MEDIA3?View.GONE:View.VISIBLE);if(active!=Engine.MEDIA3)subtitleView.setVisibility(View.GONE);events.loading();
         try{
             switch(active){case MEDIA3:playMedia3(selected,engineAttempt);break;case VLC:playVlc(selected,engineAttempt);break;case IJK:playIjk(selected,engineAttempt);break;case ANDROID:playAndroid(selected,engineAttempt);break;default:throw new IllegalStateException();}
             watch(selected,engineAttempt);
@@ -93,7 +99,9 @@ final class LazyStbPlaybackSession {
         mediaListener=new Player.Listener(){
             @Override public void onPlaybackStateChanged(int state){if(!current(selected,engineAttempt))return;if(state==Player.STATE_READY)ready(selected,engineAttempt);else if(state==Player.STATE_BUFFERING){events.loading();watch(selected,engineAttempt);}else if(state==Player.STATE_ENDED)completed(selected,engineAttempt);}
             @Override public void onPlayerError(PlaybackException error){boolean expired=false;for(Throwable c=error;c!=null;c=c.getCause())if(c instanceof HttpDataSource.InvalidResponseCodeException){int code=((HttpDataSource.InvalidResponseCodeException)c).responseCode;expired=code==401||code==403;}failed(selected,engineAttempt,expired);}
+            @Override public void onCues(CueGroup cueGroup){if(!current(selected,engineAttempt))return;StringBuilder text=new StringBuilder();for(Cue cue:cueGroup.cues){if(cue.text==null)continue;if(text.length()>0)text.append('\n');text.append(cue.text);}subtitleView.setText(text);subtitleView.setVisibility(text.length()==0?View.GONE:View.VISIBLE);}
         };player.addListener(mediaListener);http.setDefaultRequestProperties(headers);
+        player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,false).build());
         player.setMediaItem(new MediaItem.Builder().setUri(stream).setMediaId(selected+":"+engineAttempt).build());player.prepare();player.setPlayWhenReady(foreground);
     }
     private void playVlc(long selected,long engineAttempt){
@@ -135,7 +143,7 @@ final class LazyStbPlaybackSession {
         if(!current(selected,engineAttempt))return;long position=position();if(position>0)pendingPosition=position;cancelWatchdog();attempt++;stopEngines();
         if(expired&&!reloadAttempted){reloadAttempted=true;events.loading();resolve(selected,true);}else next(selected);
     }
-    private void stopEngines(){prepared=false;StbNativeCalls.run(player::stop);try{if(vlcPlayer!=null){vlcPlayer.setEventListener(null);vlcPlayer.stop();vlcPlayer.getVLCVout().detachViews();}}catch(Exception|LinkageError ignored){}try{if(ijk!=null)ijk.reset();}catch(Exception|LinkageError ignored){}try{if(androidPlayer!=null)androidPlayer.reset();}catch(Exception|LinkageError ignored){}}
+    private void stopEngines(){prepared=false;subtitleView.setText("");subtitleView.setVisibility(View.GONE);StbNativeCalls.run(player::stop);try{if(vlcPlayer!=null){vlcPlayer.setEventListener(null);vlcPlayer.stop();vlcPlayer.getVLCVout().detachViews();}}catch(Exception|LinkageError ignored){}try{if(ijk!=null)ijk.reset();}catch(Exception|LinkageError ignored){}try{if(androidPlayer!=null)androidPlayer.reset();}catch(Exception|LinkageError ignored){}}
     private void cancelWatchdog(){if(watchdog!=null){ui.removeCallbacks(watchdog);watchdog=null;}}
     private void watch(long selected,long engineAttempt){cancelWatchdog();watchdog=()->{if(foreground)failed(selected,engineAttempt,false);};ui.postDelayed(watchdog,25000);}
     long position(){
