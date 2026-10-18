@@ -7,9 +7,6 @@ public final class ManagedBackendCatalogSource {
  private final Map<String,String> labels=new LinkedHashMap<>();
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
  public List<String> servers()throws CatalogException {
-  // SERVER_01..SERVER_20 are stable LazyTV slots. Do not make the Servers menu depend on a
-  // remote registry request: every slot is immediately selectable and load() decides whether it
-  // currently has active channels. This also keeps the same Premium/Server10 playback path for all.
   List<String> result=new ArrayList<>();labels.clear();registryError="";
   for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);result.add(id);labels.put(id,"Server "+n);}
   return result;
@@ -31,17 +28,19 @@ public final class ManagedBackendCatalogSource {
  }
  public SeriesDetails loadSeries(String server,Series series)throws CatalogException {Catalog all=load(server);SeriesDetails out=new SeriesDetails();out.metadata.putAll(series.metadata);Set<Integer> seasons=new TreeSet<>();for(StreamItem item:all.items)if(item instanceof Episode){Episode episode=(Episode)item;if(series.id.equals(episode.seriesId)){seasons.add(episode.seasonNumber);out.episodes.computeIfAbsent(episode.seasonNumber,n->new ArrayList<>()).add(episode);}}for(int number:seasons){out.seasons.add(new Season(series.id+"|"+number,"Sezoni "+number,series.id,number,series.logo));out.episodes.get(number).sort((a,b)->Integer.compare(a.episodeNumber,b.episodeNumber));}return out;}
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
+  // Managed Live rows that contain the portal/MAC/original command must never prefer a stale
+  // Sheet/API playback token. Use the proven Server10 fresh create_link flow for every managed
+  // server (including SERVER_06 and SERVER_09); its own bounded session handling refreshes tokens.
+  if(selected!=null&&selected.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(selected))return ServerTenPlaybackResolver.resolve(selected);
+  if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  // Stable direct HTTP(S) channels already carry a usable playback URL. Do not re-download the
-  // complete managed catalog on a bounded player retry: that adds latency without changing the URL
-  // and can make rapid channel switching feel stuck. Refresh only expiring/tokenized commands.
   if(forceFresh&&expiring(raw)){
    try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));StreamItem matched=matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
   }
-  String url=raw;
-  if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
-  if(url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("managed_direct","true");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,metadata);}
+  if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);
+  String url=raw;if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
+  if(url.matches("(?i)^https?://.*")){Map<String,String> headers=new LinkedHashMap<>();headers.put("User-Agent","Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36");headers.put("Accept","*/*");Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("managed_direct","true");return new ResolvedStream(url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"),item.name,item.logo,item.tvgId,headers,metadata);}
   throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");
  }
  private static StreamItem matchSelected(Catalog catalog,StreamItem selected){String selectedSource=selected.meta("managed_source_id"),selectedOriginal=selected.meta("managed_original_item_id");for(StreamItem candidate:catalog.items){String candidateSource=candidate.meta("managed_source_id");boolean sameId=candidate.id.equals(selected.id)||(!selectedSource.isEmpty()&&(candidate.id.equals(selectedSource)||candidate.id.endsWith("|"+selectedSource)||selected.id.endsWith("|"+candidate.id)||selectedSource.equals(candidateSource)))||(!selectedOriginal.isEmpty()&&candidate.id.equals(selectedOriginal));boolean sameName=selected.name!=null&&selected.name.equals(candidate.name);if(candidate.type==selected.type&&(sameId||sameName))return candidate;}return null;}
