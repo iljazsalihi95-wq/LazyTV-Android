@@ -28,7 +28,7 @@ final class LazyStbPlaybackSession {
     private final StbEnginePolicy policy=new StbEnginePolicy();
     private final ExoPlayer player;
     private final PlayerView view;
-    private final SurfaceView surface;
+    private final SurfaceView surface;private final FrameLayout frame;private int videoWidth,videoHeight,sarNum=1,sarDen=1;
     private org.videolan.libvlc.LibVLC vlc;
     private org.videolan.libvlc.MediaPlayer vlcPlayer;
     private IjkMediaPlayer ijk;
@@ -46,8 +46,8 @@ final class LazyStbPlaybackSession {
     private static final int MAX_ENGINE_STARTS=5;
 
     LazyStbPlaybackSession(Context context,FrameLayout frame,StbPortalClient portal,Events events){
-        this.portal=portal;this.events=events;
-        view=new PlayerView(context);view.setUseController(false);view.setFocusable(false);frame.addView(view,new FrameLayout.LayoutParams(-1,-1));
+        this.portal=portal;this.events=events;this.frame=frame;
+        view=new PlayerView(context);view.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);view.setUseController(false);view.setFocusable(false);frame.addView(view,new FrameLayout.LayoutParams(-1,-1));
         surface=new SurfaceView(context);surface.setVisibility(View.GONE);surface.setFocusable(false);frame.addView(surface,new FrameLayout.LayoutParams(-1,-1));
         player=new ExoPlayer.Builder(context).setMediaSourceFactory(new DefaultMediaSourceFactory(new DefaultDataSource.Factory(context,http))).build();view.setPlayer(player);
         surface.getHolder().addCallback(new SurfaceHolder.Callback(){
@@ -55,7 +55,7 @@ final class LazyStbPlaybackSession {
             public void surfaceChanged(SurfaceHolder h,int f,int w,int height){if(active==Engine.VLC&&vlcPlayer!=null)vlcPlayer.getVLCVout().setWindowSize(w,height);}
             public void surfaceDestroyed(SurfaceHolder holder){if(ijk!=null)StbNativeCalls.run(()->ijk.setDisplay(null));if(androidPlayer!=null)StbNativeCalls.run(()->androidPlayer.setDisplay(null));}
         });
-        frame.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{if(vlcPlayer!=null&&active==Engine.VLC)vlcPlayer.getVLCVout().setWindowSize(r-l,b-t);});
+        frame.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{fitSurface();if(vlcPlayer!=null&&active==Engine.VLC)vlcPlayer.getVLCVout().setWindowSize(r-l,b-t);});
     }
     void setEngine(Engine value){if(closed)return;long position=position();engine=value;if(channel!=null)select(channel,position);}
     Engine engine(){return engine;}
@@ -69,7 +69,7 @@ final class LazyStbPlaybackSession {
     }
     private void resolve(long selected,boolean reload){
         StbProtocol.Channel item=channel;
-        resolver.execute(()->{try{String url=portal.resolve(item);Map<String,String> h=portal.playbackHeaders(url);ui.post(()->{if(!generation.accepts(selected))return;stream=url;headers=h;if(reload&&active!=null)start(selected,active);else next(selected);});}catch(Exception e){ui.post(()->{if(generation.accepts(selected))events.error("create_link: "+StbErrors.message(e));});}});
+        resolver.execute(()->{if(!generation.accepts(selected)||Thread.currentThread().isInterrupted())return;try{String url=portal.resolve(item);Map<String,String> h=portal.playbackHeaders(url);ui.post(()->{if(!generation.accepts(selected))return;stream=url;headers=h;if(reload&&active!=null)start(selected,active);else next(selected);});}catch(Exception e){ui.post(()->{if(generation.accepts(selected))events.error("create_link: "+StbErrors.message(e));});}});
     }
     private void next(long selected){
         if(!generation.accepts(selected))return;
@@ -81,7 +81,7 @@ final class LazyStbPlaybackSession {
         if(!generation.accepts(selected))return;
         if(engineStarts>=MAX_ENGINE_STARTS){next(selected);return;}
         engineStarts++;
-        cancelWatchdog();long engineAttempt=++attempt;stopEngines();active=selectedEngine;prepared=false;
+        cancelWatchdog();long engineAttempt=++attempt;stopEngines();active=selectedEngine;prepared=false;videoWidth=videoHeight=0;sarNum=sarDen=1;fitSurface();
         view.setVisibility(active==Engine.MEDIA3?View.VISIBLE:View.GONE);surface.setVisibility(active==Engine.MEDIA3?View.GONE:View.VISIBLE);events.loading();
         try{
             switch(active){case MEDIA3:playMedia3(selected,engineAttempt);break;case VLC:playVlc(selected,engineAttempt);break;case IJK:playIjk(selected,engineAttempt);break;case ANDROID:playAndroid(selected,engineAttempt);break;default:throw new IllegalStateException();}
@@ -110,6 +110,7 @@ final class LazyStbPlaybackSession {
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_PLAYER,"mediacodec",0);ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT,"timeout",15000000L);ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT,"reconnect",0);
         StringBuilder raw=new StringBuilder();for(Map.Entry<String,String> h:headers.entrySet())if(h.getKey().matches("[A-Za-z0-9-]+")&&h.getValue()!=null&&!h.getValue().contains("\r")&&!h.getValue().contains("\n"))raw.append(h.getKey()).append(": ").append(h.getValue()).append("\r\n");
         ijk.setOption(IjkMediaPlayer.OPT_CATEGORY_FORMAT,"headers",raw.toString());ijk.setDisplay(surface.getHolder());ijk.setDataSource(stream);
+        ijk.setOnVideoSizeChangedListener((mp,w,h,sn,sd)->ui.post(()->{if(current(selected,engineAttempt)){videoWidth=w;videoHeight=h;sarNum=sn;sarDen=sd;fitSurface();}}));
         ijk.setOnPreparedListener(mp->ui.post(()->{if(!current(selected,engineAttempt))return;if(foreground)mp.start();ready(selected,engineAttempt);}));
         ijk.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});ijk.setOnCompletionListener(mp->ui.post(()->completed(selected,engineAttempt)));
         ijk.setOnInfoListener((mp,what,extra)->{if(what==701)ui.post(()->{if(current(selected,engineAttempt)){events.loading();watch(selected,engineAttempt);}});else if(what==702)ui.post(()->ready(selected,engineAttempt));return false;});ijk.prepareAsync();
@@ -117,9 +118,16 @@ final class LazyStbPlaybackSession {
     private void playAndroid(long selected,long engineAttempt)throws Exception {
         if(androidPlayer==null)androidPlayer=new android.media.MediaPlayer();
         androidPlayer.setAudioStreamType(android.media.AudioManager.STREAM_MUSIC);androidPlayer.setDisplay(surface.getHolder());androidPlayer.setDataSource(view.getContext(),Uri.parse(stream),headers);
+        androidPlayer.setVideoScalingMode(android.media.MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT);androidPlayer.setOnVideoSizeChangedListener((mp,w,h)->{if(current(selected,engineAttempt)){videoWidth=w;videoHeight=h;fitSurface();}});
         androidPlayer.setOnPreparedListener(mp->{if(!current(selected,engineAttempt))return;if(foreground)mp.start();ready(selected,engineAttempt);});
         androidPlayer.setOnErrorListener((mp,what,extra)->{ui.post(()->failed(selected,engineAttempt,false));return true;});androidPlayer.setOnCompletionListener(mp->ui.post(()->completed(selected,engineAttempt)));
         androidPlayer.setOnInfoListener((mp,what,extra)->{if(!current(selected,engineAttempt))return false;if(what==701){events.loading();watch(selected,engineAttempt);}else if(what==702)ready(selected,engineAttempt);return false;});androidPlayer.prepareAsync();
+    }
+    private void fitSurface(){
+        int availableWidth=Math.max(0,frame.getWidth()-frame.getPaddingLeft()-frame.getPaddingRight()),availableHeight=Math.max(0,frame.getHeight()-frame.getPaddingTop()-frame.getPaddingBottom());
+        int[] size=StbVideoBounds.fit(availableWidth,availableHeight,videoWidth,videoHeight,sarNum,sarDen);
+        FrameLayout.LayoutParams old=(FrameLayout.LayoutParams)surface.getLayoutParams();
+        if(old.width!=size[0]||old.height!=size[1]||old.gravity!=Gravity.CENTER){FrameLayout.LayoutParams params=new FrameLayout.LayoutParams(size[0],size[1],Gravity.CENTER);surface.setLayoutParams(params);}
     }
     private void completed(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;if(channel!=null&&!channel.linear()){cancelWatchdog();events.ended();}else failed(selected,engineAttempt,false);}
     private void ready(long selected,long engineAttempt){if(!current(selected,engineAttempt))return;prepared=true;cancelWatchdog();if(pendingPosition>0){long resume=pendingPosition;pendingPosition=0;seek(resume);}events.ready();}
