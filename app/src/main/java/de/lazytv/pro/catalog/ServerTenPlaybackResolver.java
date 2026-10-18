@@ -66,7 +66,7 @@ public final class ServerTenPlaybackResolver {
  public static boolean canRefresh(StreamItem item){return reference(item)!=null;}
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);
-  if(ref==null)return new ResolvedStream(item.streamUrl,item.type.name(),item.name,item.logo,item.tvgId,null,item.metadata);
+  if(ref==null)return DirectPlaybackRequest.resolve(item,item.streamUrl,item.type.name());
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
   StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
