@@ -8,8 +8,15 @@ public final class ManagedBackendCatalogSource {
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
  public List<String> servers()throws CatalogException {
   List<String> result=new ArrayList<>();labels.clear();registryError="";
-  for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);result.add(id);labels.put(id,"Server "+n);}
+  try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
+  try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}}catch(Exception e){registryError="SOURCES nuk u lexua";}
+  // Retain numbered entry points when the registry is temporarily unavailable.
+  for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);if(!result.contains(id))result.add(id);if(!labels.containsKey(id))labels.put(id,"Server "+n);}
   return result;
+ }
+ static void appendApiServers(String body,List<String> result,Map<String,String> labels)throws Exception{
+  JSONObject root=new JSONObject(body);if(!root.optBoolean("ok"))throw new CatalogException("SERVER_REGISTRY_REJECTED");JSONArray rows=root.getJSONArray("servers");
+  for(int n=0;n<rows.length();n++){Object raw=rows.get(n);String name;if(raw instanceof JSONObject){JSONObject row=(JSONObject)raw;if(!row.optBoolean("active",true))continue;name=row.optString("name",row.optString("id","")).trim();}else name=String.valueOf(raw).trim();if(name.isEmpty()||name.length()>120)continue;if(!result.contains(name))result.add(name);labels.put(name,name);}
  }
  public Catalog load(String server)throws CatalogException {
   CatalogException apiFailure=null,sheetFailure=null;String apiServer=legacyApiName(server);
