@@ -42,6 +42,8 @@ final class LazyStbPlaybackSession {
     private String stream;
     private Map<String,String> headers=Collections.emptyMap();
     private boolean reloadAttempted,foreground=true,closed,prepared;
+    private int engineStarts;
+    private static final int MAX_ENGINE_STARTS=5;
 
     LazyStbPlaybackSession(Context context,FrameLayout frame,StbPortalClient portal,Events events){
         this.portal=portal;this.events=events;
@@ -63,7 +65,7 @@ final class LazyStbPlaybackSession {
     private boolean current(long selected,long engineAttempt){return generation.accepts(selected)&&attempt==engineAttempt;}
     void select(StbProtocol.Channel next){select(next,0);}
     void select(StbProtocol.Channel next,long resumePosition){
-        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;pendingPosition=next.linear()?0:Math.max(0,resumePosition);reloadAttempted=false;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
+        if(closed||next==null)return;cancelWatchdog();ticket=generation.next();attempt++;stopEngines();active=null;channel=next;pendingPosition=next.linear()?0:Math.max(0,resumePosition);reloadAttempted=false;engineStarts=0;stream=null;policy.reset(engine);events.loading();resolve(ticket,false);
     }
     private void resolve(long selected,boolean reload){
         StbProtocol.Channel item=channel;
@@ -72,10 +74,13 @@ final class LazyStbPlaybackSession {
     private void next(long selected){
         if(!generation.accepts(selected))return;
         Engine next=policy.next();
-        if(next==null){cancelWatchdog();attempt++;stopEngines();events.error(engine==Engine.AUTO?"STB: Media3, VLC, IJK dhe Android MediaPlayer nuk e hapën stream-in. Kontrollo linkun/sesionin e portalit.":"STB: engine i zgjedhur nuk e hapi stream-in. Provo Auto ose engine tjetër.");return;}
+        if(next==null||engineStarts>=MAX_ENGINE_STARTS){cancelWatchdog();attempt++;stopEngines();events.error(engine==Engine.AUTO?"STB: Media3, VLC, IJK dhe Android MediaPlayer nuk e hapën stream-in. Kontrollo linkun/sesionin e portalit.":"STB: engine i zgjedhur nuk e hapi stream-in. Provo Auto ose engine tjetër.");return;}
         start(selected,next);
     }
     private void start(long selected,Engine selectedEngine){
+        if(!generation.accepts(selected))return;
+        if(engineStarts>=MAX_ENGINE_STARTS){next(selected);return;}
+        engineStarts++;
         cancelWatchdog();long engineAttempt=++attempt;stopEngines();active=selectedEngine;prepared=false;
         view.setVisibility(active==Engine.MEDIA3?View.VISIBLE:View.GONE);surface.setVisibility(active==Engine.MEDIA3?View.GONE:View.VISIBLE);events.loading();
         try{
