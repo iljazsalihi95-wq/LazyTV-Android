@@ -16,6 +16,12 @@ public final class ProviderPlaybackPolicy {
             error=error.getCause();
         }return 0;
     }
+    public static boolean shouldRetry(int code,int attempts){
+        if(code==402||code==404||code==405||code==406||code==415||code==451)return false;
+        if(code==401||code==403||code==409||code==458)return attempts<1;
+        if(code==429)return attempts<2;
+        return attempts<3;
+    }
     public static String message(int code){return new ProviderHttpException(code).getMessage();}
     public static ResolvedStream retryHeaders(ResolvedStream stream,StreamItem item,int code,int attempt){
         if(stream==null||attempt!=1||(code!=403&&code!=409)||stream.headers.containsKey("X-User-Agent"))return stream;

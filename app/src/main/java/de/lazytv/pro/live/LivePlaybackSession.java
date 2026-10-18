@@ -217,9 +217,9 @@ final class LivePlaybackSession {
     private void retryCurrent(long expectedGeneration, StreamItem expectedItem) {
         if (released || expectedGeneration != generation || expectedItem == null
                 || expectedItem != currentItem || currentStream == null || retryRunning
-                || retryCount >= MAX_RETRIES) {
+                || retryCount >= MAX_RETRIES || !ProviderPlaybackPolicy.shouldRetry(lastHttpStatus,retryCount)) {
             if (!released && expectedGeneration == generation && expectedItem == currentItem
-                    && retryCount >= MAX_RETRIES && !fatalNotified) {
+                    && (retryCount >= MAX_RETRIES || !ProviderPlaybackPolicy.shouldRetry(lastHttpStatus,retryCount)) && !fatalNotified) {
                 fatalNotified = true;
                 listener.onBuffering(false);
                 listener.onFatalPlaybackError(lastHttpStatus > 0
@@ -244,7 +244,7 @@ final class LivePlaybackSession {
         retryRunning = true;
         retryWorker.execute(() -> {
             try {
-                Thread.sleep(Math.min(2500L, 400L * attempt));
+                Thread.sleep(httpStatus==429?10000L:Math.min(2500L, 400L * attempt));
                 // Do not refresh credentials/links for a selection superseded during backoff.
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
@@ -255,7 +255,7 @@ final class LivePlaybackSession {
                     if (stalkerPlayback) throw new IllegalStateException("Fresh Stalker URL missing");
                     refreshed = fallbackStream;
                 }
-                ResolvedStream stalkerRetry = stalkerPlayback || "true".equals(refreshed.metadata.get("server10_fresh_link")) ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
+                ResolvedStream stalkerRetry = stalkerPlayback || "true".equals(refreshed.metadata.get("managed_direct")) || "true".equals(refreshed.metadata.get("server10_fresh_link")) ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
                 if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
                 main.post(() -> {

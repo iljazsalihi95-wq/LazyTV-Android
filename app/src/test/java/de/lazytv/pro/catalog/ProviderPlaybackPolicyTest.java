@@ -5,6 +5,13 @@ import static org.junit.Assert.*;
 import java.util.*;
 
 public class ProviderPlaybackPolicyTest {
+    @Test public void refusalsAndFreshLinkRecoveryAreBounded(){
+        for(int code:new int[]{402,404,405,406,415,451})assertFalse(ProviderPlaybackPolicy.shouldRetry(code,0));
+        for(int code:new int[]{401,403,409,458}){assertTrue(ProviderPlaybackPolicy.shouldRetry(code,0));assertFalse(ProviderPlaybackPolicy.shouldRetry(code,1));}
+        assertTrue(ProviderPlaybackPolicy.shouldRetry(429,1));assertFalse(ProviderPlaybackPolicy.shouldRetry(429,2));
+        assertTrue(ProviderPlaybackPolicy.shouldRetry(503,2));assertFalse(ProviderPlaybackPolicy.shouldRetry(503,3));
+    }
+
     private ResolvedStream stream(Map<String,String> headers){return new ResolvedStream("http://local/stream","LIVE","Channel","","",headers,Collections.emptyMap());}
     private Map<String,String> defaults(){Map<String,String> h=new LinkedHashMap<>();h.put("User-Agent","Mozilla/5.0 (Linux; Android 10; Android TV) AppleWebKit/537.36 Chrome/120.0 Safari/537.36");h.put("Referer","http://provider/");h.put("Cookie","session=fixture");return h;}
     @Test public void nestedHttpStatusRemainsVisible(){assertEquals(402,ProviderPlaybackPolicy.status(new RuntimeException(new ProviderHttpException(402))));assertTrue(ProviderPlaybackPolicy.message(409).contains("409"));}
