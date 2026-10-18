@@ -117,7 +117,7 @@ public final class StbPortalClient implements AutoCloseable {
         for(String action:new String[]{"get_short_epg","get_epg_info"}){
             for(String key:new String[]{"ch_id","channel_id"}){
                 Map<String,String> p=new LinkedHashMap<>();p.put(key,channelId);p.put("size","4");p.put("period","4");
-                try{Object data=api("itv",action,p);if(!StbProtocol.rows(data).isEmpty())return data;}catch(IOException e){failure=e;}
+                try{Object data=api("itv",action,p);if(StbProtocol.rows(data).length()>0)return data;}catch(IOException e){failure=e;}
             }
         }
         if(failure!=null)throw failure;
