@@ -20,25 +20,20 @@ public final class ServerTenPlaybackResolver {
    return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
- /**
-  * A signed playback URL intentionally identifies only host/MAC/stream. Some managed servers
-  * are installed below a portal prefix though, so allow the catalog row to carry a stable
-  * portal identity hint separately from the expiring playback URL. Never copy play_token,
-  * signature or expiry fields into this identity.
-  */
  static Reference reference(StreamItem item){
   if(item==null)return null;
-  // Method B rows are already resolved by the owner LazyTV API. They must be handed to the
-  // player byte-for-byte and must never be converted back into MAG/create_link requests.
   if("true".equalsIgnoreCase(item.meta("managed_direct")))return null;
+  String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  // Owner API rows that already contain a final HTTP(S) URL are resolved playback requests.
+  // Do not reinterpret portal/MAC metadata on those rows as a request to create_link again.
+  // Signed play_token rows are the one exception: they are immutable references that require
+  // the historical fresh-link path.
+  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!raw.toLowerCase(Locale.ROOT).contains("play_token="))return null;
   Reference signed=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
-  // A Server 10 row may deliberately contain only stable MAG identity metadata while its
-  // STREAM_URL_CMD is expired or no longer parseable. Do not fall back to that stale URL:
-  // rebuild create_link from portal + MAC + original command when all three are available.
   if(signed==null){
    if(hinted.isEmpty()||!validHintedMac||command.isEmpty())return null;
    String portal=portalIdentity(hinted,"");if(portal.isEmpty())return null;
@@ -71,8 +66,6 @@ public final class ServerTenPlaybackResolver {
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
   StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
   StalkerCatalogSource.LinkResult fresh;
-  // Server 10 must never fall back to the expired Sheet playback token. Keep one cached
-  // authenticated MAG session and let the proven Stalker flow perform exactly one auth refresh.
   synchronized(source){fresh=source.resolve(portal,original);}
   Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("server10_fresh_link","true");metadata.put("stalker_session","true");
   return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,fresh.headers,metadata);
