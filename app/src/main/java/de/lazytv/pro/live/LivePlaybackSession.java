@@ -170,6 +170,8 @@ final class LivePlaybackSession {
         }
     }
 
+    String diagnosticSummary(){return de.lazytv.pro.catalog.PlaybackRequestSummary.describe(currentStream,lastHttpStatus);}
+
     boolean isBuffering() { return !released && (usingNative?nativeBuffering:player.getPlaybackState() == Player.STATE_BUFFERING); }
 
     boolean isActive() {
