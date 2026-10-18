@@ -19,7 +19,6 @@
 <activity android:name=".catalog.CatalogActivity" android:exported="false"/>
 <activity android:name=".cms.IslamicHubActivity" android:exported="false" android:screenOrientation="landscape"/>
 <activity android:name=".cms.IslamicCatalogActivity" android:exported="false"/>
-<activity android:name=".cms.EmbeddedWebActivity" android:exported="false"/>
 <activity android:name=".catalog.SeriesDetailActivity" android:exported="false"/>
 <activity android:name=".playlist.PlaylistEditorActivity" android:exported="false"/>
 <activity android:name=".playlist.PlaylistManagerActivity" android:exported="false"/>
