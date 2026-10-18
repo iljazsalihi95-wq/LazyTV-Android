@@ -17,7 +17,7 @@ public final class AiSubtitleCache {
     private final File directory;
 
     public AiSubtitleCache(Context context) {
-        directory = new File(context.getApplicationContext().getCacheDir(), "ai_subtitles");
+        directory = new File(context.getApplicationContext().getFilesDir(), "ai_subtitles");
         if (!directory.exists()) directory.mkdirs();
     }
 
@@ -62,6 +62,8 @@ public final class AiSubtitleCache {
         File target = file(mediaIdentity, language);
         if (target.isFile()) target.delete();
     }
+
+    public void clear(){File[] files=directory.listFiles();if(files!=null)for(File f:files)if(f.isFile())f.delete();}
 
     private File file(String mediaIdentity, String language) {
         String identity = mediaIdentity == null ? "" : mediaIdentity.trim();

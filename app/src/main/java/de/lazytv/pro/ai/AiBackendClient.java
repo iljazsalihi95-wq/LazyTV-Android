@@ -22,6 +22,7 @@ public final class AiBackendClient {
     private static final int READ_TIMEOUT_MS = 65_000;
     private static final int MAX_RESPONSE_CHARS = 2_000_000;
     private final DeviceIdentityManager identity;
+    private String sessionToken="";
 
     public AiBackendClient(Context context) {
         if (context == null) throw new IllegalArgumentException("Context required");
@@ -62,13 +63,17 @@ public final class AiBackendClient {
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
             addIdentityHeaders(connection);
-            JSONObject envelope = new JSONObject();
+            if(!"login".equals(action)&&sessionToken.isEmpty()){
+                JSONObject login=post("login",new JSONObject());sessionToken=login.optString("token","");
+                if(sessionToken.isEmpty())throw new AiException("AI_DEVICE_NOT_ACTIVE",false);
+            }
+            JSONObject envelope = new JSONObject(request.toString());
             envelope.put("device_id", identity.getDeviceId());
             envelope.put("device_key", identity.getDeviceKey());
             envelope.put("serial", identity.getSerial());
             envelope.put("lazytv_id", identity.getLazyTvId());
             envelope.put("app_version", BuildConfig.VERSION_NAME);
-            envelope.put("request", request);
+            if(!"login".equals(action))envelope.put("token",sessionToken);
             byte[] body = envelope.toString().getBytes(StandardCharsets.UTF_8);
             try (OutputStream output = connection.getOutputStream()) { output.write(body); }
             return response(connection);
@@ -105,7 +110,7 @@ public final class AiBackendClient {
         try { json = new JSONObject(text); }
         catch (Exception invalid) { throw new AiException("Invalid LazyTV AI response", false); }
         if (code < 200 || code >= 300 || !json.optBoolean("ok", false)) {
-            String error = json.optString("error", "AI_SERVICE_ERROR").toUpperCase(Locale.US);
+            String error = json.optString("error", "AI_SERVICE_ERROR").toUpperCase(Locale.US);if(!error.matches("[A-Z_]{1,64}"))error="AI_SERVICE_ERROR";if("SESSION_EXPIRED".equals(error))sessionToken="";
             boolean retryable = code == 408 || code == 429 || code >= 500 || "BUSY".equals(error) || error.contains("LIMIT") || error.contains("UPSTREAM");
             throw new AiException("LazyTV AI: " + error, retryable);
         }

@@ -4,7 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
+
 import java.util.List;
 
 /** Validates timed subtitle cues returned by the owner AI backend before playback uses them. */
@@ -37,18 +37,18 @@ public final class AiSubtitleDocument {
         if(rows==null)rows=payload.optJSONArray("subtitles");
         if(rows==null)throw new IllegalArgumentException("Subtitle cues missing");
         if(rows.length()>MAX_CUES)throw new IllegalArgumentException("Too many subtitle cues");
-        List<Cue> cues=new ArrayList<>();
+        List<Cue> cues=new ArrayList<>();long previous=-1;boolean milliseconds="ms".equals(payload.optString("timeUnit"));
         for(int i=0;i<rows.length();i++){
-            JSONObject row=rows.optJSONObject(i);if(row==null)continue;
-            long start=time(row,"start_ms","start");
-            long end=time(row,"end_ms","end");
+            JSONObject row=rows.optJSONObject(i);if(row==null)throw new IllegalArgumentException("Invalid cue at "+i);
+            long start=time(row,"start_ms","start",milliseconds);
+            long end=time(row,"end_ms","end",milliseconds);
             String text=row.optString("text",row.optString("translation","")).trim();
-            if(text.isEmpty()||start<0||end<=start)continue;
-            if(end-start>MAX_CUE_MS)end=start+MAX_CUE_MS;
+            if(text.isEmpty()||start<0||end<=start||start<previous||end>86400000L)throw new IllegalArgumentException("Invalid cue timing/order at "+i);
+            previous=start;
             cues.add(new Cue(start,end,text));
         }
         if(cues.isEmpty())throw new IllegalArgumentException("No valid subtitle cues");
-        Collections.sort(cues,Comparator.comparingLong(c->c.startMs));
+
         return new AiSubtitleDocument(language,cues);
     }
 
@@ -58,11 +58,11 @@ public final class AiSubtitleDocument {
         return null;
     }
 
-    private static long time(JSONObject row,String millisKey,String genericKey){
-        if(row.has(millisKey))return Math.max(-1,row.optLong(millisKey,-1));
+    private static long time(JSONObject row,String millisKey,String genericKey,boolean milliseconds){
+        if(row.has(millisKey)){double n=row.optDouble(millisKey,Double.NaN);return Double.isFinite(n)&&n==Math.rint(n)?(long)n:-1;}
         Object value=row.opt(genericKey);if(value==null)return -1;
-        if(value instanceof Number){double number=((Number)value).doubleValue();return number>100000?Math.round(number):Math.round(number*1000d);}
+        if(value instanceof Number){double number=((Number)value).doubleValue();return Double.isFinite(number)?(milliseconds?Math.round(number):Math.round(number*1000d)):-1;}
         String raw=String.valueOf(value).trim();
-        try{if(raw.indexOf(':')<0){double number=Double.parseDouble(raw);return number>100000?Math.round(number):Math.round(number*1000d);}String[] p=raw.replace(',','.').split(":");double seconds=0;for(String part:p)seconds=seconds*60d+Double.parseDouble(part);return Math.round(seconds*1000d);}catch(Exception ignored){return -1;}
+        try{if(raw.indexOf(':')<0){double number=Double.parseDouble(raw);return Double.isFinite(number)?(milliseconds?Math.round(number):Math.round(number*1000d)):-1;}String[] p=raw.replace(',','.').split(":");double seconds=0;for(String part:p)seconds=seconds*60d+Double.parseDouble(part);return Math.round(seconds*1000d);}catch(Exception ignored){return -1;}
     }
 }

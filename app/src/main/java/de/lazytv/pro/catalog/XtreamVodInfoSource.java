@@ -17,6 +17,7 @@ public final class XtreamVodInfoSource {
   JSONObject info=root.optJSONObject("info");
   JSONObject movie=root.optJSONObject("movie_data");
   if(info!=null){
+   ProviderMetadata.subtitleFields(out,info);
    put(out,"plot",first(info,"plot","description","overview","storyline"));
    put(out,"rating",first(info,"rating","rating_5based","imdb_rating"));
    put(out,"year",year(first(info,"year","releasedate","release_date","releaseDate")));
@@ -30,6 +31,7 @@ public final class XtreamVodInfoSource {
    put(out,"poster",first(info,"movie_image","cover_big","cover","stream_icon"));
   }
   if(movie!=null){
+   ProviderMetadata.subtitleFields(out,movie);
    putIfMissing(out,"plot",first(movie,"plot","description","overview","storyline"));
    putIfMissing(out,"rating",first(movie,"rating","rating_5based","imdb_rating"));
    putIfMissing(out,"year",year(first(movie,"year","releasedate","release_date","releaseDate")));

@@ -18,8 +18,10 @@ final class ProviderMetadata {
         field(m,o,"cast","cast","actors");
         field(m,o,"poster","movie_image","cover_big","cover","screenshot_uri","logo");
         field(m,o,"backdrop","backdrop_path","backdrop","backdrop_url");
+        subtitleFields(m,o);
         return m;
     }
+    static void subtitleFields(Map<String,String> out,JSONObject o){if(o==null)return;for(String key:new String[]{"subtitle_url","subtitles_url","subtitles","subtitle","srt","vtt"}){Object v=o.opt(key);if(v!=null&&v!=JSONObject.NULL)out.put(key,String.valueOf(v));}}
     private static void field(Map<String,String> m,JSONObject o,String name,String... keys) {
         if(o==null)return;
         for(String key:keys){Object raw=o.opt(key);if(raw==null||raw==JSONObject.NULL)continue;
