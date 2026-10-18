@@ -112,7 +112,17 @@ public final class StbPortalClient implements AutoCloseable {
         Map<String,String> p=new LinkedHashMap<>();p.put("cmd",channel.cmd);p.put("series",channel.episodeNumber);p.put("forced_storage","0");p.put("disable_ad","0");p.put("download","0");
         return StbProtocol.link(api(channel.linear()?"itv":"vod","create_link",p),endpoint);
     }
-    public Object epg(String channelId) throws IOException {Map<String,String> p=new LinkedHashMap<>();p.put("ch_id",channelId);p.put("size","2");return api("itv","get_short_epg",p);}
+    public Object epg(String channelId) throws IOException {
+        IOException failure=null;
+        for(String action:new String[]{"get_short_epg","get_epg_info"}){
+            for(String key:new String[]{"ch_id","channel_id"}){
+                Map<String,String> p=new LinkedHashMap<>();p.put(key,channelId);p.put("size","4");p.put("period","4");
+                try{Object data=api("itv",action,p);if(!StbProtocol.rows(data).isEmpty())return data;}catch(IOException e){failure=e;}
+            }
+        }
+        if(failure!=null)throw failure;
+        return new JSONArray();
+    }
     public synchronized Map<String,String> playbackHeaders(String streamUrl){
         Map<String,String> h=new HashMap<>();h.put("User-Agent",UA);
         HttpUrl stream=HttpUrl.parse(streamUrl),portal=HttpUrl.parse(endpoint);
