@@ -14,7 +14,7 @@ final class StbBrowser {
     final LinearLayout root;
     private final Activity activity;
     private final Runnable exit;
-    private final LinearLayout browser,controls;private LinearLayout landscapeVideoColumn;
+    private final LinearLayout browser,controls;private LinearLayout landscapeVideoColumn,landscapeBody;
     private final TextView heading,info;
     private final FrameLayout preview;
     private final ListView countryView,categoryView,channelView;
@@ -55,11 +55,10 @@ final class StbBrowser {
         controls=new LinearLayout(activity);HorizontalScrollView actions=new HorizontalScrollView(activity);actions.setHorizontalScrollBarEnabled(false);actions.addView(controls);root.addView(actions,new LinearLayout.LayoutParams(-1,dp(landscape?40:48)));
         browser=new LinearLayout(activity);root.addView(browser,new LinearLayout.LayoutParams(-1,0,browserWeight));
         if(landscape){
-            // One attached preview/session; place the browser beside it instead of shrinking video above it.
             root.removeView(preview);root.removeView(info);root.removeView(epgText);root.removeView(epgProgress);root.removeView(actions);root.removeView(browser);
-            LinearLayout body=new LinearLayout(activity);body.setOrientation(LinearLayout.HORIZONTAL);root.addView(body,new LinearLayout.LayoutParams(-1,0,1));
-            body.addView(browser,new LinearLayout.LayoutParams(0,-1,0.48f));
-            landscapeVideoColumn=new LinearLayout(activity);landscapeVideoColumn.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams videoParams=new LinearLayout.LayoutParams(0,-1,0.52f);videoParams.leftMargin=dp(6);body.addView(landscapeVideoColumn,videoParams);
+            landscapeBody=new LinearLayout(activity);landscapeBody.setOrientation(LinearLayout.HORIZONTAL);root.addView(landscapeBody,new LinearLayout.LayoutParams(-1,0,1));
+            landscapeBody.addView(browser,new LinearLayout.LayoutParams(0,-1,0.44f));
+            landscapeVideoColumn=new LinearLayout(activity);landscapeVideoColumn.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams videoParams=new LinearLayout.LayoutParams(0,-1,0.56f);videoParams.leftMargin=dp(6);landscapeBody.addView(landscapeVideoColumn,videoParams);
             landscapeVideoColumn.addView(preview,new LinearLayout.LayoutParams(-1,0,1));landscapeVideoColumn.addView(info,new LinearLayout.LayoutParams(-1,dp(30)));landscapeVideoColumn.addView(epgText,new LinearLayout.LayoutParams(-1,dp(25)));landscapeVideoColumn.addView(epgProgress,new LinearLayout.LayoutParams(-1,dp(3)));landscapeVideoColumn.addView(actions,new LinearLayout.LayoutParams(-1,dp(40)));
         }
         countryView=column("COUNTRIES",landscape?0.20f:0.16f);categoryView=column("CATEGORIES",landscape?0.27f:0.24f);channelView=column("CHANNELS",landscape?0.53f:0.60f);
@@ -93,9 +92,15 @@ final class StbBrowser {
     private void setFullscreen(boolean value){
         if(closed||fullscreen==value)return;
         fullscreen=value;controlsShown=false;
-        // Keep the same preview FrameLayout and playback session attached. Only visibility/weight changes.
         ((View)heading.getParent()).setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);info.setVisibility(value?View.GONE:View.VISIBLE);epgText.setVisibility(value?View.GONE:View.VISIBLE);epgProgress.setVisibility(value?View.GONE:View.VISIBLE);((View)controls.getParent()).setVisibility(value?View.GONE:View.VISIBLE);
-        LinearLayout.LayoutParams params=(LinearLayout.LayoutParams)preview.getLayoutParams();params.width=ViewGroup.LayoutParams.MATCH_PARENT;params.height=0;params.weight=landscape?1f:value?1f:previewWeight;preview.setLayoutParams(params);if(landscapeVideoColumn!=null){LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);}preview.requestLayout();preview.requestFocus();previewFocus=true;
+        if(landscape&&landscapeVideoColumn!=null&&landscapeBody!=null){
+            LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.width=0;vp.height=ViewGroup.LayoutParams.MATCH_PARENT;vp.weight=value?1f:0.56f;vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);
+            LinearLayout.LayoutParams bp=(LinearLayout.LayoutParams)browser.getLayoutParams();bp.width=0;bp.height=ViewGroup.LayoutParams.MATCH_PARENT;bp.weight=value?0f:0.44f;browser.setLayoutParams(bp);
+            LinearLayout.LayoutParams pp=(LinearLayout.LayoutParams)preview.getLayoutParams();pp.width=ViewGroup.LayoutParams.MATCH_PARENT;pp.height=0;pp.weight=1f;preview.setLayoutParams(pp);
+        }else{
+            LinearLayout.LayoutParams params=(LinearLayout.LayoutParams)preview.getLayoutParams();params.width=ViewGroup.LayoutParams.MATCH_PARENT;params.height=0;params.weight=value?1f:previewWeight;preview.setLayoutParams(params);
+        }
+        preview.requestLayout();preview.requestFocus();previewFocus=true;
     }
     boolean back(){if(fullscreen){setFullscreen(false);return true;}if(preview.hasFocus()&&session.current()!=null){previewFocus=false;channelView.requestFocus();return true;}exit.run();return true;}
     boolean key(KeyEvent event){if(event.getAction()!=KeyEvent.ACTION_DOWN)return false;int code=event.getKeyCode();if(code==KeyEvent.KEYCODE_BACK)return back();if(code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_CHANNEL_DOWN||code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);return true;}if(fullscreen){if(code==KeyEvent.KEYCODE_MENU){setFullscreen(false);previewFocus=false;channelView.requestFocus();return true;}if(!controlsShown&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_UP)){controlsShown=true;((View)controls.getParent()).setVisibility(View.VISIBLE);info.setVisibility(View.VISIBLE);epgText.setVisibility(View.VISIBLE);epgProgress.setVisibility(View.VISIBLE);controls.getChildAt(0).requestFocus();return true;}}return false;}
