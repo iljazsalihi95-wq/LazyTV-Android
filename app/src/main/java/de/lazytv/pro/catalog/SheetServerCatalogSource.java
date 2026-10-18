@@ -38,8 +38,6 @@ public final class SheetServerCatalogSource {
             if (headerLine == null) throw new CatalogException("Serveri Premium nuk ka të dhëna.");
             List<String> headers = csv(headerLine);
             int idCol = column(headers, "ID"), countryCol = column(headers, "COUNTRY"), countryCodeCol = column(headers, "COUNTRY_CODE"), categoryCol = column(headers, "CATEGORY"), nameCol = column(headers, "NAME"), urlCol = column(headers, "STREAM_URL_CMD"), logoCol = column(headers, "LOGO"), statusCol = column(headers, "STATUS"), serverCol = column(headers, "SERVER_ID");
-            // Optional stable MAG identity fields. They are deliberately separate from the signed
-            // playback URL so Server 10 can create a fresh link after the Sheet token expires.
             int portalCol = firstColumn(headers, "SERVER10_PORTAL", "PORTAL_URL", "PORTAL"), macCol = firstColumn(headers, "SERVER10_MAC", "MAC"), cmdCol = firstColumn(headers, "STALKER_ORIGINAL_CMD", "ORIGINAL_CMD", "CMD");
             if (nameCol < 0 || urlCol < 0) throw new CatalogException("Formati i Serverit Premium nuk është i vlefshëm.");
             String line; int row = 0;
@@ -68,6 +66,8 @@ public final class SheetServerCatalogSource {
                 put(metadata,"server10_portal",value(values,portalCol));
                 put(metadata,"server10_mac",value(values,macCol));
                 put(metadata,"stalker_original_cmd",value(values,cmdCol));
+                boolean completeMag=metadata.containsKey("server10_portal")&&metadata.containsKey("server10_mac")&&metadata.containsKey("stalker_original_cmd");
+                if(!completeMag&&streamUrl.matches("(?i)^https?://.*"))metadata.put("managed_direct","true");
                 out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>(), metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
