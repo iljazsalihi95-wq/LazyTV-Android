@@ -41,14 +41,27 @@ public final class ManagedBackendCatalogSource {
   if(selected!=null&&selected.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(selected))return ServerTenPlaybackResolver.resolve(selected);
   if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if(forceFresh&&expiring(raw)){
-   try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));StreamItem matched=matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
+  if((forceFresh||refreshBeforeStart(server,raw))&&expiring(raw)){
+   try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));StreamItem matched=server!=null&&server.matches("SERVER_[0-9]+")?matchNumberedSelection(fresh,selected):matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
   }
   if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);
   String url=raw;if(url.regionMatches(true,0,"ffmpeg ",0,7))url=url.substring(7).trim();
   if(url.matches("(?i)^https?://.*"))return DirectPlaybackRequest.resolve(item,url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"));
   throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");
+ }
+ // Build 764 refreshed token-bearing numbered providers before their first playback request.
+ // Preserve the physically confirmed named LazyIPTV path and the separate Premium resolver.
+ static boolean refreshBeforeStart(String server,String raw){return server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw);}
+ static StreamItem matchNumberedSelection(Catalog catalog,StreamItem selected){
+  String source=selected.meta("managed_source_id"),original=selected.meta("managed_original_item_id");
+  for(StreamItem candidate:catalog.items){
+   if(candidate.type!=selected.type)continue;
+   String candidateSource=candidate.meta("managed_source_id");
+   if(candidate.id.equals(selected.id)||(!source.isEmpty()&&(source.equals(candidate.id)||source.equals(candidateSource)||candidate.id.endsWith("|"+source)))||(!original.isEmpty()&&original.equals(candidate.id))||(!candidate.id.isEmpty()&&selected.id.endsWith("|"+candidate.id)))return candidate;
+  }
+  // Never exchange a selected channel for another one just because both have the same title.
+  return null;
  }
  private static StreamItem matchSelected(Catalog catalog,StreamItem selected){String selectedSource=selected.meta("managed_source_id"),selectedOriginal=selected.meta("managed_original_item_id");for(StreamItem candidate:catalog.items){String candidateSource=candidate.meta("managed_source_id");boolean sameId=candidate.id.equals(selected.id)||(!selectedSource.isEmpty()&&(candidate.id.equals(selectedSource)||candidate.id.endsWith("|"+selectedSource)||selected.id.endsWith("|"+candidate.id)||selectedSource.equals(candidateSource)))||(!selectedOriginal.isEmpty()&&candidate.id.equals(selectedOriginal));boolean sameName=selected.name!=null&&selected.name.equals(candidate.name);if(candidate.type==selected.type&&(sameId||sameName))return candidate;}return null;}
  static boolean expiring(String url){if(url==null)return false;String lower=url.toLowerCase(Locale.ROOT);return lower.contains("play_token=")||lower.contains("token=")||lower.contains("expires=")||lower.startsWith("ffmpeg ");}
