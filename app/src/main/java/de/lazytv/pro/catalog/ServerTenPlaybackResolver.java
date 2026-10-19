@@ -20,6 +20,13 @@ public final class ServerTenPlaybackResolver {
    return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
+ private static boolean explicitMag(StreamItem item){
+  if(item==null)return false;
+  String portal=item.meta("server10_portal");if(portal.isEmpty())portal=item.meta("portal_url");
+  String mac=item.meta("server10_mac");if(mac.isEmpty())mac=item.meta("mac");
+  String command=item.meta("stalker_original_cmd");
+  return !portal.isEmpty()&&mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")&&!command.isEmpty();
+ }
  static Reference reference(StreamItem item){
   if(item==null)return null;
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
@@ -27,7 +34,7 @@ public final class ServerTenPlaybackResolver {
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
-  boolean explicitMag=!hinted.isEmpty()&&validHintedMac&&!command.isEmpty();
+  boolean explicitMag=explicitMag(item);
   // Owner-API rows marked direct stay direct even when their signed URL happens to contain
   // MAC/stream-looking query parameters. Only explicit portal+MAC+command metadata opts a
   // managed row into the Stalker/MAG resolver.
@@ -62,6 +69,12 @@ public final class ServerTenPlaybackResolver {
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);
   if(ref==null)return DirectPlaybackRequest.resolve(item,item.streamUrl,item.type.name());
+  // A signed HTTP(S) URL supplied by the Premium sheet is already a playback request.
+  // Prefer it unchanged on first play/retry unless the row explicitly carries stable
+  // portal + MAC + original-command identity. This restores the proven direct Server 10
+  // path while keeping explicit MAG rows on the authenticated Stalker resolver.
+  String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  if(raw.matches("(?i)^https?://.*")&&!explicitMag(item))return DirectPlaybackRequest.resolve(item,raw,item.type.name());
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
   StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
