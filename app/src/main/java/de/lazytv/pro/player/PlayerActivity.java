@@ -219,19 +219,44 @@ public class PlayerActivity extends Activity {
         if(live){showTracks(C.TRACK_TYPE_TEXT,true);return;}
         new AlertDialog.Builder(this).setTitle("CC / Subtitles").setItems(new String[]{"Off","Original / provider tracks","🇦🇱 Shqip AI"},(d,n)->{
             if(n==0){cancelSubtitleWork();if(player!=null)player.setTrackSelectionParameters(player.getTrackSelectionParameters().buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT,true).build());}
-            else if(n==1){cancelSubtitleWork();boolean embedded=false;if(!usingVlc&&!usingIjk&&player!=null)for(Tracks.Group g:player.getCurrentTracks().getGroups())if(g.getType()==C.TRACK_TYPE_TEXT)embedded=true;if(embedded)showTracks(C.TRACK_TYPE_TEXT,true);else prepareSubtitles(false);}
+            else if(n==1)providerSubtitleMenu();
             else prepareSubtitles(true);
         }).show();
     }
+    private void providerSubtitleMenu(){
+        if(currentResolved==null)return;
+        final ResolvedStream expected=currentResolved;
+        final java.util.List<de.lazytv.pro.ai.ExternalSubtitleTracks.Track> tracks=
+                de.lazytv.pro.ai.ExternalSubtitleTracks.read(expected.metadata);
+        boolean embedded=false;
+        if(!usingVlc&&!usingIjk&&player!=null)
+            for(Tracks.Group group:player.getCurrentTracks().getGroups())
+                if(group.getType()==C.TRACK_TYPE_TEXT)
+                    for(int i=0;i<group.length;i++)if(group.isTrackSupported(i))embedded=true;
+        if(tracks.isEmpty()){cancelSubtitleWork();if(embedded)showTracks(C.TRACK_TYPE_TEXT,true);else prepareSubtitles(false);return;}
+        final boolean hasEmbedded=embedded;
+        java.util.List<String> labels=new ArrayList<>();
+        if(hasEmbedded)labels.add("Embedded tracks");
+        for(de.lazytv.pro.ai.ExternalSubtitleTracks.Track track:tracks)labels.add(track.label);
+        new AlertDialog.Builder(this).setTitle("Provider subtitle language")
+                .setItems(labels.toArray(new String[0]),(dialog,which)->{
+                    if(destroyed||currentResolved!=expected)return;
+                    if(hasEmbedded&&which==0){cancelSubtitleWork();showTracks(C.TRACK_TYPE_TEXT,true);}
+                    else prepareSubtitles(false,tracks.get(which-(hasEmbedded?1:0)).url);
+                }).show();
+    }
     private void prepareSubtitles(boolean translate){
+        prepareSubtitles(translate,currentResolved==null?"":de.lazytv.pro.ai.SubtitleSources.external(currentResolved.metadata));
+    }
+    private void prepareSubtitles(boolean translate,String externalUrl){
         if(live||currentResolved==null||currentItem==null)return;
         cancelSubtitleWork();final long token=subtitleGeneration;final ResolvedStream resolved=currentResolved;
         final String kind=currentItem instanceof Episode?"episode":"movie";
-        final String identity=de.lazytv.pro.ai.AiSubtitleService.hash("subtitle-v2|"+playlistId+"|"+kind+"|"+currentItem.id+"|"+de.lazytv.pro.ai.SubtitleSources.external(resolved.metadata));
+        final String identity=de.lazytv.pro.ai.AiSubtitleService.hash("subtitle-v2|"+playlistId+"|"+kind+"|"+currentItem.id+"|"+externalUrl);
         subtitleStatus.setText(translate?"Shqip AI: duke kontrolluar titrat…":"Duke lexuar titrat origjinale…");subtitleStatus.setVisibility(View.VISIBLE);
         subtitleTask=subtitleWorker.submit(()->{try{
             de.lazytv.pro.ai.AiSubtitleCache cache=new de.lazytv.pro.ai.AiSubtitleCache(this);
-            String original=cache.get(identity,"source");org.json.JSONObject request=original==null?de.lazytv.pro.ai.SubtitleSources.load(resolved):new org.json.JSONObject(original);
+            String original=cache.get(identity,"source");org.json.JSONObject request=original==null?de.lazytv.pro.ai.SubtitleSources.load(resolved,externalUrl):new org.json.JSONObject(original);
             cache.put(identity,"source",request.toString());request.put("mediaType",kind);
             de.lazytv.pro.ai.AiSubtitleDocument doc;
             if(translate){String key=identity+"|"+de.lazytv.pro.ai.AiSubtitleService.hash(request.getJSONArray("cues").toString());doc=new de.lazytv.pro.ai.AiSubtitleService(this).translateAlbanian(key,request,(done,total)->ui.post(()->{if(!destroyed&&token==subtitleGeneration){subtitleStatus.setText("Shqip AI: "+done+" / "+total);}}));}

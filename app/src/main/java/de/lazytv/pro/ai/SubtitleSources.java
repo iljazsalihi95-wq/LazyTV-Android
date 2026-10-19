@@ -14,13 +14,15 @@ import android.media.MediaFormat;
 public final class SubtitleSources {
  private SubtitleSources(){}
  public static String external(Map<String,String> meta){
-  for(String k:new String[]{"subtitle_url","subtitles_url","srt","vtt","subtitle"}){String s=meta.get(k);if(http(s))return s;}
-  try{String raw=meta.get("subtitles");if(raw!=null){JSONArray a=new JSONArray(raw);for(int i=0;i<a.length();i++){Object item=a.get(i);if(item instanceof String&&http((String)item))return (String)item;if(item instanceof JSONObject)for(String k:new String[]{"url","file","src"}){String s=((JSONObject)item).optString(k);if(http(s))return s;}}}}catch(Exception ignored){}
-  return "";
+  java.util.List<ExternalSubtitleTracks.Track> tracks=ExternalSubtitleTracks.read(meta);
+  return tracks.isEmpty()?"":tracks.get(0).url;
  }
  private static boolean http(String s){return s!=null&&(s.startsWith("https://")||s.startsWith("http://"));}
  public static JSONObject load(ResolvedStream stream)throws Exception{
-  String url=external(stream.metadata);if(!url.isEmpty())return TimedSubtitleSource.parse(download(url,stream),"auto");
+  return load(stream,external(stream.metadata));
+ }
+ public static JSONObject load(ResolvedStream stream,String url)throws Exception{
+  if(url!=null&&!url.isEmpty())return TimedSubtitleSource.parse(download(url,stream),"auto");
   return embedded(stream);
  }
  private static String download(String source,ResolvedStream stream)throws Exception{
