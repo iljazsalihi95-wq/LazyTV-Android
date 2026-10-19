@@ -69,12 +69,13 @@ public final class ServerTenPlaybackResolver {
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);
   if(ref==null)return DirectPlaybackRequest.resolve(item,item.streamUrl,item.type.name());
-  // A signed HTTP(S) URL supplied by the Premium sheet is already a playback request.
-  // Prefer it unchanged on first play/retry unless the row explicitly carries stable
-  // portal + MAC + original-command identity. This restores the proven direct Server 10
-  // path while keeping explicit MAG rows on the authenticated Stalker resolver.
+  // Managed owner-API direct rows are already complete signed playback requests and must
+  // never be converted into MAG sessions merely because the URL contains mac/stream-like
+  // query parameters. Unmanaged numeric Server 10 sheet rows are stable MAG references:
+  // their play_token may expire, so refresh those through the portal before playback.
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if(raw.matches("(?i)^https?://.*")&&!explicitMag(item))return DirectPlaybackRequest.resolve(item,raw,item.type.name());
+  boolean managedDirect="true".equalsIgnoreCase(item.meta("managed_direct"))||!item.meta("managed_source_id").isEmpty();
+  if(raw.matches("(?i)^https?://.*")&&managedDirect&&!explicitMag(item))return DirectPlaybackRequest.resolve(item,raw,item.type.name());
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
   StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
