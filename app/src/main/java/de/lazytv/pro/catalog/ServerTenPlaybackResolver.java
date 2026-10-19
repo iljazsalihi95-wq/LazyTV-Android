@@ -22,13 +22,12 @@ public final class ServerTenPlaybackResolver {
  }
  static Reference reference(StreamItem item){
   if(item==null)return null;
+  // Managed backend rows explicitly marked direct are final playback URLs, including signed
+  // play_token URLs. Query parameters that merely look like MAG fields must not invent a
+  // Stalker portal identity. Explicit MAG rows are left unmarked and carry portal/MAC/cmd.
+  if("true".equalsIgnoreCase(item.meta("managed_direct")))return null;
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  boolean signed=raw.toLowerCase(Locale.ROOT).contains("play_token=");
-  // A plain owner-API HTTP(S) row is already a final direct stream. A signed play_token row
-  // is different: it is an immutable playback reference and must go through the historical
-  // portal/create_link refresh before every start, even when the catalog marked it direct.
-  if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!signed)return null;
-  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!signed)return null;
+  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*"))return null;
   Reference signedRef=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
