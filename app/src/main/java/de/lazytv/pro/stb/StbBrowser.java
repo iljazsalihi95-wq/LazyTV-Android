@@ -43,7 +43,8 @@ final class StbBrowser {
     private final float previewWeight,browserWeight;
     StbBrowser(Activity activity,StbProfileStore.Profile profile,StbPortalClient portal,List<StbProtocol.Genre> groups,List<StbProtocol.Channel> channels,Map<String,String> codes,Runnable exit){
         this.countryCodes=new HashMap<>(codes);this.activity=activity;this.exit=exit;this.portal=portal;this.favorites=new StbFavorites(activity,profile);this.logos=new StbLogos(profile.portal);this.all=new ArrayList<>(channels);
-        landscape=activity.getResources().getConfiguration().orientation==Configuration.ORIENTATION_LANDSCAPE;
+        android.util.DisplayMetrics dm=activity.getResources().getDisplayMetrics();
+        landscape=dm.widthPixels>dm.heightPixels;
         previewWeight=landscape?0.30f:0.48f;browserWeight=landscape?0.70f:0.52f;
         for(StbProtocol.Genre g:groups)genres.put(g.id,g);
         root=new LinearLayout(activity);root.setOrientation(1);StbUi.insets(root,dp(landscape?5:8));root.setBackgroundColor(0xff030f1c);
