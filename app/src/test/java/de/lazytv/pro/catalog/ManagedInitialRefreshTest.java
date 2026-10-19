@@ -3,10 +3,15 @@ import org.junit.Test;
 import java.util.*;
 import static org.junit.Assert.*;
 public class ManagedInitialRefreshTest {
- @Test public void restoresBuild764NumberedTokenRefreshWithoutChangingLazyOrPremium(){
-  for(String server:new String[]{"SERVER_05","SERVER_06","SERVER_09","SERVER_20"})assertTrue(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/play?play_token=old"));
-  for(String server:new String[]{"LAZI IPTV","Krystal","MASTER","SERVER_10"})assertFalse(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/play?play_token=old"));
-  assertFalse(ManagedBackendCatalogSource.refreshBeforeStart("SERVER_09","https://fixture.invalid/live.ts"));
+ @Test public void refreshesNumberedServersBeforePlaybackWithoutChangingNamedOrPremium(){
+  for(String server:new String[]{"SERVER_05","SERVER_06","SERVER_09","SERVER_20"}){
+   assertTrue(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/play?play_token=old"));
+   assertTrue(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/live.ts"));
+  }
+  for(String server:new String[]{"LAZI IPTV","Krystal","MASTER","SERVER_10"}){
+   assertFalse(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/play?play_token=old"));
+   assertFalse(ManagedBackendCatalogSource.refreshBeforeStart(server,"https://fixture.invalid/live.ts"));
+  }
  }
  @Test public void sameTitleCannotReplaceTheSelectedId(){
   StreamItem selected=item("SERVER_09|17","17"),wrong=item("18","18"),right=item("17","17");
