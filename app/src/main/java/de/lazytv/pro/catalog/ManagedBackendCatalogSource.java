@@ -10,7 +10,6 @@ public final class ManagedBackendCatalogSource {
   List<String> result=new ArrayList<>();labels.clear();registryError="";
   try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
   try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}}catch(Exception e){registryError="SOURCES nuk u lexua";}
-  // Retain numbered entry points when the registry is temporarily unavailable.
   for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);if(!result.contains(id))result.add(id);if(!labels.containsKey(id))labels.put(id,"Server "+n);}
   return result;
  }
@@ -35,13 +34,10 @@ public final class ManagedBackendCatalogSource {
  }
  public SeriesDetails loadSeries(String server,Series series)throws CatalogException {Catalog all=load(server);SeriesDetails out=new SeriesDetails();out.metadata.putAll(series.metadata);Set<Integer> seasons=new TreeSet<>();for(StreamItem item:all.items)if(item instanceof Episode){Episode episode=(Episode)item;if(series.id.equals(episode.seriesId)){seasons.add(episode.seasonNumber);out.episodes.computeIfAbsent(episode.seasonNumber,n->new ArrayList<>()).add(episode);}}for(int number:seasons){out.seasons.add(new Season(series.id+"|"+number,"Sezoni "+number,series.id,number,series.logo));out.episodes.get(number).sort((a,b)->Integer.compare(a.episodeNumber,b.episodeNumber));}return out;}
  public ResolvedStream resolve(String server,StreamItem selected,boolean forceFresh)throws CatalogException {
-  // Managed Live rows that contain the portal/MAC/original command must never prefer a stale
-  // Sheet/API playback token. Use the proven Server10 fresh create_link flow for every managed
-  // server (including SERVER_06 and SERVER_09); its own bounded session handling refreshes tokens.
   if(selected!=null&&selected.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(selected))return ServerTenPlaybackResolver.resolve(selected);
   if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if((forceFresh||refreshBeforeStart(server,raw))&&expiring(raw)){
+  if((forceFresh&&expiring(raw))||refreshBeforeStart(server,raw)){
    try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));StreamItem matched=server!=null&&server.matches("SERVER_[0-9]+")?matchNumberedSelection(fresh,selected):matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
   }
   if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
@@ -50,9 +46,9 @@ public final class ManagedBackendCatalogSource {
   if(url.matches("(?i)^https?://.*"))return DirectPlaybackRequest.resolve(item,url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"));
   throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");
  }
- // Build 764 refreshed token-bearing numbered providers before their first playback request.
- // Preserve the physically confirmed named LazyIPTV path and the separate Premium resolver.
- static boolean refreshBeforeStart(String server,String raw){return server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server)&&expiring(raw);}
+ // Numbered managed servers are re-read from the owner API immediately before every playback.
+ // LazyIPTV remains untouched; Premium/SERVER_10 keeps its dedicated signed/create_link resolver.
+ static boolean refreshBeforeStart(String server,String raw){return server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server);}
  static StreamItem matchNumberedSelection(Catalog catalog,StreamItem selected){
   String source=selected.meta("managed_source_id"),original=selected.meta("managed_original_item_id");
   for(StreamItem candidate:catalog.items){
@@ -60,14 +56,11 @@ public final class ManagedBackendCatalogSource {
    String candidateSource=candidate.meta("managed_source_id");
    if(candidate.id.equals(selected.id)||(!source.isEmpty()&&(source.equals(candidate.id)||source.equals(candidateSource)||candidate.id.endsWith("|"+source)))||(!original.isEmpty()&&original.equals(candidate.id))||(!candidate.id.isEmpty()&&selected.id.endsWith("|"+candidate.id)))return candidate;
   }
-  // Never exchange a selected channel for another one just because both have the same title.
   return null;
  }
  private static StreamItem matchSelected(Catalog catalog,StreamItem selected){String selectedSource=selected.meta("managed_source_id"),selectedOriginal=selected.meta("managed_original_item_id");for(StreamItem candidate:catalog.items){String candidateSource=candidate.meta("managed_source_id");boolean sameId=candidate.id.equals(selected.id)||(!selectedSource.isEmpty()&&(candidate.id.equals(selectedSource)||candidate.id.endsWith("|"+selectedSource)||selected.id.endsWith("|"+candidate.id)||selectedSource.equals(candidateSource)))||(!selectedOriginal.isEmpty()&&candidate.id.equals(selectedOriginal));boolean sameName=selected.name!=null&&selected.name.equals(candidate.name);if(candidate.type==selected.type&&(sameId||sameName))return candidate;}return null;}
  static boolean expiring(String url){if(url==null)return false;String lower=url.toLowerCase(Locale.ROOT);return lower.contains("play_token=")||lower.contains("token=")||lower.contains("expires=")||lower.startsWith("ffmpeg ");}
  static Catalog parse(String server,String body)throws CatalogException {try{JSONObject root=new JSONObject(body);if(!root.optBoolean("ok"))throw new CatalogException("API LazyTV refuzoi kanalet");JSONArray rows=root.optJSONArray("channels");if(rows==null)throw new CatalogException("API LazyTV nuk ktheu kanale");Catalog catalog=new Catalog();Map<String,Category> categories=new LinkedHashMap<>();for(int n=0;n<rows.length();n++){JSONObject row=rows.optJSONObject(n);if(row==null||!row.optBoolean("active",true))continue;String name=first(row,"name","tvgName"),url=first(row,"url","STREAM_URL_CMD");if(name.isEmpty()||url.isEmpty())continue;String category=first(row,"category","group");if(category.isEmpty())category="Të tjera";boolean linear24="live24".equalsIgnoreCase(first(row,"type"))||ManagedSheetCatalogSource.twentyFourCategory(category);String country=ManagedCountryResolver.resolve(first(row,"country_code","countryCode"),first(row,"country"),category,name);String categoryId="managed|"+server+"|"+(linear24?"24_7|":"")+country+"|"+category;String id=first(row,"id","sourceId","streamId");if(id.isEmpty())id=server+"|"+name+"|"+category;if(!categories.containsKey(categoryId)){Category value=new Category(categoryId,(linear24?"24/7 • ":"")+category,CatalogType.LIVE,country);categories.put(categoryId,value);catalog.categories.add(value);}Map<String,String> metadata=new LinkedHashMap<>();metadata.put("managed_server",server);
-// A direct API URL is already resolved. Its query parameters do not prove a MAG portal.
-// Preserve explicit provider identity only when all fields are actually supplied.
 String portal=first(row,"portal_url","portal"),mac=first(row,"mac"),original=first(row,"stalker_original_cmd","original_cmd");
 if(!portal.isEmpty()&&mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")&&!original.isEmpty()){
  metadata.put("portal_url",portal);metadata.put("mac",mac);metadata.put("stalker_original_cmd",original);
