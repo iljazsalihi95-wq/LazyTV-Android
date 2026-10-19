@@ -2,15 +2,21 @@ package de.lazytv.pro.catalog;
 import android.content.Context;import org.json.*;import java.io.*;import java.util.*;
 /** Original owner API contract, independent of personal Xtream/Stalker identity. */
 public final class ManagedBackendCatalogSource {
+ private static final long REGISTRY_TTL_MS=300000L,CATALOG_TTL_MS=60000L;
+ private static final Object CACHE_LOCK=new Object();
+ private static List<String> cachedServers;private static Map<String,String> cachedLabels;private static long cachedServersAt;
+ private static final Map<String,Catalog> cachedCatalogs=new LinkedHashMap<>();private static final Map<String,Long> cachedCatalogAt=new LinkedHashMap<>();
  private String registryError="";public String registryError(){return registryError;}private final String endpoint; private final ManagedSheetCatalogSource sheets=new ManagedSheetCatalogSource();
  public ManagedBackendCatalogSource(Context context)throws CatalogException {try(InputStream in=context.getAssets().open("lazytv_managed_backend.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);endpoint=new JSONObject(bytes.toString("UTF-8")).getString("catalog_url");}catch(Exception invalid){throw new CatalogException("Konfigurimi i katalogut LazyTV nuk mund të lexohet");}}
  private final Map<String,String> labels=new LinkedHashMap<>();
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
  public List<String> servers()throws CatalogException {
+  long now=System.currentTimeMillis();synchronized(CACHE_LOCK){if(cachedServers!=null&&now-cachedServersAt<REGISTRY_TTL_MS){labels.clear();labels.putAll(cachedLabels);registryError="";return new ArrayList<>(cachedServers);}}
   List<String> result=new ArrayList<>();labels.clear();registryError="";
   try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
   try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}}catch(Exception e){registryError="SOURCES nuk u lexua";}
   for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);if(!result.contains(id))result.add(id);if(!labels.containsKey(id))labels.put(id,"Server "+n);}
+  synchronized(CACHE_LOCK){cachedServers=new ArrayList<>(result);cachedLabels=new LinkedHashMap<>(labels);cachedServersAt=now;}
   return result;
  }
  static void appendApiServers(String body,List<String> result,Map<String,String> labels)throws Exception{
@@ -18,12 +24,14 @@ public final class ManagedBackendCatalogSource {
   for(int n=0;n<rows.length();n++){Object raw=rows.get(n);String name;if(raw instanceof JSONObject){JSONObject row=(JSONObject)raw;if(!row.optBoolean("active",true))continue;name=row.optString("name",row.optString("id","")).trim();}else name=String.valueOf(raw).trim();if(name.isEmpty()||name.length()>120)continue;if(!result.contains(name))result.add(name);labels.put(name,name);}
  }
  public Catalog load(String server)throws CatalogException {
+  long now=System.currentTimeMillis();String cacheKey=legacyApiName(server);synchronized(CACHE_LOCK){Long at=cachedCatalogAt.get(cacheKey);Catalog cached=cachedCatalogs.get(cacheKey);if(cached!=null&&at!=null&&now-at<CATALOG_TTL_MS)return cached;}
   CatalogException apiFailure=null,sheetFailure=null;String apiServer=legacyApiName(server);
-  try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty())return api;}catch(CatalogException unavailable){apiFailure=unavailable;}
+  try{Catalog api=parse(apiServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(apiServer)+"&_ts="+System.currentTimeMillis(),null));if(!api.isEmpty()){cacheCatalog(cacheKey,api,now);return api;}}catch(CatalogException unavailable){apiFailure=unavailable;}
   ManagedSheetCatalogSource.Server registered=server!=null&&server.matches("SERVER_[0-9]+")?sheets.servers().get(server):null;
-  if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty())return catalog;}catch(CatalogException unavailable){sheetFailure=unavailable;}}
+  if(registered!=null){try{Catalog catalog=sheets.load(registered);if(!catalog.isEmpty()){cacheCatalog(cacheKey,catalog,now);return catalog;}}catch(CatalogException unavailable){sheetFailure=unavailable;}}
   if(sheetFailure!=null)throw sheetFailure;if(apiFailure!=null)throw apiFailure;throw new CatalogException("Serveri nuk ka kanale aktive");
  }
+ private static void cacheCatalog(String key,Catalog catalog,long at){synchronized(CACHE_LOCK){cachedCatalogs.put(key,catalog);cachedCatalogAt.put(key,at);while(cachedCatalogs.size()>8){String oldest=cachedCatalogs.keySet().iterator().next();cachedCatalogs.remove(oldest);cachedCatalogAt.remove(oldest);}}}
  public Catalog loadType(String server,CatalogType type)throws CatalogException {
   Catalog all=load(server),out=new Catalog();CatalogException firstFailure=null;
   for(Category c:all.categories)if(c.type==type)out.categories.add(c);
@@ -38,7 +46,7 @@ public final class ManagedBackendCatalogSource {
   if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;String raw=item.streamUrl==null?"":item.streamUrl.trim();
   if((forceFresh&&expiring(raw))||refreshBeforeStart(server,raw)){
-   try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));StreamItem matched=server!=null&&server.matches("SERVER_[0-9]+")?matchNumberedSelection(fresh,selected):matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
+   try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));cacheCatalog(freshServer,fresh,System.currentTimeMillis());StreamItem matched=server!=null&&server.matches("SERVER_[0-9]+")?matchNumberedSelection(fresh,selected):matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
   }
   if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
   if(ManagedStalkerLinkResolver.canRefresh(item))return ManagedStalkerLinkResolver.resolve(item);
