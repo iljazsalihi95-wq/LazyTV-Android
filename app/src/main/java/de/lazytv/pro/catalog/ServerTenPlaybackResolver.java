@@ -22,22 +22,23 @@ public final class ServerTenPlaybackResolver {
  }
  static Reference reference(StreamItem item){
   if(item==null)return null;
-  // Managed backend rows explicitly marked direct are final playback URLs, including signed
-  // play_token URLs. Query parameters that merely look like MAG fields must not invent a
-  // Stalker portal identity. Explicit MAG rows are left unmarked and carry portal/MAC/cmd.
-  if("true".equalsIgnoreCase(item.meta("managed_direct")))return null;
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*"))return null;
-  Reference signedRef=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
-  if(signedRef==null){
-   if(hinted.isEmpty()||!validHintedMac||command.isEmpty())return null;
+  boolean explicitMag=!hinted.isEmpty()&&validHintedMac&&!command.isEmpty();
+  // Owner-API rows marked direct stay direct even when their signed URL happens to contain
+  // MAC/stream-looking query parameters. Only explicit portal+MAC+command metadata opts a
+  // managed row into the Stalker/MAG resolver.
+  if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!explicitMag)return null;
+  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!explicitMag)return null;
+  if(explicitMag){
    String portal=portalIdentity(hinted,"");if(portal.isEmpty())return null;
    return new Reference(portal,hintedMac,command);
   }
+  Reference signedRef=reference(item.streamUrl);
+  if(signedRef==null)return null;
   String portal=portalIdentity(hinted,signedRef.portal);
   String mac=validHintedMac?hintedMac:signedRef.mac;
   if(command.isEmpty())command=signedRef.command;
