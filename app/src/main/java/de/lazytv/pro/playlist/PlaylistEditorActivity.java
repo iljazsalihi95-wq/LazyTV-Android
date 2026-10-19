@@ -20,6 +20,8 @@ import java.util.UUID;
 
 import de.lazytv.pro.R;
 import de.lazytv.pro.activation.ActivationGuard;
+import de.lazytv.pro.catalog.CatalogException;
+import de.lazytv.pro.catalog.StalkerPortalAddress;
 
 public class PlaylistEditorActivity extends Activity {
     public static final String EXTRA_ID = "playlist_id";
@@ -95,11 +97,14 @@ public class PlaylistEditorActivity extends Activity {
     private boolean isServer10File(String value){if(value==null)return false;String normalized=value.toLowerCase(Locale.US).replace('-','_').replace(' ','_');return normalized.contains("server_10")||normalized.contains("server10");}
     private String displayName(Uri uri){String displayName=uri.getLastPathSegment();try(Cursor cursor=getContentResolver().query(uri,null,null,null,null)){if(cursor!=null&&cursor.moveToFirst()){int column=cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);if(column>=0)displayName=cursor.getString(column);}}catch(Exception ignored){}return displayName==null?"M3U file":displayName;}
     private String stripM3uExtension(String value){return value.replaceFirst("(?i)\\.(m3u8?|txt)$","");}
+    private String normalizeMac(String value){String raw=value==null?"":value.trim().toUpperCase(Locale.US).replace('-',':');if(raw.matches("^[0-9A-F]{12}$"))raw=raw.replaceFirst("^(.{2})(.{2})(.{2})(.{2})(.{2})(.{2})$","$1:$2:$3:$4:$5:$6");return raw;}
+    private String normalizeStbEndpoint(String value){try{return StalkerPortalAddress.normalize(value==null?"":value.trim().replace("&amp;","&"));}catch(CatalogException invalid){return value==null?"":value.trim().replace("&amp;","&");}}
 
     private void save(){
-        PlaylistType selected=selectedType();String id=current==null?UUID.randomUUID().toString():current.getId();String endpoint=url.getText().toString().trim().replace("&amp;","&");
+        PlaylistType selected=selectedType();String id=current==null?UUID.randomUUID().toString():current.getId();String endpoint=url.getText().toString().trim().replace("&amp;","&");String deviceMac=mac.getText().toString().trim();
+        if(selected==PlaylistType.STALKER_PORTAL){endpoint=normalizeStbEndpoint(endpoint);deviceMac=normalizeMac(deviceMac);url.setText(endpoint);mac.setText(deviceMac);}
         String displayName=name.getText().toString().trim();if(selected==PlaylistType.STALKER_PORTAL&&displayName.isEmpty())displayName="STB / MAG";
-        Playlist playlist=new Playlist(id,displayName,selected,endpoint,user.getText().toString().trim(),pass.getText().toString(),mac.getText().toString().trim(),System.currentTimeMillis());
+        Playlist playlist=new Playlist(id,displayName,selected,endpoint,user.getText().toString().trim(),pass.getText().toString(),deviceMac,System.currentTimeMillis());
         String error=PlaylistValidator.validateForConnect(this,playlist);if(error!=null){Toast.makeText(this,error,Toast.LENGTH_LONG).show();return;}
         storage.save(playlist);storage.setActive(playlist.getId());
         if(selected!=PlaylistType.FREE_TV){
