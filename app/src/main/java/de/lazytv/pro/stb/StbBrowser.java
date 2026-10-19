@@ -58,8 +58,8 @@ final class StbBrowser {
         if(landscape){
             root.removeView(preview);root.removeView(info);root.removeView(epgText);root.removeView(epgProgress);root.removeView(actions);root.removeView(browser);
             landscapeBody=new LinearLayout(activity);landscapeBody.setOrientation(LinearLayout.HORIZONTAL);root.addView(landscapeBody,new LinearLayout.LayoutParams(-1,0,1));
-            landscapeBody.addView(browser,new LinearLayout.LayoutParams(0,-1,0.44f));
-            landscapeVideoColumn=new LinearLayout(activity);landscapeVideoColumn.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams videoParams=new LinearLayout.LayoutParams(0,-1,0.56f);videoParams.leftMargin=dp(6);landscapeBody.addView(landscapeVideoColumn,videoParams);
+            landscapeBody.addView(browser,new LinearLayout.LayoutParams(0,-1,0.36f));
+            landscapeVideoColumn=new LinearLayout(activity);landscapeVideoColumn.setOrientation(LinearLayout.VERTICAL);LinearLayout.LayoutParams videoParams=new LinearLayout.LayoutParams(0,-1,0.64f);videoParams.leftMargin=dp(6);landscapeBody.addView(landscapeVideoColumn,videoParams);
             landscapeVideoColumn.addView(preview,new LinearLayout.LayoutParams(-1,0,1));landscapeVideoColumn.addView(info,new LinearLayout.LayoutParams(-1,dp(30)));landscapeVideoColumn.addView(epgText,new LinearLayout.LayoutParams(-1,dp(25)));landscapeVideoColumn.addView(epgProgress,new LinearLayout.LayoutParams(-1,dp(3)));landscapeVideoColumn.addView(actions,new LinearLayout.LayoutParams(-1,dp(40)));
         }
         countryView=column("COUNTRIES",landscape?0.20f:0.16f);categoryView=column("CATEGORIES",landscape?0.27f:0.24f);channelView=column("CHANNELS",landscape?0.53f:0.60f);
@@ -95,8 +95,8 @@ final class StbBrowser {
         fullscreen=value;controlsShown=false;
         ((View)heading.getParent()).setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);info.setVisibility(value?View.GONE:View.VISIBLE);epgText.setVisibility(value?View.GONE:View.VISIBLE);epgProgress.setVisibility(value?View.GONE:View.VISIBLE);((View)controls.getParent()).setVisibility(value?View.GONE:View.VISIBLE);
         if(landscape&&landscapeVideoColumn!=null&&landscapeBody!=null){
-            LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.width=0;vp.height=ViewGroup.LayoutParams.MATCH_PARENT;vp.weight=value?1f:0.56f;vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);
-            LinearLayout.LayoutParams bp=(LinearLayout.LayoutParams)browser.getLayoutParams();bp.width=0;bp.height=ViewGroup.LayoutParams.MATCH_PARENT;bp.weight=value?0f:0.44f;browser.setLayoutParams(bp);
+            LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.width=0;vp.height=ViewGroup.LayoutParams.MATCH_PARENT;vp.weight=value?1f:0.64f;vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);
+            LinearLayout.LayoutParams bp=(LinearLayout.LayoutParams)browser.getLayoutParams();bp.width=0;bp.height=ViewGroup.LayoutParams.MATCH_PARENT;bp.weight=value?0f:0.36f;browser.setLayoutParams(bp);
             LinearLayout.LayoutParams pp=(LinearLayout.LayoutParams)preview.getLayoutParams();pp.width=ViewGroup.LayoutParams.MATCH_PARENT;pp.height=0;pp.weight=1f;preview.setLayoutParams(pp);
         }else{
             LinearLayout.LayoutParams params=(LinearLayout.LayoutParams)preview.getLayoutParams();params.width=ViewGroup.LayoutParams.MATCH_PARENT;params.height=0;params.weight=value?1f:previewWeight;preview.setLayoutParams(params);
