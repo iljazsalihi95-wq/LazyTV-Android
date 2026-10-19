@@ -14,22 +14,29 @@ import java.util.Map;
 
 /** Loads a LazyMapper server tab directly from its Google Sheet CSV export. */
 public final class SheetServerCatalogSource {
+    private static final long CATALOG_TTL_MS=60000L;
+    private static Catalog cachedCatalog;
+    private static String cachedKey="";
+    private static long cachedAt;
+
     public Catalog load(Context context, String spreadsheetId, String sheetName, String serverId) throws CatalogException {
+        String key=(spreadsheetId==null?"":spreadsheetId)+"\n"+(sheetName==null?"":sheetName)+"\n"+(serverId==null?"":serverId);
+        synchronized(SheetServerCatalogSource.class){
+            if(cachedCatalog!=null&&key.equals(cachedKey)&&System.currentTimeMillis()-cachedAt<CATALOG_TTL_MS)return cachedCatalog;
+        }
         Catalog out = new Catalog();
         LinkedHashMap<String, Category> cats = new LinkedHashMap<>();
         HttpURLConnection connection = null;
         try {
             String endpoint = "https://docs.google.com/spreadsheets/d/" + spreadsheetId +
-                    "/gviz/tq?tqx=out:csv&sheet=" + URLEncoder.encode(sheetName, "UTF-8") +
-                    "&lazytv_refresh=" + System.currentTimeMillis();
+                    "/gviz/tq?tqx=out:csv&sheet=" + URLEncoder.encode(sheetName, "UTF-8");
             connection = (HttpURLConnection) new URL(endpoint).openConnection();
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(20000);
-            connection.setUseCaches(false);
-            connection.setDefaultUseCaches(false);
+            connection.setUseCaches(true);
+            connection.setDefaultUseCaches(true);
             connection.setInstanceFollowRedirects(true);
-            connection.setRequestProperty("Cache-Control", "no-cache, no-store, max-age=0");
-            connection.setRequestProperty("Pragma", "no-cache");
+            connection.setRequestProperty("Cache-Control", "max-age=60");
             connection.setRequestProperty("User-Agent", "LazyTV-PRO/1.0");
             int code = connection.getResponseCode();
             if (code < 200 || code >= 300) throw new CatalogException("Serveri Premium nuk është i disponueshëm për momentin.");
@@ -71,6 +78,7 @@ public final class SheetServerCatalogSource {
                 out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>(), metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
+            synchronized(SheetServerCatalogSource.class){cachedCatalog=out;cachedKey=key;cachedAt=System.currentTimeMillis();}
             return out;
         } catch (CatalogException e) { throw e; }
         catch (Exception e) { throw new CatalogException("Serveri Premium nuk mund të ngarkohet për momentin."); }
