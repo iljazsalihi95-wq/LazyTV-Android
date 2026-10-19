@@ -21,7 +21,24 @@ final class ProviderMetadata {
         subtitleFields(m,o);
         return m;
     }
-    static void subtitleFields(Map<String,String> out,JSONObject o){if(o==null)return;for(String key:new String[]{"subtitle_url","subtitles_url","subtitles","subtitle","srt","vtt"}){Object v=o.opt(key);if(v!=null&&v!=JSONObject.NULL)out.put(key,String.valueOf(v));}}
+    static void subtitleFields(Map<String,String> out,JSONObject o){
+        if(o==null)return;
+        for(String key:new String[]{"subtitle_url","subtitles_url","subtitles","subtitle","srt","vtt"}){
+            Object v=o.opt(key);if(v==null||v==JSONObject.NULL)continue;
+            String raw=v instanceof String?(String)v:String.valueOf(v);if(raw!=null&&!raw.trim().isEmpty())out.put(key,raw.trim());
+            if(!out.containsKey("subtitle_url")){
+                String direct=subtitleUrl(v);if(!direct.isEmpty())out.put("subtitle_url",direct);
+            }
+        }
+    }
+    private static String subtitleUrl(Object raw){
+        if(raw==null||raw==JSONObject.NULL)return "";
+        if(raw instanceof String){String s=((String)raw).trim();return http(s)?s:"";}
+        if(raw instanceof JSONObject){JSONObject o=(JSONObject)raw;for(String key:new String[]{"url","file","src","subtitle_url"}){String s=o.optString(key,"").trim();if(http(s))return s;}return "";}
+        if(raw instanceof JSONArray){JSONArray a=(JSONArray)raw;for(int i=0;i<a.length();i++){String s=subtitleUrl(a.opt(i));if(!s.isEmpty())return s;}}
+        return "";
+    }
+    private static boolean http(String s){return s!=null&&(s.startsWith("https://")||s.startsWith("http://"));}
     private static void field(Map<String,String> m,JSONObject o,String name,String... keys) {
         if(o==null)return;
         for(String key:keys){Object raw=o.opt(key);if(raw==null||raw==JSONObject.NULL)continue;
