@@ -22,26 +22,26 @@ public final class ServerTenPlaybackResolver {
  }
  static Reference reference(StreamItem item){
   if(item==null)return null;
-  if("true".equalsIgnoreCase(item.meta("managed_direct")))return null;
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  // Owner API rows that already contain a final HTTP(S) URL are resolved playback requests.
-  // Do not reinterpret portal/MAC metadata on those rows as a request to create_link again.
-  // Signed play_token rows are the one exception: they are immutable references that require
-  // the historical fresh-link path.
-  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!raw.toLowerCase(Locale.ROOT).contains("play_token="))return null;
-  Reference signed=reference(item.streamUrl);
+  boolean signed=raw.toLowerCase(Locale.ROOT).contains("play_token=");
+  // A plain owner-API HTTP(S) row is already a final direct stream. A signed play_token row
+  // is different: it is an immutable playback reference and must go through the historical
+  // portal/create_link refresh before every start, even when the catalog marked it direct.
+  if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!signed)return null;
+  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!signed)return null;
+  Reference signedRef=reference(item.streamUrl);
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
-  if(signed==null){
+  if(signedRef==null){
    if(hinted.isEmpty()||!validHintedMac||command.isEmpty())return null;
    String portal=portalIdentity(hinted,"");if(portal.isEmpty())return null;
    return new Reference(portal,hintedMac,command);
   }
-  String portal=portalIdentity(hinted,signed.portal);
-  String mac=validHintedMac?hintedMac:signed.mac;
-  if(command.isEmpty())command=signed.command;
+  String portal=portalIdentity(hinted,signedRef.portal);
+  String mac=validHintedMac?hintedMac:signedRef.mac;
+  if(command.isEmpty())command=signedRef.command;
   return new Reference(portal,mac,command);
  }
  private static String portalIdentity(String hint,String fallback){
