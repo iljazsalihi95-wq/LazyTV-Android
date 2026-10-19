@@ -51,7 +51,6 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
     JSONObject result=payload(requestLink(playlist,query,headers));int status=refusal(result);
     if(status!=0)throw new ProviderHttpException(status);
     String command=StalkerLiveParser.first(result,"cmd","url");
-    // JSON escaping is decoded by JSONObject; handle providers which additionally HTML-escape URLs.
     command=command.replace("\\/","/").replace("&amp;","&");
     String endpoint=selectedEndpoint.isEmpty()?StalkerPortalAddress.normalize(playlist.getUrl()):selectedEndpoint;
     String url=StalkerLinkParser.url(command,endpoint);if(url.isEmpty())throw new CatalogException("Portali nuk ktheu URL për kanalin");
@@ -67,13 +66,23 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
  }
  /** Snapshot only; EPG never holds the playback session monitor during network I/O. */
  public String loadEpg(Playlist playlist,String channelId)throws CatalogException {
-  final Map<String,String> headers;final String endpoint;
-  synchronized(this){headers=new LinkedHashMap<>(lastPortalHeaders);endpoint=selectedEndpoint;}
-  if(headers.isEmpty()||endpoint.isEmpty())return "{\"js\":{\"data\":[]}}";
   String query="type=itv&action=get_epg_info&period=6&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml";
-  try{return HttpClient.get(endpoint+"?"+query,headers);}
-  catch(ProviderHttpException unsupported){if(unsupported.status!=404&&unsupported.status!=405)throw unsupported;}
-  return HttpClient.get(endpoint+"?type=itv&action=get_short_epg&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml",headers);
+  for(int attempt=0;attempt<2;attempt++){
+   Map<String,String> headers;String endpoint;
+   synchronized(this){headers=new LinkedHashMap<>(lastPortalHeaders);endpoint=selectedEndpoint;}
+   if(headers.isEmpty()||endpoint.isEmpty()){
+    synchronized(this){headers=new LinkedHashMap<>(sessionHeaders(playlist));endpoint=sessionEndpoint(normalized(playlist));lastPortalHeaders=new LinkedHashMap<>(headers);selectedEndpoint=endpoint;}
+   }
+   try{
+    try{return HttpClient.get(endpoint+"?"+query,headers);}
+    catch(ProviderHttpException unsupported){if(unsupported.status!=404&&unsupported.status!=405)throw unsupported;}
+    return HttpClient.get(endpoint+"?type=itv&action=get_short_epg&ch_id="+HttpClient.enc(channelId)+"&JsHttpRequest=1-xml",headers);
+   }catch(ProviderHttpException error){
+    if(attempt==0&&(error.status==401||error.status==403)){synchronized(this){clear();}continue;}
+    throw error;
+   }
+  }
+  throw new CatalogException("Stalker EPG session-i u refuzua pas rifreskimit");
  }
  protected String requestLink(Playlist playlist,String query,Map<String,String> headers)throws CatalogException {
   Playlist normalized=normalized(playlist);
@@ -81,7 +90,6 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
  }
  @Override public synchronized Map<String,String> sessionHeaders(Playlist playlist)throws CatalogException {return super.sessionHeaders(normalized(playlist));}
  private Playlist normalized(Playlist playlist)throws CatalogException {return new Playlist(playlist.getId(),playlist.getName(),playlist.getType(),StalkerPortalAddress.normalize(playlist.getUrl()),playlist.getUsername(),playlist.getPassword(),playlist.getMacAddress(),playlist.getUpdatedAt());}
-
  private JSONObject payload(String body)throws CatalogException {
   try{JSONObject root=new JSONObject(body);JSONObject js=root.optJSONObject("js");if(js!=null)return js;JSONObject data=root.optJSONObject("data");return data==null?root:data;}
   catch(Exception invalid){throw new CatalogException("Stalker create_link përgjigje e pavlefshme");}
