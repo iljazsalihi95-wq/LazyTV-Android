@@ -29,7 +29,11 @@ public final class XtreamUrlBuilder {
   return base(playlist.getUrl())+"/get.php?username="+HttpClient.enc(playlist.getUsername())+"&password="+HttpClient.enc(playlist.getPassword())+"&type=m3u&output=ts";
  }
  static String stream(String base,de.lazytv.pro.playlist.Playlist playlist,String kind,String id,String extension){
-  return base+"/"+kind+"/"+segment(playlist.getUsername())+"/"+segment(playlist.getPassword())+"/"+segment(id)+"."+segment(extension);
+  String ext=extension==null?"":extension.trim();
+  if(ext.isEmpty()||"null".equalsIgnoreCase(ext))ext="live".equalsIgnoreCase(kind)?"ts":"mp4";
+  while(ext.startsWith("."))ext=ext.substring(1);
+  if(ext.isEmpty())ext="live".equalsIgnoreCase(kind)?"ts":"mp4";
+  return base+"/"+kind+"/"+segment(playlist.getUsername())+"/"+segment(playlist.getPassword())+"/"+segment(id)+"."+segment(ext);
  }
  private static String segment(String value){return HttpClient.enc(value).replace("+","%20");}
 }
