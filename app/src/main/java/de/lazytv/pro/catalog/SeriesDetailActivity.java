@@ -77,7 +77,9 @@ public class SeriesDetailActivity extends Activity {
     private void showSeries(){
         Map<String,String> metadata=new LinkedHashMap<>(series.metadata);metadata.putAll(details.metadata);
         StringBuilder summary=new StringBuilder();
-        for(String key:new String[]{"year","rating","genre","country","director","cast","plot"}){
+        String seriesYear=releaseYear(metadata);
+        if(!seriesYear.isEmpty())summary.append("year: ").append(seriesYear);
+        for(String key:new String[]{"rating","genre","country","director","cast","plot"}){
             String value=clean(metadata.get(key));if(value.isEmpty()||"null".equalsIgnoreCase(value))continue;
             if(summary.length()>0)summary.append("\n");summary.append(key.equals("plot")?value:key+": "+value);
         }
@@ -135,10 +137,8 @@ public class SeriesDetailActivity extends Activity {
         append(info,clean(e.duration));
         String rating=clean(e.metadata.get("rating"));
         if(!rating.isEmpty())append(info,"★ "+rating);
-        String date=clean(e.metadata.get("releasedate"));
-        if(!date.isEmpty())append(info,date);
-        String plot=clean(e.metadata.get("plot"));
-        if(plot.isEmpty())plot=clean(e.metadata.get("description"));
+        append(info,releaseYear(e.metadata));
+        String plot=first(e.metadata,"plot","description","overview","storyline");
         if(!plot.isEmpty())info.append("\n").append(plot);
         status.setText(info.toString());
     }
@@ -164,7 +164,8 @@ public class SeriesDetailActivity extends Activity {
     private de.lazytv.pro.player.PlaybackResumeStore.Entry resumeEntry(Episode episode){return new de.lazytv.pro.player.PlaybackResumeStore(this).get(de.lazytv.pro.player.PlaybackContentKey.of(p.getId(),episode));}
     private void updateEpisodeActions(){if(play==null)return;boolean valid=selectedEpisode>=0&&selectedEpisode<visibleEpisodes.size();play.setEnabled(valid&&!preparing);resume.setEnabled(valid&&!preparing);de.lazytv.pro.player.PlaybackResumeStore.Entry saved=valid?resumeEntry(visibleEpisodes.get(selectedEpisode)):null;resume.setVisibility(saved==null?android.view.View.GONE:android.view.View.VISIBLE);if(saved!=null)resume.setText("RESUME "+time(saved.position));}
     private String time(long ms){long seconds=ms/1000;return String.format(Locale.getDefault(),"%02d:%02d",seconds/60,seconds%60);}
-    private String first(Map<String,String> metadata,String... keys){for(String key:keys){String value=clean(metadata.get(key));if(!value.isEmpty()&&!"null".equals(value))return value;}return "";}
+    private String first(Map<String,String> metadata,String... keys){for(String key:keys){String value=clean(metadata.get(key));if(!value.isEmpty()&&!"null".equalsIgnoreCase(value))return value;}return "";}
+    private String releaseYear(Map<String,String> metadata){String value=first(metadata,"year","release_date","releasedate","releaseDate");if(value.isEmpty())return "";java.util.regex.Matcher matcher=java.util.regex.Pattern.compile("(?:19|20)\\d{2}").matcher(value);return matcher.find()?matcher.group():value;}
     private void loadArtwork(ImageView view,String url,String fallback){if(url.isEmpty())url=clean(fallback);if(url.isEmpty()){view.setVisibility(android.view.View.GONE);return;}final String source=url;view.setTag(source);images.execute(()->{java.net.HttpURLConnection connection=null;try{connection=(java.net.HttpURLConnection)new java.net.URL(source).openConnection();connection.setConnectTimeout(6000);connection.setReadTimeout(8000);android.graphics.Bitmap bitmap;try(java.io.InputStream in=connection.getInputStream()){android.graphics.BitmapFactory.Options options=new android.graphics.BitmapFactory.Options();options.inSampleSize=2;bitmap=android.graphics.BitmapFactory.decodeStream(in,null,options);}runOnUiThread(()->{if(!isFinishing()&&!isDestroyed()&&source.equals(view.getTag())&&bitmap!=null){view.setVisibility(android.view.View.VISIBLE);view.setImageBitmap(bitmap);}});}catch(Exception ignored){}finally{if(connection!=null)connection.disconnect();}});}
     private boolean isCurrent(int token){return token==generation.get()&&!isFinishing()&&!isDestroyed();}
 
