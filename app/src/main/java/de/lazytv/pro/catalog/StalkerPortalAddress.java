@@ -8,7 +8,13 @@ public final class StalkerPortalAddress {
   try {URL url=new URL(raw);if(url.getHost().isEmpty())throw new Exception();
    String path=url.getPath().replaceAll("/+$","");String origin=url.getProtocol()+"://"+url.getAuthority();
    if(path.endsWith("/portal.php")||path.endsWith("/server/load.php")||path.endsWith("/load.php"))return origin+path;
-   if(path.endsWith("/c"))path=path.substring(0,path.length()-2);
+   // MAG portals are often shared as the browser landing page (/c/, /c/index.html
+   // or /index.html). These are UI paths, not API endpoints. Strip the landing page
+   // before selecting the native Stalker endpoint instead of producing the invalid
+   // .../index.html/portal.php path.
+   if(path.endsWith("/c/index.html"))path=path.substring(0,path.length()-"/c/index.html".length());
+   else if(path.endsWith("/index.html"))path=path.substring(0,path.length()-"/index.html".length());
+   else if(path.endsWith("/c"))path=path.substring(0,path.length()-2);
    return origin+path+(path.endsWith("/stalker_portal")?"/server/load.php":"/portal.php");
   }catch(Exception error){throw new CatalogException("Stalker portal URL e pavlefshme");}
  }
