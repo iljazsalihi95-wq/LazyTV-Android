@@ -45,7 +45,7 @@ public final class ManagedBackendCatalogSource {
   if(selected!=null&&selected.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(selected))return ServerTenPlaybackResolver.resolve(selected);
   if(ManagedStalkerLinkResolver.canRefresh(selected))return ManagedStalkerLinkResolver.resolve(selected);
   StreamItem item=selected;String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if(forceFresh&&expiring(raw)){
+  if((forceFresh&&expiring(raw))||refreshBeforeStart(server,raw)){
    try{String freshServer=legacyApiName(server);Catalog fresh=parse(freshServer,HttpClient.get(endpoint+"?action=channels&server="+HttpClient.enc(freshServer)+"&_ts="+System.currentTimeMillis(),null));cacheCatalog(freshServer,fresh,System.currentTimeMillis());StreamItem matched=server!=null&&server.matches("SERVER_[0-9]+")?matchNumberedSelection(fresh,selected):matchSelected(fresh,selected);if(matched!=null){item=matched;raw=item.streamUrl==null?"":item.streamUrl.trim();}}catch(CatalogException unavailable){}
   }
   if(item.type==CatalogType.LIVE&&ServerTenPlaybackResolver.canRefresh(item))return ServerTenPlaybackResolver.resolve(item);
@@ -54,9 +54,9 @@ public final class ManagedBackendCatalogSource {
   if(url.matches("(?i)^https?://.*"))return DirectPlaybackRequest.resolve(item,url,item.meta("managed_transport").isEmpty()?item.type.name():item.meta("managed_transport"));
   throw new CatalogException("Backend-i nuk ktheu link playback të vlefshëm");
  }
- // Managed channels start from the already loaded catalog exactly like LazyIPTV.
- // Only an expiring URL is re-read after the bounded playback retry asks for forceFresh.
- static boolean refreshBeforeStart(String server,String raw){return false;}
+ // Numbered managed servers are re-read from the owner API immediately before every playback.
+ // LazyIPTV remains untouched; Premium/SERVER_10 keeps its dedicated signed/create_link resolver.
+ static boolean refreshBeforeStart(String server,String raw){return server!=null&&server.matches("SERVER_[0-9]+")&&!"SERVER_10".equalsIgnoreCase(server);}
  static StreamItem matchNumberedSelection(Catalog catalog,StreamItem selected){
   String source=selected.meta("managed_source_id"),original=selected.meta("managed_original_item_id");
   for(StreamItem candidate:catalog.items){
