@@ -4,7 +4,7 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.HttpDataSource;
 import java.util.*;
 
-/** Limited transport recovery; never treats an account/provider refusal as a codec error. */
+/** Limited transport recovery; never loops on an account/provider refusal. */
 @UnstableApi
 public final class ProviderPlaybackPolicy {
     private ProviderPlaybackPolicy(){}
@@ -17,7 +17,10 @@ public final class ProviderPlaybackPolicy {
         }return 0;
     }
     public static boolean shouldRetry(int code,int attempts){
-        if(code==402||code==404||code==405||code==406||code==415||code==451||code==458)return false;
+        if(code==402||code==404||code==405||code==406||code==415||code==451)return false;
+        // Some managed/MAG providers use 458 for an expired per-playback URL/token.
+        // Allow exactly one resolver refresh; a second 458 is treated as a real refusal.
+        if(code==458)return attempts<1;
         if(code==401||code==403||code==409)return attempts<1;
         if(code==429)return attempts<2;
         return attempts<3;
