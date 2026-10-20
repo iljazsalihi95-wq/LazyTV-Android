@@ -26,7 +26,7 @@ public final class MoviePlayerActivity extends PlayerActivity {
 
     private String movieDetails(Map<String,String> metadata) {
         StringBuilder line = new StringBuilder();
-        append(line, metadata.get("year"));
+        append(line, year(metadata));
         append(line, metadata.get("genre"));
         append(line, duration(metadata));
         String rating = clean(metadata.get("rating"));
@@ -47,8 +47,18 @@ public final class MoviePlayerActivity extends PlayerActivity {
         return result.toString();
     }
 
+    private String year(Map<String,String> metadata) {
+        String value = clean(metadata.get("year"));
+        if (!value.isEmpty()) return value;
+        value = clean(metadata.get("release_date"));
+        if (value.isEmpty()) value = clean(metadata.get("releasedate"));
+        if (value.length() >= 4 && value.substring(0, 4).matches("\\d{4}")) return value.substring(0, 4);
+        return value;
+    }
+
     private String duration(Map<String,String> metadata) {
         String value = clean(metadata.get("duration"));
+        if (value.isEmpty()) value = clean(metadata.get("runtime"));
         if (!value.isEmpty() && !value.matches("\\d+")) return value;
         String seconds = clean(metadata.get("duration_secs"));
         if (seconds.isEmpty() && value.matches("\\d+")) seconds = value;
