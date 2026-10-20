@@ -31,7 +31,7 @@ public final class StalkerPortalAddress {
    for(String suffix:new String[]{"/portal.php","/server/load.php","/load.php","/c/portal.php","/c/server/load.php","/c/load.php"})out.add(origin+base+suffix);
    for(String suffix:new String[]{"/portal.php","/server/load.php","/load.php","/c/portal.php","/c/server/load.php","/c/load.php"})out.add(origin+suffix);
    out.add(origin+"/stalker_portal/server/load.php");out.add(origin+"/stalker_portal/portal.php");out.add(origin+"/stalker_portal/load.php");
-   out.add(origin+"/stalker_portal/c/server/load.php");out.add(origin+"/stalker_portal/c/portal.php");
+   out.add(origin+"/stalker_portal/c/server/load.php");out.add(origin+"/stalker_portal/c/portal.php");out.add(origin+"/stalker_portal/c/load.php");
    return new ArrayList<>(out);
   }catch(Exception error){throw new CatalogException("Stalker endpoint i pavlefshëm");}
  }
