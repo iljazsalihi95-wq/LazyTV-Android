@@ -5,9 +5,12 @@ import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.*;
 
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.PlayerView;
 
 import java.util.*;
@@ -32,7 +35,10 @@ public final class StalkerLivePlayerActivity extends Activity {
     private TextView status, title;
     private Spinner countriesView;
     private ListView categoriesView, channelsView;
-    private View leftPanel, channelPanel, topBar, bottomBar, idle, loading;
+    private View leftPanel, channelPanel, topBar, bottomBar, contentRow, info;
+    private View idle, loading;
+    private ViewGroup playerColumn;
+    private LinearLayout.LayoutParams previewColumnParams;
     private final Map<String,List<StreamItem>> byCategory = new LinkedHashMap<>();
     private final Map<String,Integer> counts = new LinkedHashMap<>();
     private List<CountryGroup> countries = new ArrayList<>();
@@ -60,6 +66,8 @@ public final class StalkerLivePlayerActivity extends Activity {
         playerView=findViewById(R.id.live_player); status=findViewById(R.id.live_status); title=findViewById(R.id.live_title);
         countriesView=findViewById(R.id.live_country_spinner); categoriesView=findViewById(R.id.live_categories); channelsView=findViewById(R.id.live_channels);
         leftPanel=findViewById(R.id.live_left_panel); channelPanel=findViewById(R.id.live_channel_panel); topBar=findViewById(R.id.live_top_bar); bottomBar=findViewById(R.id.live_bottom_bar);
+        contentRow=findViewById(R.id.live_content_row); info=findViewById(R.id.live_info); playerColumn=findViewById(R.id.live_player_column);
+        previewColumnParams=new LinearLayout.LayoutParams((LinearLayout.LayoutParams)playerColumn.getLayoutParams());
         idle=findViewById(R.id.live_idle); loading=findViewById(R.id.live_loading_logo);
         title.setText("LAZY STB"); status.setVisibility(View.VISIBLE); status.setText("LAZY STB • Loading portal…");
         findViewById(R.id.live_refresh).setOnClickListener(v->{ source.clear(); loadPortal(); });
@@ -93,7 +101,7 @@ public final class StalkerLivePlayerActivity extends Activity {
 
     private void selectCountry(int pos){if(pos<0||pos>=countries.size())return;categories=new ArrayList<>(countries.get(pos).categories);List<String> labels=new ArrayList<>();for(Category c:categories)labels.add(CountryResolver.categoryLabel(c.name)+"  ("+(counts.containsKey(c.id)?counts.get(c.id):0)+")");categoriesView.setAdapter(adapter(labels));channels=new ArrayList<>();channelsView.setAdapter(adapter(Collections.emptyList()));if(!categories.isEmpty()){categoriesView.setSelection(0);selectCategory(0);}}
     private void selectCategory(int pos){if(pos<0||pos>=categories.size())return;channels=new ArrayList<>(byCategory.containsKey(categories.get(pos).id)?byCategory.get(categories.get(pos).id):Collections.emptyList());List<String> labels=new ArrayList<>();for(StreamItem s:channels)labels.add(s.name);channelsView.setAdapter(adapter(labels));if(!channels.isEmpty())channelsView.setSelection(0);}
-    private void selectChannel(int pos){if(pos<0||pos>=channels.size())return;play(channels.get(pos));}
+    private void selectChannel(int pos){if(pos<0||pos>=channels.size())return;StreamItem item=channels.get(pos);if(current!=null&&current.id.equals(item.id)&&playbackSession!=null&&playbackSession.isActive()){setFullscreen(true);return;}play(item);}
     private void adjacent(int delta){if(channels.isEmpty())return;int i=current==null?-1:channels.indexOf(current);i=(i+delta+channels.size())%channels.size();channelsView.setSelection(i);play(channels.get(i));}
 
     /** Resolve create_link once off the UI thread; LivePlaybackSession owns playback and bounded retry. */
@@ -112,7 +120,19 @@ public final class StalkerLivePlayerActivity extends Activity {
 
     private ArrayAdapter<String> adapter(List<String> data){return new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,data);}
     private String safe(Exception e){String s=e.getMessage();if(s==null||s.trim().isEmpty())return "Lazy STB: portal nuk u përgjigj";s=s.replaceAll("(?i)(mac|token|authorization|cookie|password|username)\\s*[=:]\\s*[^\\s,;]+","$1=[redacted]");return s.length()>180?s.substring(0,180):s;}
-    private void setFullscreen(boolean value){fullscreen=value;int visibility=value?View.GONE:View.VISIBLE;leftPanel.setVisibility(visibility);channelPanel.setVisibility(visibility);topBar.setVisibility(visibility);bottomBar.setVisibility(visibility);getWindow().getDecorView().setSystemUiVisibility(value?(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY):View.SYSTEM_UI_FLAG_VISIBLE);playerView.requestFocus();}
+    private void setFullscreen(boolean value){
+        if(fullscreen==value)return;
+        fullscreen=value;
+        int visibility=value?View.GONE:View.VISIBLE;
+        leftPanel.setVisibility(visibility); channelPanel.setVisibility(visibility); topBar.setVisibility(visibility); bottomBar.setVisibility(visibility); info.setVisibility(visibility);
+        LinearLayout.LayoutParams params=value?new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT):new LinearLayout.LayoutParams(previewColumnParams);
+        params.weight=0; params.setMargins(0,0,0,0); playerColumn.setLayoutParams(params);
+        contentRow.setPadding(0,0,0,0); playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
+        if(value){getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);}
+        else{getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);}
+        playerView.requestFocus();
+    }
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(event.getAction()==android.view.KeyEvent.ACTION_DOWN&&!fullscreen&&(event.getKeyCode()==android.view.KeyEvent.KEYCODE_DPAD_CENTER||event.getKeyCode()==android.view.KeyEvent.KEYCODE_ENTER)&&playerView.hasFocus()&&current!=null){setFullscreen(true);return true;}return super.dispatchKeyEvent(event);}
     @Override public void onBackPressed(){if(fullscreen){setFullscreen(false);return;}super.onBackPressed();}
     @Override protected void onStop(){if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
     @Override protected void onStart(){super.onStart();if(playbackSession!=null)playbackSession.resumeFromBackground();}
