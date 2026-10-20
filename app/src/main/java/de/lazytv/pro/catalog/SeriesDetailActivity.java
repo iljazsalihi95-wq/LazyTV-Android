@@ -178,11 +178,22 @@ public class SeriesDetailActivity extends Activity {
             if(episodesList!=null&&k==KeyEvent.KEYCODE_DPAD_LEFT&&episodesList.hasFocus()){
                 seasonsList.requestFocus();return true;
             }
+            if(episodesList!=null&&k==KeyEvent.KEYCODE_DPAD_RIGHT&&episodesList.hasFocus()&&selectedEpisode>=0){
+                if(resume!=null&&resume.getVisibility()==android.view.View.VISIBLE&&resume.isEnabled())resume.requestFocus();
+                else if(play!=null&&play.isEnabled())play.requestFocus();
+                return true;
+            }
+            if(k==KeyEvent.KEYCODE_DPAD_LEFT&&((play!=null&&play.hasFocus())||(resume!=null&&resume.hasFocus()))){
+                episodesList.requestFocus();return true;
+            }
         }
         return super.dispatchKeyEvent(e);
     }
 
     @Override public void onBackPressed(){
+        if((play!=null&&play.hasFocus())||(resume!=null&&resume.hasFocus())){
+            episodesList.requestFocus();return;
+        }
         if(episodesList!=null&&episodesList.hasFocus()){
             seasonsList.requestFocus();return;
         }
