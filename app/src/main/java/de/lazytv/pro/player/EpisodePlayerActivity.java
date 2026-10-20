@@ -26,7 +26,7 @@ public final class EpisodePlayerActivity extends PlayerActivity {
         if (episode.seasonNumber > 0) append(details, "Sezoni " + episode.seasonNumber);
         if (episode.episodeNumber > 0) append(details, "Episodi " + episode.episodeNumber);
         append(details, duration(episode));
-        append(details, episode.meta("year"));
+        append(details, year(episode));
         append(details, episode.meta("genre"));
         String rating = clean(episode.meta("rating"));
         if (!rating.isEmpty()) append(details, "★ " + rating);
@@ -35,6 +35,13 @@ public final class EpisodePlayerActivity extends PlayerActivity {
                 episode.meta("overview"), episode.meta("storyline"));
         if (!plot.isEmpty()) details.append("\n\nPërmbajtja\n").append(plot);
         meta.setText(details);
+    }
+
+    private String year(Episode episode) {
+        String value = first(episode.meta("year"), episode.meta("release_date"),
+                episode.meta("releasedate"), episode.meta("releaseDate"));
+        if (value.length() >= 4 && value.substring(0, 4).matches("\\d{4}")) return value.substring(0, 4);
+        return value;
     }
 
     private String duration(Episode episode) {
