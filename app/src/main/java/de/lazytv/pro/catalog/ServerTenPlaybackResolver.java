@@ -20,32 +20,25 @@ public final class ServerTenPlaybackResolver {
    return new Reference(portal,mac,"ffmpeg http://localhost/ch/"+stream+"_");
   }catch(Exception ignored){return null;}
  }
- private static boolean explicitMag(StreamItem item){
-  if(item==null)return false;
-  String portal=item.meta("server10_portal");if(portal.isEmpty())portal=item.meta("portal_url");
-  String mac=item.meta("server10_mac");if(mac.isEmpty())mac=item.meta("mac");
-  String command=item.meta("stalker_original_cmd");
-  return !portal.isEmpty()&&mac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}")&&!command.isEmpty();
- }
  static Reference reference(StreamItem item){
   if(item==null)return null;
   String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  boolean signed=raw.toLowerCase(Locale.ROOT).contains("play_token=");
   String hinted=item.meta("server10_portal");if(hinted.isEmpty())hinted=item.meta("portal_url");
   String hintedMac=item.meta("server10_mac");if(hintedMac.isEmpty())hintedMac=item.meta("mac");
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
-  boolean explicitMag=explicitMag(item);
-  // Owner-API rows marked direct stay direct even when their signed URL happens to contain
-  // MAC/stream-looking query parameters. Only explicit portal+MAC+command metadata opts a
-  // managed row into the Stalker/MAG resolver.
-  if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!explicitMag)return null;
-  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!explicitMag)return null;
-  if(explicitMag){
+  boolean explicitMag=!hinted.isEmpty()&&validHintedMac&&!command.isEmpty();
+  // Stable direct owner rows stay direct. Signed play_token rows are immutable references:
+  // never replay their cached URL; derive portal/MAC/command and request a fresh create_link.
+  if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!signed&&!explicitMag)return null;
+  if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!signed&&!explicitMag)return null;
+  Reference signedRef=reference(item.streamUrl);
+  if(signedRef==null){
+   if(!explicitMag)return null;
    String portal=portalIdentity(hinted,"");if(portal.isEmpty())return null;
    return new Reference(portal,hintedMac,command);
   }
-  Reference signedRef=reference(item.streamUrl);
-  if(signedRef==null)return null;
   String portal=portalIdentity(hinted,signedRef.portal);
   String mac=validHintedMac?hintedMac:signedRef.mac;
   if(command.isEmpty())command=signedRef.command;
@@ -69,13 +62,6 @@ public final class ServerTenPlaybackResolver {
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);
   if(ref==null)return DirectPlaybackRequest.resolve(item,item.streamUrl,item.type.name());
-  // Managed owner-API direct rows are already complete signed playback requests and must
-  // never be converted into MAG sessions merely because the URL contains mac/stream-like
-  // query parameters. Unmanaged numeric Server 10 sheet rows are stable MAG references:
-  // their play_token may expire, so refresh those through the portal before playback.
-  String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  boolean managedDirect="true".equalsIgnoreCase(item.meta("managed_direct"))||!item.meta("managed_source_id").isEmpty();
-  if(raw.matches("(?i)^https?://.*")&&managedDirect&&!explicitMag(item))return DirectPlaybackRequest.resolve(item,raw,item.type.name());
   Playlist portal=new Playlist("server10-runtime","Server 10",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
   StreamItem original=new StreamItem(item.id,item.name,item.categoryId,item.logo,ref.command,item.tvgId,CatalogType.LIVE);
   StalkerCatalogSource source=session(ref.portal+"\n"+ref.mac);
