@@ -12,6 +12,7 @@ public class StalkerNativePortalClient extends StalkerCatalogSource {
   String genres;
   try{genres=catalogRequest(playlist,"type=itv&action=get_genres&JsHttpRequest=1-xml");}
   catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;genres=catalogRequest(playlist,"type=itv&action=get_categories&JsHttpRequest=1-xml");}
+  if(StalkerPayload.rows(genres).length()==0)genres=catalogRequest(playlist,"type=itv&action=get_categories&JsHttpRequest=1-xml");
   Catalog catalog=new Catalog();StalkerLiveParser parser=new StalkerLiveParser(catalog,StalkerPayload.rows(genres));
   try{catalogPages(playlist,parser,"get_all_channels","");}
   catch(ProviderHttpException error){if(error.status!=404&&error.status!=405)throw error;}
