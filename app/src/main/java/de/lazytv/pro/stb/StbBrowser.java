@@ -25,6 +25,10 @@ final class StbBrowser {
     private final TextView epgText; private final ProgressBar epgProgress;
     private final Handler ui=new Handler(Looper.getMainLooper()); private final ExecutorService epgWorker=Executors.newSingleThreadExecutor();
     private List<StbEpg.Program> programs=Collections.emptyList(); private final Map<String,String> nowTitles=new HashMap<>(); private BaseAdapter channelAdapter;
+    private final int[] browserPadding=new int[4];
+    private int savedSystemUi,savedWindowFlags,savedVisibleBars,savedBarsBehavior;
+    private android.graphics.drawable.Drawable previewBackground;
+    private boolean backKeyDown;
     private boolean favoritesOnly,closed,fullscreen,controlsShown; private long lastEpgLoad; private final boolean landscape; private final float previewWeight,browserWeight;
     private final Runnable epgTick=new Runnable(){public void run(){if(closed)return;renderEpg();if(session.current()!=null&&System.currentTimeMillis()-lastEpgLoad>60000)loadEpg();ui.postDelayed(this,15000);}};
 
@@ -32,7 +36,15 @@ final class StbBrowser {
         this.countryCodes=new HashMap<>(codes);this.activity=activity;this.exit=exit;this.portal=portal;this.favorites=new StbFavorites(activity,profile);this.logos=new StbLogos(profile.portal);this.all=new ArrayList<>(channels);
         android.util.DisplayMetrics dm=activity.getResources().getDisplayMetrics(); landscape=dm.widthPixels>dm.heightPixels; previewWeight=landscape?0.34f:0.48f; browserWeight=landscape?0.66f:0.52f;
         for(StbProtocol.Genre g:groups)genres.put(g.id,g);
-        root=new LinearLayout(activity);root.setOrientation(1);StbUi.insets(root,dp(landscape?5:8));root.setBackgroundColor(0xff030f1c);
+        root=new LinearLayout(activity);root.setOrientation(1);int insetPadding=dp(landscape?5:8);root.setPadding(insetPadding,insetPadding,insetPadding,insetPadding);
+        Arrays.fill(browserPadding,insetPadding);
+        root.setOnApplyWindowInsetsListener((v,insets)->{
+            browserPadding[0]=insetPadding+insets.getSystemWindowInsetLeft();
+            browserPadding[1]=insetPadding+insets.getSystemWindowInsetTop();
+            browserPadding[2]=insetPadding+insets.getSystemWindowInsetRight();
+            browserPadding[3]=insetPadding+insets.getSystemWindowInsetBottom();
+            applyBrowserPadding();return insets;
+        });root.requestApplyInsets();root.setBackgroundColor(0xff030f1c);
         heading=text("LAZY STB • "+profile.name+" • LIVE TV",landscape?15:17);LinearLayout top=new LinearLayout(activity);top.addView(heading,new LinearLayout.LayoutParams(0,dp(landscape?40:48),1));Button portalMenu=StbUi.button(activity,"⌂  STB MENU");top.addView(portalMenu,new LinearLayout.LayoutParams(dp(128),dp(landscape?40:48)));portalMenu.setOnClickListener(v->exit.run());root.addView(top);
         preview=new FrameLayout(activity);preview.setFocusable(true);preview.setClickable(true);preview.setBackground(StbUi.focus());preview.setPadding(dp(2),dp(2),dp(2),dp(2));root.addView(preview,new LinearLayout.LayoutParams(-1,0,previewWeight));
         info=text("Select a channel",landscape?14:16);info.setMaxLines(landscape?1:2);root.addView(info,new LinearLayout.LayoutParams(-1,dp(landscape?32:44)));
@@ -65,10 +77,49 @@ final class StbBrowser {
         channelView.requestFocus();
     }
     private void chooseEngine(){String[] engines={"Auto • Media3 → VLC → IJK → Android","Media3 / ExoPlayer • HLS / DASH / TS","VLC","IJK / FFmpeg","Android MediaPlayer"};new AlertDialog.Builder(activity).setTitle("LAZY STB • Player").setSingleChoiceItems(engines,session.engine().ordinal(),(d,w)->{session.setEngine(StbEnginePolicy.Engine.values()[w]);loadEpg();d.dismiss();}).setNegativeButton("Cancel",null).show();}
-    private void setFullscreen(boolean value){if(closed||fullscreen==value)return;fullscreen=value;controlsShown=false;((View)heading.getParent()).setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);info.setVisibility(value?View.GONE:View.VISIBLE);epgText.setVisibility(value?View.GONE:View.VISIBLE);epgProgress.setVisibility(value?View.GONE:View.VISIBLE);((View)controls.getParent()).setVisibility(value?View.GONE:View.VISIBLE);if(landscape&&landscapeVideoColumn!=null&&landscapeBody!=null){LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.width=0;vp.height=ViewGroup.LayoutParams.MATCH_PARENT;vp.weight=value?1f:0.70f;vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);LinearLayout.LayoutParams bp=(LinearLayout.LayoutParams)browser.getLayoutParams();bp.width=0;bp.height=ViewGroup.LayoutParams.MATCH_PARENT;bp.weight=value?0f:0.30f;browser.setLayoutParams(bp);LinearLayout.LayoutParams pp=(LinearLayout.LayoutParams)preview.getLayoutParams();pp.width=ViewGroup.LayoutParams.MATCH_PARENT;pp.height=0;pp.weight=1f;preview.setLayoutParams(pp);}else{LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)preview.getLayoutParams();p.width=ViewGroup.LayoutParams.MATCH_PARENT;p.height=0;p.weight=value?1f:previewWeight;preview.setLayoutParams(p);}preview.requestLayout();preview.requestFocus();}
+    private void applyBrowserPadding(){
+        root.setPadding(fullscreen?0:browserPadding[0],fullscreen?0:browserPadding[1],fullscreen?0:browserPadding[2],fullscreen?0:browserPadding[3]);
+    }
+    /** Only window/view state changes here: the attached player and portal session stay untouched. */
+    private void fullscreenWindow(boolean value){
+        Window window=activity.getWindow();View decor=window.getDecorView();
+        if(value){
+            savedSystemUi=decor.getSystemUiVisibility();savedWindowFlags=window.getAttributes().flags;
+            previewBackground=preview.getBackground();
+            if(Build.VERSION.SDK_INT>=30){
+                WindowInsets insets=decor.getRootWindowInsets();savedVisibleBars=((savedSystemUi&View.SYSTEM_UI_FLAG_FULLSCREEN)==0&&(savedWindowFlags&WindowManager.LayoutParams.FLAG_FULLSCREEN)==0?WindowInsets.Type.statusBars():0)|((savedSystemUi&View.SYSTEM_UI_FLAG_HIDE_NAVIGATION)==0?WindowInsets.Type.navigationBars():0);
+                if(insets!=null){
+                    savedVisibleBars=0;
+                    if(insets.isVisible(WindowInsets.Type.statusBars()))savedVisibleBars|=WindowInsets.Type.statusBars();
+                    if(insets.isVisible(WindowInsets.Type.navigationBars()))savedVisibleBars|=WindowInsets.Type.navigationBars();
+                }
+                WindowInsetsController controller=window.getInsetsController();
+                if(controller!=null){savedBarsBehavior=controller.getSystemBarsBehavior();controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(WindowInsets.Type.systemBars());}
+            }
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            decor.setSystemUiVisibility(savedSystemUi|View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+            preview.setBackgroundColor(Color.BLACK);preview.setPadding(0,0,0,0);
+        }else{
+            window.setFlags(savedWindowFlags,WindowManager.LayoutParams.FLAG_FULLSCREEN);
+            decor.setSystemUiVisibility(savedSystemUi);
+            if(Build.VERSION.SDK_INT>=30){
+                WindowInsetsController controller=window.getInsetsController();
+                if(controller!=null){controller.setSystemBarsBehavior(savedBarsBehavior);controller.hide(WindowInsets.Type.systemBars());if(savedVisibleBars!=0)controller.show(savedVisibleBars);}
+            }
+            preview.setBackground(previewBackground);preview.setPadding(dp(2),dp(2),dp(2),dp(2));
+        }
+        applyBrowserPadding();root.requestApplyInsets();
+    }
+    private void setFullscreen(boolean value){if(closed||fullscreen==value)return;fullscreen=value;fullscreenWindow(value);controlsShown=false;((View)heading.getParent()).setVisibility(value?View.GONE:View.VISIBLE);browser.setVisibility(value?View.GONE:View.VISIBLE);info.setVisibility(value?View.GONE:View.VISIBLE);epgText.setVisibility(value?View.GONE:View.VISIBLE);epgProgress.setVisibility(value?View.GONE:View.VISIBLE);((View)controls.getParent()).setVisibility(value?View.GONE:View.VISIBLE);if(landscape&&landscapeVideoColumn!=null&&landscapeBody!=null){LinearLayout.LayoutParams vp=(LinearLayout.LayoutParams)landscapeVideoColumn.getLayoutParams();vp.width=0;vp.height=ViewGroup.LayoutParams.MATCH_PARENT;vp.weight=value?1f:0.70f;vp.leftMargin=value?0:dp(6);landscapeVideoColumn.setLayoutParams(vp);LinearLayout.LayoutParams bp=(LinearLayout.LayoutParams)browser.getLayoutParams();bp.width=0;bp.height=ViewGroup.LayoutParams.MATCH_PARENT;bp.weight=value?0f:0.30f;browser.setLayoutParams(bp);LinearLayout.LayoutParams pp=(LinearLayout.LayoutParams)preview.getLayoutParams();pp.width=ViewGroup.LayoutParams.MATCH_PARENT;pp.height=0;pp.weight=1f;preview.setLayoutParams(pp);}else{LinearLayout.LayoutParams p=(LinearLayout.LayoutParams)preview.getLayoutParams();p.width=ViewGroup.LayoutParams.MATCH_PARENT;p.height=0;p.weight=value?1f:previewWeight;preview.setLayoutParams(p);}preview.requestLayout();preview.requestFocus();}
     boolean back(){if(fullscreen){setFullscreen(false);focusCurrentChannel();return true;}if(preview.hasFocus()&&session.current()!=null){focusCurrentChannel();return true;}exit.run();return true;}
-    boolean key(KeyEvent event){if(event.getAction()!=KeyEvent.ACTION_DOWN)return false;int code=event.getKeyCode();if(code==KeyEvent.KEYCODE_BACK)return back();if(code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_CHANNEL_DOWN||code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);return true;}if(fullscreen){if(code==KeyEvent.KEYCODE_DPAD_LEFT){adjacent(-1);return true;}if(code==KeyEvent.KEYCODE_DPAD_RIGHT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_MENU){setFullscreen(false);focusCurrentChannel();return true;}if(!controlsShown&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_UP)){controlsShown=true;((View)controls.getParent()).setVisibility(View.VISIBLE);info.setVisibility(View.VISIBLE);epgText.setVisibility(View.VISIBLE);epgProgress.setVisibility(View.VISIBLE);controls.getChildAt(0).requestFocus();return true;}}return false;}
-    void pause(){session.pause();}void resume(){session.resume();}void close(){closed=true;ui.removeCallbacksAndMessages(null);epgWorker.shutdownNow();logos.close();session.close();}
+    boolean key(KeyEvent event){int code=event.getKeyCode();
+        if(code==KeyEvent.KEYCODE_BACK){
+            if(event.getAction()==KeyEvent.ACTION_UP){backKeyDown=false;return true;}
+            if(event.getAction()==KeyEvent.ACTION_DOWN){if(!backKeyDown&&event.getRepeatCount()==0){backKeyDown=true;back();}return true;}
+            return true;
+        }
+        if(event.getAction()!=KeyEvent.ACTION_DOWN)return false;if(code==KeyEvent.KEYCODE_CHANNEL_UP||code==KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_CHANNEL_DOWN||code==KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);return true;}if(!fullscreen&&preview.hasFocus()){if(code==KeyEvent.KEYCODE_DPAD_LEFT){adjacent(-1);return true;}if(code==KeyEvent.KEYCODE_DPAD_RIGHT){adjacent(1);return true;}}if(fullscreen){if(code==KeyEvent.KEYCODE_DPAD_LEFT){adjacent(-1);return true;}if(code==KeyEvent.KEYCODE_DPAD_RIGHT){adjacent(1);return true;}if(code==KeyEvent.KEYCODE_MENU){setFullscreen(false);focusCurrentChannel();return true;}if(!controlsShown&&(code==KeyEvent.KEYCODE_DPAD_CENTER||code==KeyEvent.KEYCODE_ENTER||code==KeyEvent.KEYCODE_DPAD_DOWN||code==KeyEvent.KEYCODE_DPAD_UP)){controlsShown=true;((View)controls.getParent()).setVisibility(View.VISIBLE);info.setVisibility(View.VISIBLE);epgText.setVisibility(View.VISIBLE);epgProgress.setVisibility(View.VISIBLE);controls.getChildAt(0).requestFocus();return true;}}return false;}
+    void pause(){backKeyDown=false;session.pause();}void resume(){session.resume();}void close(){if(fullscreen)setFullscreen(false);closed=true;ui.removeCallbacksAndMessages(null);epgWorker.shutdownNow();logos.close();session.close();}
     private void updateFavorite(){StbProtocol.Channel c=session.current();favoriteButton.setText(c!=null&&favorites.contains(c.id)?"★  FAV":"☆  FAV");favoriteButton.setContentDescription("Favorite");}
     private void loadEpg(){StbProtocol.Channel c=session.current();if(c==null||closed||epgWorker.isShutdown())return;long ticket=session.ticket();lastEpgLoad=System.currentTimeMillis();epgWorker.execute(()->{List<StbEpg.Program> loaded;try{loaded=StbEpg.parse(portal.epg(c.id),c.id);}catch(Exception e){loaded=Collections.emptyList();}List<StbEpg.Program> result=loaded;ui.post(()->{if(closed||!session.accepts(ticket))return;programs=result;renderEpg();});});}
     private void renderEpg(){StbProtocol.Channel c=session.current();long now=System.currentTimeMillis();StbEpg.Program current=StbEpg.current(programs,now),next=StbEpg.next(programs,now);String value=current==null?"NOW / NEXT • EPG unavailable":"NOW  "+current.time()+" • "+current.title+" • "+current.progress(now)+"%";if(next!=null)value+="\nNEXT "+next.time()+" • "+next.title;epgText.setText(value);epgProgress.setProgress(current==null?0:current.progress(now));if(c!=null){if(current==null)nowTitles.remove(c.id);else nowTitles.put(c.id,current.time()+" • "+current.title);if(channelAdapter!=null)channelAdapter.notifyDataSetChanged();}}
