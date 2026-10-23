@@ -58,6 +58,11 @@ public final class ServerTenPlaybackResolver {
   if(source==null){source=new StalkerCatalogSource();SESSIONS.put(key,source);if(SESSIONS.size()>8)SESSIONS.remove(SESSIONS.keySet().iterator().next());}
   return source;
  }
+ /** Drop only this Premium identity after an HTTP playback refusal; other sessions stay cached. */
+ public static void invalidateSession(StreamItem item){
+  Reference ref=reference(item);if(ref==null)return;
+  synchronized(ServerTenPlaybackResolver.class){SESSIONS.remove(ref.portal+"\n"+ref.mac);}
+ }
  public static boolean canRefresh(StreamItem item){return reference(item)!=null;}
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);

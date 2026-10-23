@@ -131,6 +131,27 @@ public class PortalSessionTest {
         assertEquals(2,handshakes.get());assertEquals(2,links.get());
     }
     @Test public void refusedProfileNeverStartsCreateLink()throws Exception {profileNumericRefused=true;try{new StalkerCatalogSource().resolve(playlist(),new Channel("9","Fixture","1","","original cmd",""));fail("Refused profile accepted");}catch(CatalogException expected){assertTrue(expected.getMessage().contains("unauthorized"));}assertEquals(1,handshakes.get());assertEquals(0,links.get());}
+    @Test public void premiumPlayback458RenewsOnlyRejectedSessionAndKeepsOriginalReference()throws Exception {
+        rotateLinks=true;
+        server.createContext("/media.mp4",e->{
+            String cookie=e.getRequestHeaders().getFirst("Cookie");
+            reply(e,cookie!=null&&cookie.contains("session=local2")?200:458,"fixture");
+        });
+        StreamItem row=new StreamItem("premium-stable","Fixture","cat","",base+"/play/live.php?mac=00%3A11%3A22%3A33%3A44%3A55&stream=9&play_token=expired","",CatalogType.LIVE);
+        ResolvedStream first=ServerTenPlaybackResolver.resolve(row);
+        // A normal channel selection must reuse its valid portal session.
+        ServerTenPlaybackResolver.resolve(row);assertEquals(1,handshakes.get());
+        try{HttpClient.get(first.url,first.headers);fail("Old session accepted");}
+        catch(ProviderHttpException refused){assertEquals(458,refused.status);assertTrue(ProviderPlaybackPolicy.shouldRetry(refused.status,0));}
+        ServerTenPlaybackResolver.invalidateSession(row);
+        ResolvedStream fresh=ServerTenPlaybackResolver.resolve(row);
+        assertEquals(2,handshakes.get());assertNotEquals(first.url,fresh.url);
+        assertTrue(fresh.headers.get("Cookie").contains("session=local2"));
+        assertTrue(fresh.headers.get("Authorization").endsWith("test2"));
+        assertEquals("fixture",HttpClient.get(fresh.url,fresh.headers));
+        assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
+        assertTrue(row.streamUrl.endsWith("play_token=expired"));
+    }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
     private static final class Headers extends TreeMap<String,List<String>> {

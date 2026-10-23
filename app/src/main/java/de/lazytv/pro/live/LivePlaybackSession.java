@@ -250,6 +250,10 @@ final class LivePlaybackSession {
                 // Do not refresh credentials/links for a selection superseded during backoff.
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
+                // A fresh create_link in a rejected cached MAG session can return another
+                // unusable URL. Only Premium's bounded HTTP 458 retry renews that identity.
+                if (httpStatus == 458 && "true".equals(fallbackStream.metadata.get("server10_fresh_link")))
+                    de.lazytv.pro.catalog.ServerTenPlaybackResolver.invalidateSession(expectedItem);
                 ResolvedStream refreshed = retryResolver == null ? null : retryResolver.refresh(expectedItem);
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
