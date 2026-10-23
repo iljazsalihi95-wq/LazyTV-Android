@@ -152,6 +152,26 @@ public class PortalSessionTest {
         assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
         assertTrue(row.streamUrl.endsWith("play_token=expired"));
     }
+    @Test public void premiumStartsLikeLazyIptvThenRecoversOnceThroughPortal()throws Exception {
+        rotateLinks=true;
+        server.createContext("/media.mp4",e->reply(e,200,"fresh-fixture"));
+        String signed=base+"/play/live.php?play_token=original%2Bsignature&stream=9&mac=00%3A11%3A22%3A33%3A44%3A55&signature=a%2Fb%3D";
+        Map<String,String> supplied=new LinkedHashMap<>();
+        supplied.put("User-Agent","Fixture provider agent");supplied.put("Referer",base+"/provider/");
+        StreamItem row=new StreamItem("premium-fixture","Fixture","cat","",signed,"fixture.epg",CatalogType.LIVE,Collections.emptyList(),supplied);
+        ResolvedStream direct=ServerTenPlaybackResolver.resolvePremium(row,false);
+        ResolvedStream lazy=DirectPlaybackRequest.resolve(row,signed,row.type.name());
+        assertEquals(lazy.url,direct.url);assertEquals(lazy.headers,direct.headers);
+        assertEquals(signed,direct.url);assertEquals(0,handshakes.get());assertEquals(0,links.get());
+        assertEquals("true",direct.metadata.get("managed_direct"));
+        assertFalse(direct.metadata.containsKey("stalker_session"));
+        ResolvedStream recovered=ServerTenPlaybackResolver.resolvePremium(row,true);
+        assertEquals(1,handshakes.get());assertEquals(1,links.get());
+        assertEquals("true",recovered.metadata.get("server10_fresh_link"));
+        assertEquals("fresh-fixture",HttpClient.get(recovered.url,recovered.headers));
+        assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
+        assertEquals(signed,row.streamUrl);
+    }
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
     private static final class Headers extends TreeMap<String,List<String>> {

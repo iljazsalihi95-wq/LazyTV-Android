@@ -63,6 +63,19 @@ public final class ServerTenPlaybackResolver {
   Reference ref=reference(item);if(ref==null)return;
   synchronized(ServerTenPlaybackResolver.class){SESSIONS.remove(ref.portal+"\n"+ref.mac);}
  }
+ /** Premium entry only: use the same complete direct request as LazyIPTV first.
+  * Keep explicit provider commands on their native path; renew MAG identity only on recovery.
+  */
+ public static ResolvedStream resolvePremium(StreamItem item,boolean afterFailure)throws CatalogException {
+  if(item==null)throw new CatalogException("Kanali Premium mungon");
+  String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  if(!afterFailure&&raw.matches("(?i)^https?://.*")&&item.meta("stalker_original_cmd").isEmpty()){
+   String transport=item.meta("managed_transport");
+   return DirectPlaybackRequest.resolve(item,raw,transport.isEmpty()?item.type.name():transport);
+  }
+  if(afterFailure)invalidateSession(item);
+  return resolve(item);
+ }
  public static boolean canRefresh(StreamItem item){return reference(item)!=null;}
  public static ResolvedStream resolve(StreamItem item)throws CatalogException {
   Reference ref=reference(item);
