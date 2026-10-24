@@ -37,6 +37,9 @@ jobs:
       - name: Google Sheet activation mapping tests
         run: node --test test/sheet-mapping.test.js
   android:
+    needs: [backend, paypal-webhook]
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -83,7 +86,7 @@ jobs:
           curl -sv --connect-timeout 10 --max-time 20 -o /dev/null http://euiptv.live:8080/get.php 2>&1 | head -35
           echo "HTTP_RC=${PIPESTATUS[0]}"
           echo "HTTPS_8080_GETPHP:"
-          curl -skv --connect-timeout 10 --max-time 20 -o /dev/null https://euiptv.live:8080/get.php 2>&1 | head -35
+          curl -sv --connect-timeout 10 --max-time 20 -o /dev/null https://euiptv.live:8080/get.php 2>&1 | head -35
           echo "HTTPS_RC=${PIPESTATUS[0]}"
       - name: Provider session and HTTP regression tests
         run: gradle --no-daemon testDebugUnitTest
@@ -103,6 +106,24 @@ jobs:
           if [ -z "$ACTIVATION_BASE_URL" ]; then
             echo "Production activation endpoint not configured; release activation cannot be end-to-end tested yet."
           fi
+      - name: Publish verified public update when production signing is configured
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
+          LAZYTV_SIGNING_KEY_ALIAS: ${{ secrets.LAZYTV_SIGNING_KEY_ALIAS }}
+          LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          if [ -z "$LAZYTV_SIGNING_STORE_FILE" ] || [ -z "$LAZYTV_SIGNING_STORE_PASSWORD" ] || [ -z "$LAZYTV_SIGNING_KEY_ALIAS" ] || [ -z "$LAZYTV_SIGNING_KEY_PASSWORD" ] || [ -z "$ACTIVATION_BASE_URL" ]; then
+            echo "PUBLIC_UPDATE=NOT_PUBLISHED: stable production signing/activation configuration required. Existing signing keys are never replaced."
+            exit 0
+          fi
+          gradle --no-daemon assembleRelease
+          mkdir -p public-update
+          cp app/build/outputs/apk/release/app-release.apk public-update/LazyTV-PRO.apk
+          python3 scripts/create_update_manifest.py public-update/LazyTV-PRO.apk public-update/update.json
+          version=$(python3 -c 'import json;print(json.load(open("public-update/update.json"))["versionCode"])')
+          gh release create "v$version" public-update/LazyTV-PRO.apk public-update/update.json --target "$GITHUB_SHA" --title "LazyTV PRO $version" --notes "Automated checks passed. Physical Fire TV validation required."
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

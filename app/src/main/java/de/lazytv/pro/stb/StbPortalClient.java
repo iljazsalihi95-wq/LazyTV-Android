@@ -100,7 +100,7 @@ public final class StbPortalClient implements AutoCloseable {
             Map<String,String> p=new LinkedHashMap<>();p.put("genre","*");p.put("p",String.valueOf(page));
             StbProtocol.Page data=new StbProtocol.Page(api("itv","get_ordered_list",p),"itv",StbProtocol.Kind.LIVE);
             int before=result.size();for(StbProtocol.Channel c:data.items)if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);
-            if(result.size()==before)break;
+            if(result.size()==before){if(listener!=null&&result.isEmpty())listener.loaded(Collections.emptyList());break;}
             if(listener!=null)listener.loaded(new ArrayList<>(result.values()));
             if(!data.hasNext(page))break;
         }

@@ -15,6 +15,7 @@ public class PortalSessionTest {
     private String base;
     private final AtomicInteger handshakes=new AtomicInteger(),links=new AtomicInteger();
     private boolean rejectOnce,rejectAlways,rejectBody,blocked,expiredToken,rotateLinks,rejectNumericOnce,rejectNumericAlways,profileNumericRefused;
+    private boolean independentTokens;
     private String lastLinkQuery;
     @Before public void start()throws Exception{
         server=HttpServer.create(new InetSocketAddress("127.0.0.1",0),0);
@@ -24,7 +25,7 @@ public class PortalSessionTest {
             String q=e.getRequestURI().getQuery();
             if(q.contains("action=handshake")){int n=handshakes.incrementAndGet();e.getResponseHeaders().add("Set-Cookie","session=local"+n+"; Path=/");reply(e,200,"{\"js\":{\"token\":\"test"+n+"\""+(expiredToken?",\"expires_at\":1":"")+"}}");return;}
             String cookie=e.getRequestHeaders().getFirst("Cookie");
-            if(cookie==null||!cookie.contains("session=local"+handshakes.get())||!cookie.contains("mac=")){reply(e,403,"{}");return;}
+            if(cookie==null||!cookie.contains("session=local"+(independentTokens?e.getRequestHeaders().getFirst("Authorization").replace("Bearer test",""):handshakes.get()))||!cookie.contains("mac=")){reply(e,403,"{}");return;}
             if(q.contains("action=get_main_info")){reply(e,200,blocked?"{\"js\":{\"status\":\"expired\"}}":"{\"js\":{\"status\":\"active\"}}");return;}
             if(q.contains("action=get_profile")){reply(e,200,profileNumericRefused?"{\"js\":{\"status\":401}}":"{\"js\":{\"id\":1}}");return;}
             if(q.contains("action=create_link")){lastLinkQuery=q;links.incrementAndGet();if(rejectNumericOnce||rejectNumericAlways){rejectNumericOnce=false;reply(e,200,"{\"js\":{\"status\":401}}");return;}if(rejectOnce||rejectAlways||rejectBody){rejectOnce=false;if(rejectBody)reply(e,200,"{\"js\":{\"error\":\"invalid token\"}}");else reply(e,403,"{}");}else reply(e,200,"{\"js\":{\"cmd\":\"ffmpeg "+base+"/media.mp4"+(rotateLinks?"?play_token=fixture"+links.get():"")+"\"}}");return;}
@@ -34,6 +35,20 @@ public class PortalSessionTest {
         });server.start();
     }
     @After public void stop(){server.stop(0);}
+    @Test public void premiumOwnerRefreshDoesNotInvalidateOtherOwnerOrManagedSession()throws Exception{
+        independentTokens=true;rotateLinks=true;
+        StreamItem item=new StreamItem("91","Fixture","1","",base+"/play?mac=00%3A11%3A22%3A33%3A44%3A55&stream=91&play_token=expired","",CatalogType.LIVE);
+        ServerTenPlaybackResolver.OwnerSession premium=new ServerTenPlaybackResolver.OwnerSession(),other=new ServerTenPlaybackResolver.OwnerSession();
+        try{
+            ResolvedStream first=premium.resolve(item,false);other.resolve(item,false);assertEquals(2,handshakes.get());
+            ResolvedStream recovered=premium.resolve(item,true);assertEquals(3,handshakes.get());assertNotEquals(first.url,recovered.url);assertTrue(recovered.headers.get("Cookie").contains("session=local3"));
+            other.resolve(item,false);assertEquals(3,handshakes.get());
+            ServerTenPlaybackResolver.resolve(item);assertEquals(4,handshakes.get());
+            premium.resolve(item,true);assertEquals(5,handshakes.get());
+            ServerTenPlaybackResolver.resolve(item);assertEquals(5,handshakes.get());assertEquals(7,links.get());
+            assertFalse(lastLinkQuery.contains("expired"));
+        }finally{premium.clear();other.clear();ServerTenPlaybackResolver.invalidateSession(item);}
+    }
     private Playlist playlist(){return new Playlist(UUID.randomUUID().toString(),"Local fixture",PlaylistType.STALKER_PORTAL,base+"/c/","","","00:11:22:33:44:55",1);}
     private static void reply(HttpExchange e,int code,String body)throws java.io.IOException{byte[] b=body.getBytes(StandardCharsets.UTF_8);e.sendResponseHeaders(code,b.length);try(java.io.OutputStream out=e.getResponseBody()){out.write(b);}e.close();}
     @Test public void alternateEndpointAndCookiesReuseAcrossAllCatalogs()throws Exception{

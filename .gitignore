@@ -8,3 +8,5 @@
 .externalNativeBuild/
 .cxx/
 app/build/
+
+__pycache__/

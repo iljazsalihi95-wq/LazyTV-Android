@@ -24,6 +24,8 @@ public class ProviderPlaybackPolicyTest {
   assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old",null));
   assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old","http://fixture/a?play_token=old"));
   assertTrue(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old","http://fixture/a?play_token=new"));
+  assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old","http://fixture/a?new_param=1&play_token=old"));
+  assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=ol%64","http://fixture/b?play_token=old"));
   assertTrue(ProviderPlaybackPolicy.shouldRetry(458,0));assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
  }
 }

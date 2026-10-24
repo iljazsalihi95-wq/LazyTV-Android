@@ -63,11 +63,15 @@ public final class LazyStbActivity extends Activity {
         long ticket=++generation;status.setText("Loading LIVE • categories / channels…");StbPortalClient portal=client;
         worker.execute(()->{try{
             List<StbProtocol.Genre> genres=portal.genres();Map<String,StbProtocol.Genre> groups=new HashMap<>();for(StbProtocol.Genre g:genres)groups.put(g.id,g);
+            runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed())return;
+                closeContent();browser=new StbBrowser(this,selected,portal,genres,Collections.emptyList(),Collections.emptyMap(),this::showHub);setContentView(browser.root);
+            });
             portal.channels(channels->{
                 Map<String,String> codes=new HashMap<>();for(StbProtocol.Channel c:channels)codes.put(c.id,StbDisplay.country(c,groups.get(c.genreId)));
                 runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed())return;
                     if(browser==null){closeContent();browser=new StbBrowser(this,selected,portal,genres,channels,codes,this::showHub);setContentView(browser.root);}
                     else browser.updateChannels(channels,codes);
+                    if(channels.isEmpty())Toast.makeText(this,"Portali nuk ktheu kanale LIVE.",Toast.LENGTH_LONG).show();
                 });
             });
         }catch(Exception error){runOnUiThread(()->{if(ticket==generation&&!isFinishing()){

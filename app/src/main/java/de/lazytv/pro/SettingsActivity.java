@@ -3,6 +3,9 @@ import android.app.*;import android.os.*;import android.widget.*;import android.
 public class SettingsActivity extends Activity{
  protected void onCreate(Bundle b){super.onCreate(b);setContentView(R.layout.activity_settings);
   refreshActivePlaylist();
+  Button diagnostic=findViewById(R.id.settings_diagnostics);diagnostic.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("LazyTV diagnostics").setMessage(CrashReport.read(this))
+    .setPositiveButton("Kopjo",(d,w)->{android.content.ClipboardManager clip=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);if(clip!=null)clip.setPrimaryClip(ClipData.newPlainText("LazyTV diagnostics",CrashReport.read(this)));})
+    .setNegativeButton("Mbyll",null).show());
   findViewById(R.id.settings_playlists).setOnClickListener(v->startActivity(new Intent(this,PlaylistManagerActivity.class)));
   findViewById(R.id.settings_activation).setOnClickListener(v->startActivity(new Intent(this,de.lazytv.pro.activation.ActivationActivity.class)));
   findViewById(R.id.settings_player).setOnClickListener(v->showPlayerSettings());

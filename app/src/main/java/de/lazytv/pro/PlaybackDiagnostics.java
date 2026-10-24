@@ -6,9 +6,9 @@ public final class PlaybackDiagnostics extends Application implements Applicatio
  @Override public void onCreate(){super.onCreate();registerActivityLifecycleCallbacks(this);
   Thread.UncaughtExceptionHandler previous=Thread.getDefaultUncaughtExceptionHandler();
   Thread.setDefaultUncaughtExceptionHandler((thread,error)->{
-   StringBuilder safe=new StringBuilder("phase=").append(phase).append(" exception=").append(error.getClass().getName());
-   for(StackTraceElement frame:error.getStackTrace()){if(safe.length()>6000)break;safe.append('\n').append(frame.toString());}
-   Log.e("LazyTV-Crash",safe.toString());
+   String safe=CrashReport.describe(phase,error);
+   Log.e("LazyTV-Crash",safe);
+   try{CrashReport.save(this,safe);}catch(RuntimeException unavailable){Log.e("LazyTV-Crash","Crash report could not be persisted");}
    // Keep default Android crash behavior; never swallow a fatal error.
    if(previous!=null)previous.uncaughtException(thread,error);else{android.os.Process.killProcess(android.os.Process.myPid());System.exit(10);}
   });

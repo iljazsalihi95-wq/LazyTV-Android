@@ -22,8 +22,8 @@ android {
         ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
         minSdk 23
         targetSdk 35
-        versionCode 614
-        versionName '614'
+        versionCode 615
+        versionName '615'
         buildConfigField 'String', 'ACTIVATION_BASE_URL', escBuildConfig(activationBaseUrl)
         buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'false'
     }
@@ -50,7 +50,7 @@ android {
         }
     }
 
-    testOptions { unitTests.returnDefaultValues = true }
+    testOptions { unitTests.returnDefaultValues = true; unitTests.includeAndroidResources = true }
 
     compileOptions {
         coreLibraryDesugaringEnabled true
@@ -62,6 +62,7 @@ android {
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
     testImplementation 'org.json:json:20240303'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.media3:media3-exoplayer:1.5.1'

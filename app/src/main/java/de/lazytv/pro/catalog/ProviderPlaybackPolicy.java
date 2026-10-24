@@ -28,7 +28,17 @@ public final class ProviderPlaybackPolicy {
     /** A refused signed request must never reach an engine for a second time. */
     public static boolean usableRefresh(int status, String rejected, String refreshed) {
         if (refreshed == null || refreshed.trim().isEmpty()) return false;
-        return status != 458 || (rejected != null && !rejected.equals(refreshed));
+        if(status!=458)return true;
+        if(rejected==null||rejected.equals(refreshed))return false;
+        String token=playToken(rejected),freshToken=playToken(refreshed);
+        return token.isEmpty()||!token.equals(freshToken);
+    }
+    private static String playToken(String url){
+        try{String query=new java.net.URI(url).getRawQuery();if(query==null)return "";
+            for(String pair:query.split("&")){int equals=pair.indexOf('=');
+                if(equals>0&&"play_token".equalsIgnoreCase(java.net.URLDecoder.decode(pair.substring(0,equals),"UTF-8")))
+                    return java.net.URLDecoder.decode(pair.substring(equals+1),"UTF-8");}
+        }catch(Exception invalid){}return "";
     }
     public static String message(int code){return new ProviderHttpException(code).getMessage();}
     public static ResolvedStream retryHeaders(ResolvedStream stream,StreamItem item,int code,int attempt){

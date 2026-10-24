@@ -11,7 +11,7 @@ public final class EpgSchedule {
   public String label(){String time=time();return (time.isEmpty()?"":time+" • ")+title;}
  }
  public final Program current,next;
- private EpgSchedule(Program current,Program next){this.current=current;this.next=next;}
+ EpgSchedule(Program current,Program next){this.current=current;this.next=next;}
  public static EpgSchedule empty(){return new EpgSchedule(null,null);}
  public Program active(long now){if(current!=null&&(!current.timed()||current.start<=now&&now<current.end))return current;if(next!=null&&next.timed()&&next.start<=now&&now<next.end)return next;return null;}
  public Program upcoming(long now){return next!=null&&(!next.timed()||next.start>now)?next:null;}

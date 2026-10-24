@@ -22,6 +22,11 @@ public class StbPortalClientTest {
    assertEquals(Arrays.asList(1,2),sizes);assertEquals(2,channels.size());assertEquals(0,allChannels.get());assertEquals(1,handshakes.get());
   }
  }
+ @Test public void emptyLivePageNotifiesUiAndTerminates()throws Exception{
+  List<Integer> sizes=new ArrayList<>();try(StbPortalClient c=new StbPortalClient(base,"00:11:22:33:44:55")){
+   assertTrue(c.channels(batch->sizes.add(batch.size())).isEmpty());assertEquals(Collections.singletonList(0),sizes);assertEquals(0,allChannels.get());assertEquals(1,handshakes.get());
+  }
+ }
  private static void reply(HttpExchange e,int status,String body)throws IOException{byte[] b=body.getBytes(StandardCharsets.UTF_8);e.sendResponseHeaders(status,b.length);e.getResponseBody().write(b);e.close();}
     // ServerSocket is available in both the Android compile API and the local JVM.
     private interface Handler { void handle(HttpExchange exchange)throws IOException; }
