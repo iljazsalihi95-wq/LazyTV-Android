@@ -29,8 +29,8 @@ public final class ServerTenPlaybackResolver {
   String command=item.meta("stalker_original_cmd");
   boolean validHintedMac=hintedMac.matches("(?i)[0-9a-f]{2}(:[0-9a-f]{2}){5}");
   boolean explicitMag=!hinted.isEmpty()&&validHintedMac&&!command.isEmpty();
-  // Stable direct owner rows stay direct. Signed play_token rows are immutable references:
-  // never replay their cached URL; derive portal/MAC/command and request a fresh create_link.
+  // Stable direct owner rows stay direct. Signed play_token rows remain immutable references
+  // for recovery; the normal Premium start may still use the supplied direct request.
   if("true".equalsIgnoreCase(item.meta("managed_direct"))&&!signed&&!explicitMag)return null;
   if(!item.meta("managed_source_id").isEmpty()&&raw.matches("(?i)^https?://.*")&&!signed&&!explicitMag)return null;
   Reference signedRef=reference(item.streamUrl);
@@ -63,13 +63,16 @@ public final class ServerTenPlaybackResolver {
   Reference ref=reference(item);if(ref==null)return;
   synchronized(ServerTenPlaybackResolver.class){SESSIONS.remove(ref.portal+"\n"+ref.mac);}
  }
- /**
-  * Premium signed rows are references, not durable playback URLs. Always obtain a fresh
-  * create_link before playback, matching the proven Server 10 path. After a playback refusal
-  * discard only this portal/MAC session so the retry performs a fresh handshake + create_link.
+ /** Premium entry: start with the complete provider URL like LazyIPTV. On a playback refusal
+  * discard only this MAG session and obtain a fresh handshake + create_link for the same row.
   */
  public static ResolvedStream resolvePremium(StreamItem item,boolean afterFailure)throws CatalogException {
   if(item==null)throw new CatalogException("Kanali Premium mungon");
+  String raw=item.streamUrl==null?"":item.streamUrl.trim();
+  if(!afterFailure&&raw.matches("(?i)^https?://.*")&&item.meta("stalker_original_cmd").isEmpty()){
+   String transport=item.meta("managed_transport");
+   return DirectPlaybackRequest.resolve(item,raw,transport.isEmpty()?item.type.name():transport);
+  }
   if(afterFailure)invalidateSession(item);
   return resolve(item);
  }
