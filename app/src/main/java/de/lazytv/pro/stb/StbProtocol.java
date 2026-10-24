@@ -66,7 +66,7 @@ public final class StbProtocol {
             cmd=value(o,"cmd","");logo=value(o,"logo",value(o,"screenshot_uri",value(o,"cover","")));epgId=value(o,"xmltv_id",value(o,"epg_id",""));country=value(o,"country_code",value(o,"country",""));
             movieId=value(o,"movie_id",value(o,"video_id",""));seasonId=value(o,"season_id","");episodeId=value(o,"episode_id","");episodeNumber=value(o,"series_number",value(o,"episode_number",""));plot=value(o,"description",value(o,"plot",""));episodeNumbers=o.optJSONArray("series")==null?new JSONArray():o.optJSONArray("series");
             String type=value(o,"item_type",value(o,"type","")).toLowerCase(Locale.ROOT);
-            kind=flag(o,"is_file")?Kind.FILE:flag(o,"is_episode")?Kind.EPISODE:flag(o,"is_season")?Kind.SEASON:flag(o,"is_series")||type.equals("series")?Kind.SERIES:type.equals("vod")||type.equals("movie")?Kind.MOVIE:fallback;
+            kind=flag(o,"is_file")?Kind.FILE:flag(o,"is_episode")||type.equals("episode")?Kind.EPISODE:flag(o,"is_season")||type.equals("season")?Kind.SEASON:(fallback==Kind.SEASON||fallback==Kind.EPISODE)?fallback:flag(o,"is_series")||type.equals("series")?Kind.SERIES:type.equals("vod")||type.equals("movie")?Kind.MOVIE:fallback;
         }
         public boolean linear(){return kind==Kind.LIVE;}
         public boolean playable(){return (kind==Kind.LIVE||kind==Kind.MOVIE||kind==Kind.FILE||kind==Kind.EPISODE)&&!cmd.trim().isEmpty();}

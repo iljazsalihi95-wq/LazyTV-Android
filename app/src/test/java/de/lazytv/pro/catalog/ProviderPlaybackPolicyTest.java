@@ -20,4 +20,10 @@ public class ProviderPlaybackPolicyTest {
     @Test public void provider458AllowsOnlyFreshResolverRetryAndDoesNotMutateHeaders(){ResolvedStream original=stream(defaults());assertTrue(ProviderPlaybackPolicy.shouldRetry(458,0));assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));assertSame(original,ProviderPlaybackPolicy.retryHeaders(original,null,458,1));}
     @Test public void alternateDefaultHeadersAreBoundedAndPreserveProviderHeaders(){ResolvedStream original=stream(defaults());ResolvedStream retry=ProviderPlaybackPolicy.retryHeaders(original,null,409,1);assertEquals(original.url,retry.url);assertEquals("IPTVSmartersPro",retry.headers.get("User-Agent"));assertEquals(original.headers.get("Cookie"),retry.headers.get("Cookie"));assertEquals(original.headers.get("Referer"),retry.headers.get("Referer"));assertSame(original,ProviderPlaybackPolicy.retryHeaders(original,null,409,2));}
     @Test public void portalAndExplicitM3uHeadersRemainIntact(){Map<String,String> h=defaults();h.put("X-User-Agent","Model: MAG254; Link: Ethernet");ResolvedStream portal=stream(h);assertSame(portal,ProviderPlaybackPolicy.retryHeaders(portal,null,403,1));Map<String,String> explicit=new HashMap<>();explicit.put("user-agent","Provider agent");M3uStreamItem item=new M3uStreamItem("1","Channel","1","","http://local/stream","",CatalogType.LIVE,explicit);ResolvedStream original=stream(defaults());assertSame(original,ProviderPlaybackPolicy.retryHeaders(original,item,403,1));}
+ @org.junit.Test public void refused458CannotReuseMissingOrIdenticalUrl(){
+  assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old",null));
+  assertFalse(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old","http://fixture/a?play_token=old"));
+  assertTrue(ProviderPlaybackPolicy.usableRefresh(458,"http://fixture/a?play_token=old","http://fixture/a?play_token=new"));
+  assertTrue(ProviderPlaybackPolicy.shouldRetry(458,0));assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
+ }
 }

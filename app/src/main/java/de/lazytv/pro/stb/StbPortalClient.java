@@ -87,23 +87,22 @@ public final class StbPortalClient implements AutoCloseable {
     public StbProtocol.Page libraryPage(String type,String category,String movie,String season,String episode,int page) throws IOException {
         checkCatalogType(type);if(page<1||page>500)throw new IllegalArgumentException("STB page jashtë kufirit");
         Map<String,String> p=new LinkedHashMap<>();p.put("category",category);p.put("movie_id",movie);p.put("season_id",season);p.put("episode_id",episode);p.put("p",String.valueOf(page));p.put("sortby","added");
-        StbProtocol.Kind fallback=type.equals("series")?StbProtocol.Kind.SERIES:StbProtocol.Kind.MOVIE;
+        StbProtocol.Kind fallback=!"0".equals(season)&&!season.isEmpty()?StbProtocol.Kind.EPISODE:!"0".equals(movie)&&!movie.isEmpty()?StbProtocol.Kind.SEASON:type.equals("series")?StbProtocol.Kind.SERIES:StbProtocol.Kind.MOVIE;
         return new StbProtocol.Page(api(type,"get_ordered_list",p),type,fallback);
     }
     public List<StbProtocol.Genre> genres() throws IOException{return StbProtocol.genres(api("itv","get_genres",Collections.emptyMap()));}
-    public List<StbProtocol.Channel> channels() throws IOException {
-        Object all;try{all=api("itv","get_all_channels",Collections.emptyMap());}catch(HttpFailure e){if(e.status!=404&&e.status!=405)throw e;all=new JSONArray();}
+    public interface LivePageListener { void loaded(List<StbProtocol.Channel> channels); }
+    public List<StbProtocol.Channel> channels() throws IOException { return channels(null); }
+    public List<StbProtocol.Channel> channels(LivePageListener listener) throws IOException {
         LinkedHashMap<String,StbProtocol.Channel> result=new LinkedHashMap<>();
-        for(StbProtocol.Channel c:StbProtocol.channels(all)){if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);}
-        if(!result.isEmpty())return new ArrayList<>(result.values());
-        // Paginated fallback only when get_all_channels explicitly yields an empty catalog.
-        int pages=1;
-        for(int page=1;page<=pages;page++){
+        for(int page=1;page<=500;page++){
+            if(Thread.currentThread().isInterrupted())throw new java.io.InterruptedIOException();
             Map<String,String> p=new LinkedHashMap<>();p.put("genre","*");p.put("p",String.valueOf(page));
-            Object data=api("itv","get_ordered_list",p);List<StbProtocol.Channel> batch=StbProtocol.channels(data);
-            int before=result.size();for(StbProtocol.Channel c:batch){if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);}
-            if(data instanceof JSONObject){JSONObject o=(JSONObject)data;int size=o.optInt("max_page_items",batch.size());if(size>0)pages=Math.min(500,(o.optInt("total_items",batch.size())+size-1)/size);}
-            if(batch.isEmpty()||result.size()==before)break;
+            StbProtocol.Page data=new StbProtocol.Page(api("itv","get_ordered_list",p),"itv",StbProtocol.Kind.LIVE);
+            int before=result.size();for(StbProtocol.Channel c:data.items)if(c.kind==StbProtocol.Kind.LIVE)result.put(c.id,c);
+            if(result.size()==before)break;
+            if(listener!=null)listener.loaded(new ArrayList<>(result.values()));
+            if(!data.hasNext(page))break;
         }
         return new ArrayList<>(result.values());
     }

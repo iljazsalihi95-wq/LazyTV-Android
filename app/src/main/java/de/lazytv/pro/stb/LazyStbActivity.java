@@ -22,7 +22,7 @@ public final class LazyStbActivity extends Activity {
     private StbProfileStore.Profile selected;
     private volatile StbPortalClient pending;
     private Future<?> connectionTask;
-    @Override protected void onCreate(Bundle state){super.onCreate(state);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);store=new StbProfileStore(this);build();}
+    @Override protected void onCreate(Bundle state){super.onCreate(state);store=new StbProfileStore(this);build();}
     private void build(){
         root=new LinearLayout(this);root.setOrientation(1);StbUi.insets(root,dp(14));root.setBackgroundColor(Color.rgb(3,15,28));
         TextView title=new TextView(this);title.setText("LAZY STB");title.setTextSize(26);title.setTextColor(Color.WHITE);root.addView(title);
@@ -59,11 +59,26 @@ public final class LazyStbActivity extends Activity {
         live.requestFocus();setContentView(hub);
     }
     private void openLibrary(boolean series){closeContent();library=new StbLibraryBrowser(this,selected,client,series,this::showHub,this::returnToProfiles);setContentView(library.root);}
-    private void loadLive(){long ticket=++generation;status.setText("Loading LIVE • categories / channels…");StbPortalClient portal=client;worker.execute(()->{try{List<StbProtocol.Genre> genres=portal.genres();List<StbProtocol.Channel> channels=portal.channels();Map<String,StbProtocol.Genre> groups=new HashMap<>();for(StbProtocol.Genre g:genres)groups.put(g.id,g);Map<String,String> codes=new HashMap<>();for(StbProtocol.Channel c:channels)codes.put(c.id,StbDisplay.country(c,groups.get(c.genreId)));runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed())return;closeContent();browser=new StbBrowser(this,selected,portal,genres,channels,codes,this::showHub);setContentView(browser.root);});}catch(Exception error){runOnUiThread(()->{if(ticket==generation&&!isFinishing())status.setText(StbErrors.message(error));});}});}
+    private void loadLive(){
+        long ticket=++generation;status.setText("Loading LIVE • categories / channels…");StbPortalClient portal=client;
+        worker.execute(()->{try{
+            List<StbProtocol.Genre> genres=portal.genres();Map<String,StbProtocol.Genre> groups=new HashMap<>();for(StbProtocol.Genre g:genres)groups.put(g.id,g);
+            portal.channels(channels->{
+                Map<String,String> codes=new HashMap<>();for(StbProtocol.Channel c:channels)codes.put(c.id,StbDisplay.country(c,groups.get(c.genreId)));
+                runOnUiThread(()->{if(ticket!=generation||isFinishing()||isDestroyed())return;
+                    if(browser==null){closeContent();browser=new StbBrowser(this,selected,portal,genres,channels,codes,this::showHub);setContentView(browser.root);}
+                    else browser.updateChannels(channels,codes);
+                });
+            });
+        }catch(Exception error){runOnUiThread(()->{if(ticket==generation&&!isFinishing()){
+            if(browser==null)status.setText(StbErrors.message(error));else Toast.makeText(this,StbErrors.message(error),Toast.LENGTH_LONG).show();
+        }});}});
+    }
     private void returnToProfiles(){generation++;closeContent();if(client!=null){client.close();client=null;}selected=null;build();}
     @Override public boolean dispatchKeyEvent(KeyEvent event){if(browser!=null&&browser.key(event))return true;if(library!=null&&library.key(event))return true;return super.dispatchKeyEvent(event);}
     @Override public void onBackPressed(){if(browser!=null){browser.back();return;}if(library!=null){library.back();return;}if(client!=null){returnToProfiles();return;}super.onBackPressed();}
     @Override protected void onStart(){super.onStart();if(browser!=null)browser.resume();if(library!=null)library.resume();}
+    @Override protected void onActivityResult(int request,int result,android.content.Intent data){super.onActivityResult(request,result,data);if(browser!=null)browser.recordingResult(request,result,data);else if(library!=null)library.recordingResult(request,result,data);}
     @Override protected void onStop(){if(browser!=null)browser.pause();if(library!=null)library.pause();super.onStop();}
     @Override protected void onDestroy(){generation++;worker.shutdownNow();closeContent();if(pending!=null)pending.close();if(client!=null)client.close();super.onDestroy();}
     private int dp(int value){return Math.round(value*getResources().getDisplayMetrics().density);}

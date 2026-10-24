@@ -88,6 +88,7 @@ final class LivePlaybackSession {
         playerView.setUseController(false);
         playerView.setPlayer(player);
         player.addListener(new Player.Listener() {
+            @Override public void onIsPlayingChanged(boolean playing) { playerView.setKeepScreenOn(!released && foreground && playing); }
             @Override public void onPlaybackStateChanged(int state) {
                 if (released || usingNative || !callbackBelongsToCurrentGeneration()) return;
                 listener.onBuffering(state == Player.STATE_BUFFERING);
@@ -161,13 +162,23 @@ final class LivePlaybackSession {
     }
 
     void pauseForBackground() {
-        foreground=false;resumePlayback=usingNative||player.getPlayWhenReady();if(usingNative)nativeEngine.pause();else player.pause();
+        foreground=false;playerView.setKeepScreenOn(false);resumePlayback=usingNative||player.getPlayWhenReady();if(usingNative)nativeEngine.pause();else player.pause();
     }
     void resumeFromBackground() {
         foreground=true;
         if(resumePlayback){resumePlayback=false;stalkerTicket=stalkerGuard.begin();retryCount=0;fatalNotified=false;
             if(usingNative)nativeEngine.resume();else if(player.getPlayerError()!=null&&!retryRunning)retryCurrent(generation,currentItem);else player.play();
         }
+    }
+
+    ResolvedStream recordingStream(){return currentStream;}
+
+    boolean togglePause() {
+        if (released || currentStream == null) return false;
+        if (usingNative) return false; // Native live has no confirmed seekable buffer.
+        if (!player.isCurrentMediaItemSeekable()) return false;
+        if (player.getPlayWhenReady()) player.pause(); else player.play();
+        return true;
     }
 
     String diagnosticSummary(){return de.lazytv.pro.catalog.PlaybackRequestSummary.describe(currentStream,lastHttpStatus);}
@@ -254,12 +265,15 @@ final class LivePlaybackSession {
                 if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                 if (stalkerPlayback && !stalkerGuard.current(expectedStalkerTicket)) return;
                 if (!validStream(refreshed)) {
-                    if (stalkerPlayback) throw new IllegalStateException("Fresh Stalker URL missing");
+                    if (stalkerPlayback || httpStatus == 458) throw new IllegalStateException("Fresh playback URL missing");
                     refreshed = fallbackStream;
                 }
+                if (!ProviderPlaybackPolicy.usableRefresh(httpStatus, fallbackStream.url, refreshed.url))
+                    throw new IllegalStateException("Provider did not issue a new playback URL");
                 ResolvedStream stalkerRetry = stalkerPlayback || "true".equals(refreshed.metadata.get("managed_direct")) || "true".equals(refreshed.metadata.get("server10_fresh_link")) ? null : refreshExpiredStalkerLink(refreshed, expectedItem);
                 if (stalkerRetry != null) refreshed = stalkerRetry;
                 final ResolvedStream result = ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, httpStatus, attempt);
+                if (!ProviderPlaybackPolicy.usableRefresh(httpStatus, fallbackStream.url, result.url))throw new IllegalStateException("Fresh playback link was refused");
                 main.post(() -> {
                     if (released || expectedGeneration != generation || expectedItem != currentItem) return;
                     retryRunning = false;
@@ -327,6 +341,7 @@ final class LivePlaybackSession {
 
     private void apply(long expectedGeneration, StreamItem item, ResolvedStream stream, boolean resetPosition) {
         if (released || expectedGeneration != generation || item != currentItem || !validStream(stream)) return;
+        android.util.Log.i("LazyTV-Playback","engine=Media3 phase=prepare generation="+expectedGeneration);
         currentStream = stream;
         if(usingNative){startNative(expectedGeneration,item,stream);return;}
         http.setDefaultRequestProperties(stream.headers);
@@ -355,7 +370,7 @@ final class LivePlaybackSession {
         usingNative=true;nativeBuffering=true;player.stop();playerView.setPlayer(null);listener.onBuffering(true);
         try{if(nativeEngine==null)nativeEngine=new LiveNativeEngine(playerView);nativeEngine.play(stream,foreground,new LiveNativeEngine.Events(){
             private boolean current(){return !released&&usingNative&&ticket==generation&&item==currentItem&&stream==currentStream;}
-            public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);scheduleStableReset();listener.onReady();});}
+            public void ready(){main.post(()->{if(!current())return;nativeBuffering=false;retryRunning=false;playerView.setKeepScreenOn(foreground);listener.onBuffering(false);scheduleStableReset();listener.onReady();});}
             public void buffering(boolean value){main.post(()->{if(!current())return;nativeBuffering=value;listener.onBuffering(value);});}
             public void failed(int what,int extra){main.post(()->{if(!current())return;lastSafeError="IJK: what="+what+" extra="+extra;nativeBuffering=false;retryRunning=false;listener.onBuffering(false);if(foreground)retryCurrent(ticket,item);});}
         });}catch(Exception|LinkageError unavailable){nativeBuffering=false;listener.onBuffering(false);fatalNotified=true;listener.onFatalPlaybackError("Native Live decoder nuk mund të përgatisë stream-in");}
@@ -367,12 +382,14 @@ final class LivePlaybackSession {
 
     void release() {
         if (released) return;
+        android.util.Log.i("LazyTV-Playback","phase=release generation="+generation);
         released = true;
         generation++;
         retryRunning = false;
         cancelStableReset();
         main.removeCallbacksAndMessages(null);
         retryWorker.shutdownNow();
+        playerView.setKeepScreenOn(false);
         playerView.setPlayer(null);
         player.release();
         if(nativeEngine!=null)nativeEngine.release();

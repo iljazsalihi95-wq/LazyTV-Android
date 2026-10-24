@@ -25,6 +25,11 @@ public final class ProviderPlaybackPolicy {
         if(code==429)return attempts<2;
         return attempts<3;
     }
+    /** A refused signed request must never reach an engine for a second time. */
+    public static boolean usableRefresh(int status, String rejected, String refreshed) {
+        if (refreshed == null || refreshed.trim().isEmpty()) return false;
+        return status != 458 || (rejected != null && !rejected.equals(refreshed));
+    }
     public static String message(int code){return new ProviderHttpException(code).getMessage();}
     public static ResolvedStream retryHeaders(ResolvedStream stream,StreamItem item,int code,int attempt){
         if(stream==null||attempt!=1||(code!=403&&code!=409)||stream.headers.containsKey("X-User-Agent"))return stream;

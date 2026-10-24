@@ -168,6 +168,7 @@ public class PortalSessionTest {
         ResolvedStream recovered=ServerTenPlaybackResolver.resolvePremium(row,true);
         assertEquals(1,handshakes.get());assertEquals(1,links.get());
         assertEquals("true",recovered.metadata.get("server10_fresh_link"));
+        assertEquals("Fixture provider agent",recovered.headers.get("User-Agent"));assertEquals(base+"/provider/",recovered.headers.get("Referer"));
         assertEquals("fresh-fixture",HttpClient.get(recovered.url,recovered.headers));
         assertFalse(ProviderPlaybackPolicy.shouldRetry(458,1));
         assertEquals(signed,row.streamUrl);

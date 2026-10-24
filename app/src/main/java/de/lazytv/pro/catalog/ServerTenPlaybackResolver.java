@@ -73,6 +73,7 @@ public final class ServerTenPlaybackResolver {
    String transport=item.meta("managed_transport");
    return DirectPlaybackRequest.resolve(item,raw,transport.isEmpty()?item.type.name():transport);
   }
+  if(afterFailure&&!canRefresh(item))throw new CatalogException("Premium: provider-i nuk dha identitet për fresh create_link.");
   if(afterFailure)invalidateSession(item);
   return resolve(item);
  }
@@ -86,6 +87,11 @@ public final class ServerTenPlaybackResolver {
   StalkerCatalogSource.LinkResult fresh;
   synchronized(source){fresh=source.resolve(portal,original);}
   Map<String,String> metadata=new LinkedHashMap<>(item.metadata);metadata.put("server10_fresh_link","true");metadata.put("stalker_session","true");
-  return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,fresh.headers,metadata);
+  Map<String,String> headers=new LinkedHashMap<>(fresh.headers);
+  for(String name:new String[]{"User-Agent","Referer","Origin","X-User-Agent"}){
+   String value=item.meta(name);if(value.isEmpty())value=item.meta(name.toLowerCase(Locale.ROOT).replace('-','_'));
+   if(!value.isEmpty()&&!value.contains("\r")&&!value.contains("\n"))headers.put(name,value);
+  }
+  return new ResolvedStream(fresh.url,item.type.name(),item.name,item.logo,item.tvgId,headers,metadata);
  }
 }
