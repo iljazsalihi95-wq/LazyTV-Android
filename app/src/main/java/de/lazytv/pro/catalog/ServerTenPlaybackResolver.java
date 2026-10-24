@@ -63,16 +63,13 @@ public final class ServerTenPlaybackResolver {
   Reference ref=reference(item);if(ref==null)return;
   synchronized(ServerTenPlaybackResolver.class){SESSIONS.remove(ref.portal+"\n"+ref.mac);}
  }
- /** Premium entry only: use the same complete direct request as LazyIPTV first.
-  * Keep explicit provider commands on their native path; renew MAG identity only on recovery.
+ /**
+  * Premium signed rows are references, not durable playback URLs. Always obtain a fresh
+  * create_link before playback, matching the proven Server 10 path. After a playback refusal
+  * discard only this portal/MAC session so the retry performs a fresh handshake + create_link.
   */
  public static ResolvedStream resolvePremium(StreamItem item,boolean afterFailure)throws CatalogException {
   if(item==null)throw new CatalogException("Kanali Premium mungon");
-  String raw=item.streamUrl==null?"":item.streamUrl.trim();
-  if(!afterFailure&&raw.matches("(?i)^https?://.*")&&item.meta("stalker_original_cmd").isEmpty()){
-   String transport=item.meta("managed_transport");
-   return DirectPlaybackRequest.resolve(item,raw,transport.isEmpty()?item.type.name():transport);
-  }
   if(afterFailure)invalidateSession(item);
   return resolve(item);
  }
