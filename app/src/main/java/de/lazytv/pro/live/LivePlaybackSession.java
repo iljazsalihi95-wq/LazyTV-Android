@@ -72,6 +72,8 @@ final class LivePlaybackSession {
   private volatile long generation;
   private boolean foreground = true;
   private boolean resumePlayback;
+  private boolean needsPrepare;
+  private boolean backgroundFailure;
   private boolean retryRunning;
   private boolean fatalNotified;
   private int retryCount;
@@ -145,6 +147,7 @@ final class LivePlaybackSession {
             if (released || !belongsToCurrent()) return;
             cancelStableReset();
             lastHttpStatus = ProviderPlaybackPolicy.status(error);
+            backgroundFailure = !foreground;
             lastSafeError = "Media3: " + error.getErrorCodeName();
             Log.e(
                 "LazyTV-LiveSession",
@@ -230,19 +233,31 @@ final class LivePlaybackSession {
     foreground = false;
     playerView.setKeepScreenOn(false);
     resumePlayback = player.getPlayWhenReady();
+    backgroundFailure = player.getPlayerError() != null;
+    needsPrepare = currentStream != null;
+    cancelStableReset();
+    // pause() alone keeps the loader, buffered media and decoder resources alive.
+    // stop() cancels loading/releases renderer resources, retaining this player and position.
     player.pause();
+    player.stop();
   }
 
   void resumeFromBackground() {
-    if (released) return;
+    if (released || foreground) return;
     foreground = true;
-    if (resumePlayback) {
-      resumePlayback = false;
-      retryCount = 0;
-      fatalNotified = false;
-      if (player.getPlayerError() != null && !retryRunning) retryCurrent(generation, currentItem);
-      else player.play();
+    boolean shouldPlay = resumePlayback;
+    resumePlayback = false;
+    if (currentStream == null || retryRunning) return;
+    if (backgroundFailure || refused458.contains(currentStream.url)) {
+      backgroundFailure = false;
+      retryCurrent(generation, currentItem);
+      return;
     }
+    if (needsPrepare) {
+      needsPrepare = false;
+      player.prepare();
+    }
+    if (shouldPlay) player.play();
   }
 
   ResolvedStream recordingStream() {
@@ -415,9 +430,16 @@ final class LivePlaybackSession {
 
     if (playerView.getPlayer() != player) playerView.setPlayer(player);
     player.setMediaItem(media.build(), resetPosition);
-    player.prepare();
-    if (foreground) player.play();
-    else resumePlayback = true;
+    backgroundFailure = false;
+    needsPrepare = !foreground;
+    if (foreground) {
+      player.prepare();
+      player.play();
+    } else {
+      // A provider resolve/458 refresh can complete after onPause. Keep its fresh link,
+      // but never start a hidden loader/decoder while another Activity owns the screen.
+      resumePlayback = true;
+    }
   }
 
   private void fatal(String message) {

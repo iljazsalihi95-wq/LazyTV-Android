@@ -27,4 +27,13 @@ public class LiveRecoveryTest {
  @Test public void staleUrlIsRejectedAndNotRetried()throws Exception{AtomicInteger refresh=new AtomicInteger();setup(i->{refresh.incrementAndGet();return stream("old");});retry();waitUntil(()->fatal.get()==1);assertEquals(1,refresh.get());assertTrue(((ResolvedStream)get("currentStream")).url.endsWith("old.ts"));retry();assertEquals(1,refresh.get());}
  @Test public void failedCreateLinkStopsAfterOneAttempt()throws Exception{AtomicInteger refresh=new AtomicInteger();setup(i->{refresh.incrementAndGet();throw new CatalogException("Fixture resolver unavailable");});retry();waitUntil(()->fatal.get()==1);assertEquals(1,refresh.get());}
  @Test public void destroyedSessionDoesNotApplyLateResolverResult()throws Exception{java.util.concurrent.CountDownLatch entered=new java.util.concurrent.CountDownLatch(1),release=new java.util.concurrent.CountDownLatch(1);setup(i->{entered.countDown();release.await();return stream("fresh");});retry();assertTrue(entered.await(2,java.util.concurrent.TimeUnit.SECONDS));session.release();release.countDown();Shadows.shadowOf(Looper.getMainLooper()).idle();assertTrue(((ResolvedStream)get("currentStream")).url.endsWith("old.ts"));}
+ @Test public void freshLinkCompletingInBackgroundWaitsForForeground()throws Exception{
+  java.util.concurrent.CountDownLatch entered=new java.util.concurrent.CountDownLatch(1),ready=new java.util.concurrent.CountDownLatch(1);
+  setup(i->{entered.countDown();ready.await();return stream("fresh");});retry();
+  assertTrue(entered.await(2,java.util.concurrent.TimeUnit.SECONDS));session.pauseForBackground();ready.countDown();
+  waitUntil(()->{try{return ((ResolvedStream)get("currentStream")).url.endsWith("fresh.ts");}catch(Exception e){throw new AssertionError(e);}});
+  androidx.media3.exoplayer.ExoPlayer player=(androidx.media3.exoplayer.ExoPlayer)get("player");
+  assertEquals(androidx.media3.common.Player.STATE_IDLE,player.getPlaybackState());assertEquals(0,fatal.get());
+  session.resumeFromBackground();assertEquals(androidx.media3.common.Player.STATE_BUFFERING,player.getPlaybackState());
+ }
 }
