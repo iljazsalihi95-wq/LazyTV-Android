@@ -22,4 +22,9 @@ public class MainNavigationTest {
    assertTrue(chosen>=0);list.performItemClick(null,chosen,chosen);assertEquals(LiveProviderRouter.activity(p).getName(),started().getComponent().getClassName());assertFalse(activity.isFinishing());d.dismiss();
   }
  }
+ @Test public void managedServerTenRoutesPremiumWithoutChangingServerTwenty()throws Exception{
+  Method open=MainActivity.class.getDeclaredMethod("openManaged",String.class);open.setAccessible(true);
+  open.invoke(activity,"SERVER_10");Intent ten=started();assertEquals(PremiumLivePlayerActivity.class.getName(),ten.getComponent().getClassName());assertEquals("MANAGED_BACKEND",ten.getStringExtra("source_scope"));assertEquals("SERVER_10",ten.getStringExtra("server_name"));
+  open.invoke(activity,"SERVER_20");Intent twenty=started();assertEquals(LiveTvActivity.class.getName(),twenty.getComponent().getClassName());assertEquals("SERVER_20",twenty.getStringExtra("server_name"));assertFalse(activity.isFinishing());
+ }
 }

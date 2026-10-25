@@ -10,6 +10,10 @@ final class LiveSources {
   interface Source {
     default void close() {}
 
+    default boolean requiresFreshLinkOn458() {
+      return false;
+    }
+
     Catalog load() throws Exception;
 
     ResolvedStream resolve(StreamItem item, boolean refresh) throws Exception;
@@ -71,12 +75,22 @@ final class LiveSources {
   }
 
   static final class Managed implements Source {
+    public boolean requiresFreshLinkOn458() {
+      return "SERVER_10".equalsIgnoreCase(name);
+    }
+
+    public void close() {
+      if (ownerSession != null) ownerSession.clear();
+    }
+
     final ManagedBackendCatalogSource source;
     final String name;
+    private final ServerTenPlaybackResolver.OwnerSession ownerSession;
 
     Managed(Context c, String name) throws CatalogException {
       source = new ManagedBackendCatalogSource(c);
       this.name = name;
+      ownerSession = requiresFreshLinkOn458() ? new ServerTenPlaybackResolver.OwnerSession() : null;
     }
 
     public Catalog load() throws Exception {
@@ -84,6 +98,8 @@ final class LiveSources {
     }
 
     public ResolvedStream resolve(StreamItem item, boolean refresh) throws Exception {
+      if (ownerSession != null && ServerTenPlaybackResolver.canRefresh(item))
+        return ownerSession.resolve(item, refresh);
       return source.resolve(name, item, refresh);
     }
   }
@@ -109,6 +125,10 @@ final class LiveSources {
   }
 
   static final class Premium implements Source {
+    public boolean requiresFreshLinkOn458() {
+      return true;
+    }
+
     private final ServerTenPlaybackResolver.OwnerSession ownerSession =
         new ServerTenPlaybackResolver.OwnerSession();
 

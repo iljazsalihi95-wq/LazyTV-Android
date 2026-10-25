@@ -154,6 +154,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     favorites = new FavoritesStore(this);
     bind();
     initPlayer();
+    playbackSession.freshLinkRefusals(liveSource.requiresFreshLinkOn458());
     playbackSession.provider(
         module.premium()
             ? "PREMIUM"

@@ -93,3 +93,10 @@ Full Lint is not green: baseline f436c0e had 111 errors (87 opt-in annotations,
 legacy annotation/constant findings remain and are not hidden with a baseline or suppression.
 
 Build/automated tests passed — physical Fire TV validation required.
+
+## Follow-up audit 616
+
+See [PLAYER_AUDIT_616.md](PLAYER_AUDIT_616.md) for the verified Media3 internal-458
+retry gap, managed SERVER_10 routing correction, reference provenance limits and
+real Activity/HTTP integration checks. The original device crash remains physically
+unverified; the new code must not be described as a confirmed Fire TV crash fix.

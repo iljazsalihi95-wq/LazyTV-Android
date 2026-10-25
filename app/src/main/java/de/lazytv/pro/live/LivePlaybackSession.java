@@ -67,6 +67,7 @@ final class LivePlaybackSession {
           new ArrayBlockingQueue<>(1),
           new ThreadPoolExecutor.DiscardOldestPolicy());
 
+  private volatile boolean freshLinkRefusals;
   private volatile boolean released;
   private volatile long generation;
   private boolean foreground = true;
@@ -98,7 +99,10 @@ final class LivePlaybackSession {
     // The old Fire-TV working player did the same instead of forcing a second engine.
     player =
         new ExoPlayer.Builder(context)
-            .setMediaSourceFactory(new DefaultMediaSourceFactory(dataSource))
+            .setMediaSourceFactory(
+                new DefaultMediaSourceFactory(dataSource)
+                    .setLoadErrorHandlingPolicy(
+                        new FreshLinkLoadErrorPolicy(() -> freshLinkRefusals)))
             .build();
 
     playerView.setUseController(false);
@@ -171,6 +175,10 @@ final class LivePlaybackSession {
             && player.getPlayWhenReady()
             && (player.getPlaybackState() == Player.STATE_READY
                 || player.getPlaybackState() == Player.STATE_BUFFERING));
+  }
+
+  void freshLinkRefusals(boolean enabled) {
+    freshLinkRefusals = enabled;
   }
 
   void provider(String provider) {
