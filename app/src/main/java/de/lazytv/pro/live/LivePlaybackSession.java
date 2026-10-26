@@ -57,6 +57,7 @@ final class LivePlaybackSession {
   private final java.util.Set<String> refused458 = new java.util.LinkedHashSet<>();
   private ExoPlayer player;
   private final Context context;
+  private final android.view.Window window;
   private long savedPosition;
   private java.util.concurrent.Future<?> retryTask;
   private final DefaultHttpDataSource.Factory http;
@@ -84,6 +85,13 @@ final class LivePlaybackSession {
 
   LivePlaybackSession(
       Context context, PlayerView initialView, RetryResolver retryResolver, Listener listener) {
+    android.content.Context owner = context;
+    while (owner instanceof android.content.ContextWrapper && !(owner instanceof android.app.Activity)) {
+      android.content.Context next = ((android.content.ContextWrapper) owner).getBaseContext();
+      if (next == owner) break;
+      owner = next;
+    }
+    this.window = owner instanceof android.app.Activity ? ((android.app.Activity) owner).getWindow() : null;
     this.context = context.getApplicationContext();
     this.playerView = initialView;
     this.retryResolver = retryResolver;
@@ -96,6 +104,13 @@ final class LivePlaybackSession {
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true);
     createPlayer();
+  }
+
+  private void keepAwake(boolean requested) {
+    if (window == null) return;
+    if (requested && foreground && !released)
+      window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
   }
 
   private void createPlayer() {
@@ -129,6 +144,7 @@ final class LivePlaybackSession {
           @Override
           public void onIsPlayingChanged(boolean playing) {
             if (released || !foreground || player == null) return;
+            keepAwake(player.getPlayWhenReady());
             playerView.setKeepScreenOn(
                 !released
                     && foreground
@@ -245,6 +261,7 @@ final class LivePlaybackSession {
     if (released || !foreground) return;
     generation++;
     if (retryRunning && lastHttpStatus == 458) recovered458 = false;
+    keepAwake(false);
     foreground = false; // Fence callbacks BEFORE detaching/releasing native resources.
     resumePlayback = player != null && player.getPlayWhenReady();
     backgroundFailure = player != null && player.getPlayerError() != null;
@@ -279,6 +296,7 @@ final class LivePlaybackSession {
     apply(generation, currentItem, currentStream, true);
     if (savedPosition > 0) player.seekTo(savedPosition);
     player.setPlayWhenReady(shouldPlay);
+    keepAwake(shouldPlay);
   }
 
   boolean canSeek() { return player != null && player.isCurrentMediaItemSeekable(); }
@@ -324,6 +342,7 @@ final class LivePlaybackSession {
     if (released || player == null || currentStream == null || !player.isCurrentMediaItemSeekable()) return false;
     if (player.getPlayWhenReady()) player.pause();
     else player.play();
+    keepAwake(player.getPlayWhenReady());
     return true;
   }
 
@@ -496,6 +515,7 @@ final class LivePlaybackSession {
     backgroundFailure = false;
     needsPrepare = !foreground;
     if (foreground) {
+      keepAwake(true);
       player.prepare();
       player.play();
     } else {
@@ -508,6 +528,7 @@ final class LivePlaybackSession {
   private void fatal(String message) {
     if (fatalNotified) return;
     fatalNotified = true;
+    keepAwake(false);
     listener.onBuffering(false);
     listener.onFatalPlaybackError(message);
   }
@@ -523,6 +544,7 @@ final class LivePlaybackSession {
   void release() {
     if (released) return;
     released = true;
+    keepAwake(false);
     generation++;
     retryRunning = false;
     cancelStableReset();

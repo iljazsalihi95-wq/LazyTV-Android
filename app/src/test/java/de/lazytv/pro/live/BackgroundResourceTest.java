@@ -110,6 +110,29 @@ public class BackgroundResourceTest {
     }
   }
 
+  private boolean screenHeldAwake() {
+    return (activity.getWindow().getAttributes().flags & android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) != 0;
+  }
+
+  @Test
+  public void bufferingAndFullscreenKeepWindowAwakeUntilBackgroundOrRelease() {
+    assertFalse(screenHeldAwake());
+    session.play(item, stream(item.streamUrl));
+    assertEquals(Player.STATE_BUFFERING, view.getPlayer().getPlaybackState());
+    assertTrue("Buffering must not allow the TV to sleep", screenHeldAwake());
+    PlayerView fullscreen = new PlayerView(activity);
+    session.attach(fullscreen);
+    assertTrue("Detaching preview must not clear the window's keep-awake flag", screenHeldAwake());
+    session.attach(view);
+    assertTrue(screenHeldAwake());
+    session.pauseForBackground();
+    assertFalse("HOME must restore normal standby", screenHeldAwake());
+    session.resumeFromBackground();
+    assertTrue(screenHeldAwake());
+    session.release();
+    assertFalse(screenHeldAwake());
+  }
+
   @Test
   public void lateResolvedChannelCannotPrepareInBackground() {
     session.pauseForBackground();
