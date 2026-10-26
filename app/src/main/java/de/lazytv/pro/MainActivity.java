@@ -41,7 +41,7 @@ public class MainActivity extends Activity{
  private void preloadServerRegistry(){if(serverRegistryLoading)return;serverRegistryLoading=true;
   new Thread(()->{try{
    de.lazytv.pro.catalog.ManagedBackendCatalogSource source=new de.lazytv.pro.catalog.ManagedBackendCatalogSource(getApplicationContext());
-   List<String> loaded=source.servers();Map<String,String> names=source.serverLabels();
+   List<String> loaded=source.servers(true);Map<String,String> names=source.serverLabels();
    JSONObject snapshot=new JSONObject();for(String id:loaded)snapshot.put(id,names.getOrDefault(id,id));
    getSharedPreferences("server_registry",MODE_PRIVATE).edit().putString("snapshot",snapshot.toString()).apply();
    runOnUiThread(()->{if(!isDestroyed()){serverRegistryCache=new ArrayList<>(loaded);serverRegistryLabels=new LinkedHashMap<>(names);refreshOpenServerDialog();}serverRegistryLoading=false;});

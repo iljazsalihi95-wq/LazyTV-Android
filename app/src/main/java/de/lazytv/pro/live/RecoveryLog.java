@@ -5,6 +5,11 @@ import de.lazytv.pro.catalog.*;
 
 /** Never log URL paths/queries, provider credentials, raw IDs or exception messages. */
 final class RecoveryLog {
+  private static String hostOf(ResolvedStream stream) {
+    try { return stream == null ? "n/a" : new java.net.URL(stream.url).getHost(); }
+    catch (Exception ignored) { return "n/a"; }
+  }
+
   static void event(
       String provider,
       StreamItem item,
@@ -27,8 +32,10 @@ final class RecoveryLog {
             + provider
             + " channelRef="
             + id
-            + " host="
+            + " oldHost="
             + host
+            + " newHost="
+            + hostOf(fresh)
             + " http="
             + status
             + " refreshAttempt="

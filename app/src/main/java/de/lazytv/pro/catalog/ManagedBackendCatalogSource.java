@@ -10,11 +10,13 @@ public final class ManagedBackendCatalogSource {
  public ManagedBackendCatalogSource(Context context)throws CatalogException {try(InputStream in=context.getAssets().open("lazytv_managed_backend.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);endpoint=new JSONObject(bytes.toString("UTF-8")).getString("catalog_url");}catch(Exception invalid){throw new CatalogException("Konfigurimi i katalogut LazyTV nuk mund të lexohet");}}
  private final Map<String,String> labels=new LinkedHashMap<>();
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
- public List<String> servers()throws CatalogException {
-  long now=System.currentTimeMillis();synchronized(CACHE_LOCK){if(cachedServers!=null&&now-cachedServersAt<REGISTRY_TTL_MS){labels.clear();labels.putAll(cachedLabels);registryError="";return new ArrayList<>(cachedServers);}}
-  List<String> result=new ArrayList<>();labels.clear();registryError="";
-  try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null,null,12000),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
-  try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}}catch(Exception e){registryError="SOURCES nuk u lexua";}
+ public List<String> servers()throws CatalogException { return servers(false); }
+ public List<String> servers(boolean refresh)throws CatalogException {
+  long now=System.currentTimeMillis();synchronized(CACHE_LOCK){if(!refresh&&cachedServers!=null&&now-cachedServersAt<REGISTRY_TTL_MS){labels.clear();labels.putAll(cachedLabels);registryError="";return new ArrayList<>(cachedServers);}}
+  List<String> result=new ArrayList<>();labels.clear();registryError="";boolean registryAvailable=false;
+  try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null,null,12000),result,labels);registryAvailable=true;}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
+  try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}registryAvailable=true;}catch(Exception e){registryError="SOURCES nuk u lexua";}
+  if(!registryAvailable)synchronized(CACHE_LOCK){if(cachedServers!=null){labels.putAll(cachedLabels);return new ArrayList<>(cachedServers);}}
   for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);if(!result.contains(id))result.add(id);if(!labels.containsKey(id))labels.put(id,"Server "+n);}
   synchronized(CACHE_LOCK){cachedServers=new ArrayList<>(result);cachedLabels=new LinkedHashMap<>(labels);cachedServersAt=now;}
   return result;

@@ -91,8 +91,13 @@ public class ProviderActivityEntryTest {
         assertSame(player, host.activeView().getPlayer());
         assertNull(preview.getPlayer());
         // HOME is delivered by Android as pause/stop; don't pretend to inject a system HOME key.
-        controller.pause().stop().start().resume();
-        assertSame(player, host.activeView().getPlayer());
+        controller.pause().stop();
+        assertNull(preview.getPlayer());
+        assertNull(host.fullscreenView().getPlayer());
+        controller.start().resume();
+        assertNotNull(host.activeView().getPlayer());
+        assertNotSame(player, host.activeView().getPlayer());
+        player = host.activeView().getPlayer();
         activity.onBackPressed();
         activity.onBackPressed();
         assertFalse(activity.isFinishing());

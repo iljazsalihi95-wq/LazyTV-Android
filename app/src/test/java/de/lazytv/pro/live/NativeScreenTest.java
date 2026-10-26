@@ -32,6 +32,7 @@ public class NativeScreenTest {
    preview.performClick();ReferenceFullscreenHost host=(ReferenceFullscreenHost)field("fullscreenHost");
    assertSame(player,host.activeView().getPlayer());assertNull(preview.getPlayer());assertFalse(activity.isFinishing());
    assertTrue(screen.key(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_CENTER)));
+   assertTrue(screen.key(new KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER)));
    assertTrue(screen.back());assertTrue(screen.back());assertSame(player,preview.getPlayer());assertNull(host.fullscreenView().getPlayer());
    screen.stop();assertNull(preview.getPlayer());assertNull(host.fullscreenView().getPlayer());screen.start();assertNotNull(preview.getPlayer());assertNotSame(player,preview.getPlayer());screen.close();screen=null;
   }
