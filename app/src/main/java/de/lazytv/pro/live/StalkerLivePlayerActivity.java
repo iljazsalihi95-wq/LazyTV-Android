@@ -15,7 +15,7 @@ import androidx.media3.ui.PlayerView;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+
 
 import de.lazytv.pro.R;
 import de.lazytv.pro.activation.ActivationGuard;
@@ -27,7 +27,7 @@ import de.lazytv.pro.playlist.PlaylistType;
 /** Dedicated native Lazy STB entry point. Portal + MAC own the provider session. */
 @UnstableApi
 public final class StalkerLivePlayerActivity extends Activity {
-    private final ExecutorService worker = Executors.newSingleThreadExecutor();
+    private ExecutorService worker = Executors.newSingleThreadExecutor();
     private final StalkerCatalogSource source = new StalkerCatalogSource();
     private Playlist playlist;
     private PlayerView playerView;
@@ -134,7 +134,7 @@ public final class StalkerLivePlayerActivity extends Activity {
     }
     @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(event.getAction()==android.view.KeyEvent.ACTION_DOWN&&!fullscreen&&(event.getKeyCode()==android.view.KeyEvent.KEYCODE_DPAD_CENTER||event.getKeyCode()==android.view.KeyEvent.KEYCODE_ENTER)&&playerView.hasFocus()&&current!=null){setFullscreen(true);return true;}return super.dispatchKeyEvent(event);}
     @Override public void onBackPressed(){if(fullscreen){setFullscreen(false);return;}super.onBackPressed();}
-    @Override protected void onStop(){if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
-    @Override protected void onStart(){super.onStart();if(playbackSession!=null)playbackSession.resumeFromBackground();}
+    @Override protected void onStop(){selectionGeneration++;worker.shutdownNow();if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
+    @Override protected void onStart(){super.onStart();if(worker.isShutdown()){worker=Executors.newSingleThreadExecutor();if(current==null&&playlist!=null)loadPortal();}if(playbackSession!=null)playbackSession.resumeFromBackground();}
     @Override protected void onDestroy(){selectionGeneration++;worker.shutdownNow();source.clear();if(playbackSession!=null){playbackSession.release();playbackSession=null;}super.onDestroy();}
 }

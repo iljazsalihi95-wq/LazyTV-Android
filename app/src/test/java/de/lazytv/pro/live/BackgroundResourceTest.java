@@ -16,12 +16,13 @@ import org.robolectric.*;
 import org.robolectric.annotation.*;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 28, application = android.app.Application.class)
+@Config(sdk = {25, 28, 30}, application = android.app.Application.class)
 @LooperMode(LooperMode.Mode.PAUSED)
 public class BackgroundResourceTest {
   private Activity activity;
   private LivePlaybackSession session;
   private Player player;
+  private PlayerView view;
   private final StreamItem item =
       new StreamItem(
           "fixture", "Fixture", "genre", "", "http://127.0.0.1:1/fixture.ts", "", CatalogType.LIVE);
@@ -29,7 +30,7 @@ public class BackgroundResourceTest {
   @Before
   public void create() {
     activity = Robolectric.buildActivity(Activity.class).setup().get();
-    PlayerView view = new PlayerView(activity);
+    view = new PlayerView(activity);
     session =
         new LivePlaybackSession(
             activity,
@@ -113,15 +114,11 @@ public class BackgroundResourceTest {
   public void lateResolvedChannelCannotPrepareInBackground() {
     session.pauseForBackground();
     session.play(item, stream(item.streamUrl));
-    assertEquals(
-        "A late provider callback must not allocate background playback resources",
-        Player.STATE_IDLE,
-        player.getPlaybackState());
-    Object same = player;
+    assertNull("Stopped view must not retain decoder/player", view.getPlayer());
     session.resumeFromBackground();
-    assertSame(same, player);
-    assertEquals(Player.STATE_BUFFERING, player.getPlaybackState());
-    assertTrue(player.getPlayWhenReady());
+    assertNotSame(player, view.getPlayer());
+    assertEquals(Player.STATE_BUFFERING, view.getPlayer().getPlaybackState());
+    assertTrue(view.getPlayer().getPlayWhenReady());
   }
 
   @Test
@@ -130,20 +127,29 @@ public class BackgroundResourceTest {
     player.pause();
     session.pauseForBackground();
     session.pauseForBackground();
-    assertEquals(Player.STATE_IDLE, player.getPlaybackState());
+    assertNull(view.getPlayer());
     session.resumeFromBackground();
-    assertFalse(player.getPlayWhenReady());
+    assertFalse(view.getPlayer().getPlayWhenReady());
   }
 
   @Test
-  public void pendingPositionAndPlayerIdentitySurviveBackground() {
+  public void backgroundReleasesBothViewsAndResumeCreatesExactlyOnePlayer() {
     session.play(item, stream(item.streamUrl));
-    player.seekTo(6000);
-    Player same = player;
+    PlayerView fullscreen = new PlayerView(activity);
+    session.attach(fullscreen);
+    assertNull(view.getPlayer());
+    assertSame(player, fullscreen.getPlayer());
     session.pauseForBackground();
-    assertEquals(6000, player.getCurrentPosition());
+    assertNull(view.getPlayer());
+    assertNull(fullscreen.getPlayer());
     session.resumeFromBackground();
-    assertSame(same, player);
-    assertEquals(6000, player.getCurrentPosition());
+    Player resumed = fullscreen.getPlayer();
+    assertNotNull(resumed);
+    assertNotSame(player, resumed);
+    session.resumeFromBackground();
+    assertSame(resumed, fullscreen.getPlayer());
+    session.attach(view);
+    assertSame(resumed, view.getPlayer());
+    assertNull(fullscreen.getPlayer());
   }
 }

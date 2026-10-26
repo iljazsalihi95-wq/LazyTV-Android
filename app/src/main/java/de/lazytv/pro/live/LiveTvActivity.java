@@ -59,6 +59,11 @@ public final class LiveTvActivity extends Activity {
     if (screen != null) screen.start();
   }
 
+  @Override protected void onResume() {
+    super.onResume();
+    if (screen != null) screen.start();
+  }
+
   @Override protected void onPause() {
     if (screen != null) screen.pause();
     super.onPause();

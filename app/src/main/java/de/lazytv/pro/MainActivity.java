@@ -4,6 +4,10 @@ import android.Manifest;import android.app.*;import android.content.*;import and
 
 public class MainActivity extends Activity{
  private de.lazytv.pro.update.AppUpdater updater;
+ private AlertDialog serverDialog;
+ private ArrayAdapter<String> serverDialogAdapter;
+ private List<String> visibleRemoteServers=new ArrayList<>();
+ private List<Playlist> visiblePersonalServers=new ArrayList<>();
  private String lastManagedServer,lastManagedPlaylist;private TextView location,weather,clock,prayer;private LinearLayout rail;private String prayerText="Kohët e namazit nuk janë ngarkuar ende.";private Bitmap premiumTileSheet;private volatile boolean serverRegistryLoading=false;private List<String> serverRegistryCache=new ArrayList<>();private Map<String,String> serverRegistryLabels=new LinkedHashMap<>();
  @Override protected void onCreate(Bundle b){super.onCreate(b);readServerCache();buildHome();updater=new de.lazytv.pro.update.AppUpdater(this);updater.check();}
  @Override protected void onResume(){super.onResume();if(updater!=null)updater.resume();}
@@ -40,12 +44,32 @@ public class MainActivity extends Activity{
    List<String> loaded=source.servers();Map<String,String> names=source.serverLabels();
    JSONObject snapshot=new JSONObject();for(String id:loaded)snapshot.put(id,names.getOrDefault(id,id));
    getSharedPreferences("server_registry",MODE_PRIVATE).edit().putString("snapshot",snapshot.toString()).apply();
-   runOnUiThread(()->{if(!isDestroyed()){serverRegistryCache=new ArrayList<>(loaded);serverRegistryLabels=new LinkedHashMap<>(names);}serverRegistryLoading=false;});
+   runOnUiThread(()->{if(!isDestroyed()){serverRegistryCache=new ArrayList<>(loaded);serverRegistryLabels=new LinkedHashMap<>(names);refreshOpenServerDialog();}serverRegistryLoading=false;});
   }catch(Exception unavailable){runOnUiThread(()->{serverRegistryLoading=false;android.util.Log.w("LazyTV-Servers","Background registry unavailable; local entries retained");});}
   },"LazyTV-server-prefetch").start();
  }
  private void showServers(){PlaylistStorage storage=new PlaylistStorage(this);List<Playlist> personal=storage.getAll();showServerDialog(storage,personal,new ArrayList<>(serverRegistryCache),new LinkedHashMap<>(serverRegistryLabels));preloadServerRegistry();}
- private void showServerDialog(PlaylistStorage storage,List<Playlist> personal,List<String> remote,Map<String,String> friendly){List<String> labels=new ArrayList<>();labels.add("Premium • Server 10 • MANAGED");for(Playlist playlist:personal)labels.add(playlist.getName()+" • "+playlist.getType().name());for(String name:remote)labels.add(friendly.getOrDefault(name,name)+" • LazyTV API");new AlertDialog.Builder(this).setTitle("Servers / Providers").setItems(labels.toArray(new String[0]),(dialog,index)->{if(index==0){lastManagedServer=null;openServerTen();return;}if(index<=personal.size()){lastManagedServer=null;Playlist selected=personal.get(index-1);storage.setActive(selected.getId());
+ private void showServerDialog(PlaylistStorage storage,List<Playlist> personal,List<String> remote,Map<String,String> friendly){
+  visiblePersonalServers=new ArrayList<>(personal);visibleRemoteServers=new ArrayList<>(remote);
+  serverDialogAdapter=new ArrayAdapter<>(this,android.R.layout.simple_list_item_1,new ArrayList<>());
+  serverDialog=new AlertDialog.Builder(this).setTitle("Servers / Providers")
+   .setAdapter(serverDialogAdapter,(dialog,index)->{
+    if(index==0){lastManagedServer=null;openServerTen();return;}
+    if(index<=visiblePersonalServers.size()){lastManagedServer=null;Playlist selected=visiblePersonalServers.get(index-1);storage.setActive(selected.getId());Intent player=new Intent(this,de.lazytv.pro.live.LiveProviderRouter.activity(selected));player.putExtra("playlist_id",selected.getId());player.putExtra("source_scope","PROVIDER");startActivity(player);return;}
+    int remoteIndex=index-visiblePersonalServers.size()-1;if(remoteIndex>=0&&remoteIndex<visibleRemoteServers.size())openManaged(visibleRemoteServers.get(remoteIndex));
+   }).setNeutralButton("Refresh",null).setPositiveButton("Manage",(dialog,index)->openPlaylists()).create();
+  serverDialog.show();refreshOpenServerDialog();
+  serverDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v->preloadServerRegistry());
+ }
+ private void refreshOpenServerDialog(){
+  if(serverDialog==null||!serverDialog.isShowing()||serverDialogAdapter==null)return;
+  visibleRemoteServers=new ArrayList<>(serverRegistryCache);
+  serverDialogAdapter.clear();serverDialogAdapter.add("Premium • Server 10 • MANAGED");
+  for(Playlist playlist:visiblePersonalServers)serverDialogAdapter.add(playlist.getName()+" • "+playlist.getType().name());
+  for(String name:visibleRemoteServers)serverDialogAdapter.add(serverRegistryLabels.getOrDefault(name,name)+" • LazyTV API");
+  serverDialogAdapter.notifyDataSetChanged();
+ }
+
  Intent player=new Intent(this,de.lazytv.pro.live.LiveProviderRouter.activity(selected));player.putExtra("playlist_id",selected.getId());player.putExtra("source_scope","PROVIDER");startActivity(player);return;}int remoteIndex=index-personal.size()-1;if(remoteIndex>=0&&remoteIndex<remote.size())openManaged(remote.get(remoteIndex));}).setNeutralButton("Refresh",(dialog,index)->{preloadServerRegistry();Toast.makeText(this,"Refresh po kryhet në background. Lista lokale mbetet e gatshme.",Toast.LENGTH_SHORT).show();}).setPositiveButton("Manage",(dialog,index)->openPlaylists()).show();}
  private Playlist active(){PlaylistStorage s=new PlaylistStorage(this);String id=s.getActiveId();return id==null?null:s.get(id);}private void openPlaylists(){startActivity(new Intent(this,PlaylistManagerActivity.class));}
  private void openCatalog(String type){Playlist p=active();if(p==null){openPlaylists();return;}Intent i=new Intent(this,de.lazytv.pro.catalog.CatalogActivity.class);i.putExtra("playlist_id",p.getId());i.putExtra("source_scope","PROVIDER");if(type!=null)i.putExtra(de.lazytv.pro.catalog.CatalogActivity.EXTRA_TYPE,type);startActivity(i);}

@@ -1,36 +1,24 @@
 package de.lazytv.pro.live;
 
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 
-/**
- * Executor factory local to the Live TV package.
- *
- * LiveTvActivity uses this serial worker for catalog/network loading and channel
- * URL resolution. Keeping exactly one running task prevents two provider
- * resolves from mutating the same provider/session concurrently. The single
- * bounded pending slot is latest-request-first: rapid channel changes discard
- * the older pending resolve in favour of the newest selection, while
- * playbackGeneration in LiveTvActivity prevents an already-running stale
- * resolve from being applied to the persistent playback session.
- *
- * Fixed pools used for EPG and artwork retain their requested sizes.
- */
+/** Bounded screen workers. Stopping the screen also disconnects its in-flight HTTP sockets. */
 final class Executors {
-    private Executors() {}
-
-    static ExecutorService newSingleThreadExecutor() {
-        ThreadPoolExecutor executor = new ThreadPoolExecutor(
-                1, 1, 0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(1),
-                new ThreadPoolExecutor.DiscardOldestPolicy());
-        executor.prestartAllCoreThreads();
-        return executor;
-    }
-
-    static ExecutorService newFixedThreadPool(int size) {
-        return java.util.concurrent.Executors.newFixedThreadPool(size);
-    }
+  static ThreadPoolExecutor pool(int size, int capacity) {
+    return new ThreadPoolExecutor(size, size, 0L, TimeUnit.MILLISECONDS,
+        new ArrayBlockingQueue<>(capacity), new ThreadPoolExecutor.DiscardOldestPolicy()) {
+      private final Set<Thread> running = ConcurrentHashMap.newKeySet();
+      @Override protected void beforeExecute(Thread t, Runnable r) { running.add(t); super.beforeExecute(t, r); }
+      @Override protected void afterExecute(Runnable r, Throwable t) { running.remove(Thread.currentThread()); super.afterExecute(r, t); }
+      @Override public List<Runnable> shutdownNow() {
+        List<Runnable> pending = super.shutdownNow();
+        for (Thread thread : running) de.lazytv.pro.catalog.RequestCancellation.cancel(thread);
+        return pending;
+      }
+    };
+  }
+  static ExecutorService newSingleThreadExecutor() { return pool(1, 1); }
+  static ExecutorService newFixedThreadPool(int size) { return pool(size, 32); }
+  private Executors() {}
 }

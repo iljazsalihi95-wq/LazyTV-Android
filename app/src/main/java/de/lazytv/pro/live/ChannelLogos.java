@@ -13,6 +13,7 @@ final class ChannelLogos {
     connection.setConnectTimeout(6000);
     connection.setReadTimeout(8000);
     try {
+      de.lazytv.pro.catalog.RequestCancellation.register(connection);
       if (connection.getContentLength() > 2 * 1024 * 1024) throw new IOException();
       ByteArrayOutputStream output = new ByteArrayOutputStream();
       try (InputStream input = connection.getInputStream()) {
@@ -34,6 +35,7 @@ final class ChannelLogos {
       bounds.inJustDecodeBounds = false;
       return BitmapFactory.decodeByteArray(bytes, 0, bytes.length, bounds);
     } finally {
+      de.lazytv.pro.catalog.RequestCancellation.unregister(connection);
       connection.disconnect();
     }
   }

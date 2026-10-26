@@ -13,7 +13,7 @@ public final class ManagedBackendCatalogSource {
  public List<String> servers()throws CatalogException {
   long now=System.currentTimeMillis();synchronized(CACHE_LOCK){if(cachedServers!=null&&now-cachedServersAt<REGISTRY_TTL_MS){labels.clear();labels.putAll(cachedLabels);registryError="";return new ArrayList<>(cachedServers);}}
   List<String> result=new ArrayList<>();labels.clear();registryError="";
-  try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
+  try{appendApiServers(HttpClient.get(endpoint+"?action=servers",null,null,12000),result,labels);}catch(Exception e){registryError="API e regjistrit nuk u lexua";}
   try{for(ManagedSheetCatalogSource.Server source:sheets.servers().values()){if(!result.contains(source.id))result.add(source.id);labels.put(source.id,source.name);}}catch(Exception e){registryError="SOURCES nuk u lexua";}
   for(int n=1;n<=20;n++){String id=String.format(Locale.US,"SERVER_%02d",n);if(!result.contains(id))result.add(id);if(!labels.containsKey(id))labels.put(id,"Server "+n);}
   synchronized(CACHE_LOCK){cachedServers=new ArrayList<>(result);cachedLabels=new LinkedHashMap<>(labels);cachedServersAt=now;}

@@ -23,6 +23,7 @@ import java.util.concurrent.*;
 @UnstableApi
 final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   private final Activity owner;
+  private volatile boolean stopped, closed;
   private final LiveModule module;
   private ReferenceFullscreenHost fullscreenHost;
 
@@ -57,7 +58,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   private void runOnUiThread(Runnable r) {
-    owner.runOnUiThread(r);
+    owner.runOnUiThread(() -> { if (!stopped && !closed) r.run(); });
   }
 
   private void setRequestedOrientation(int orientation) {
@@ -66,7 +67,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
 
   private de.lazytv.pro.recording.RecordingController recorder;
   private Button recordButton;
-  private final ExecutorService epgWorker = Executors.newFixedThreadPool(2);
+  private ExecutorService epgWorker = Executors.newFixedThreadPool(2);
   private final Handler mainUi = new Handler(Looper.getMainLooper());
   private final Map<String, EpgSchedule> schedules = new HashMap<>();
   private EpgSchedule activeSchedule = EpgSchedule.empty();
@@ -75,7 +76,8 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   private LinearLayout fullControls;
   private TextView fullNow, fullNext;
   private ProgressBar fullProgress;
-  private Button fullPrevious, fullFavorite;
+  private Button fullPrevious, fullFavorite, pauseButton, epgButton, ccButton;
+  private final Set<Integer> consumedKeys = new HashSet<>();
   private long viewGeneration, catalogGeneration;
   private final Runnable hideControls = this::hidePlayerControls;
 
@@ -90,7 +92,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   private final Runnable epgTick =
       new Runnable() {
         public void run() {
-          if (isFinishing() || isDestroyed()) return;
+          if (stopped || closed || isFinishing() || isDestroyed()) return;
           if (current != null) {
             renderEpg();
             if (!epgLoading && System.currentTimeMillis() - lastEpgRequest >= 60000)
@@ -99,15 +101,9 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
           mainUi.postDelayed(this, 1000);
         }
       };
-  private final ExecutorService worker = Executors.newSingleThreadExecutor();
-  private final ExecutorService imageWorker =
-      new ThreadPoolExecutor(
-          2,
-          2,
-          0L,
-          TimeUnit.MILLISECONDS,
-          new ArrayBlockingQueue<>(32),
-          new ThreadPoolExecutor.DiscardOldestPolicy());
+  private ExecutorService worker = Executors.newSingleThreadExecutor();
+  private ExecutorService imageWorker =
+      Executors.pool(2, 32);
   private final CatalogEngine engine = new CatalogEngine();
   private Playlist p;
   private boolean builtIn, serverTen, managedBackend, managed24Mode;
@@ -287,6 +283,8 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
                 loading.setVisibility(buffering ? View.VISIBLE : View.GONE);
                 fullscreenHost.buffering(buffering);
               }
+
+              public void onCapabilitiesChanged() { updateCapabilities(); }
 
               public void onReady() {
                 loading.setVisibility(View.GONE);
@@ -758,9 +756,9 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     LinearLayout actions = new LinearLayout(this);
     actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
     fullControls.addView(actions);
-    Button[] buttons = new Button[8];
+    Button[] buttons = new Button[9];
     String[] labels = {
-      "CH−", "CH+", "☆ Favorite", "EPG", "Lista", "Back", "Play/Pause", "● RECORD"
+      "CH−", "CH+", "☆ Favorite", "EPG", "Lista", "Back", "Play/Pause", "● RECORD", "CC"
     };
     for (int n = 0; n < buttons.length; n++) {
       Button button = new Button(this);
@@ -802,12 +800,25 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
                     this, "Ky transmetim nuk mbështet pauzën / timeshift.", Toast.LENGTH_SHORT)
                 .show();
         });
+    pauseButton = buttons[6];
+    epgButton = buttons[3];
+    ccButton = buttons[8];
+    ccButton.setOnClickListener(v -> { if (playbackSession != null) playbackSession.chooseSubtitles(owner); });
     recordButton = buttons[7];
     recordButton.setOnClickListener(
         v -> recorder.toggle(playbackSession == null ? null : playbackSession.recordingStream()));
     FrameLayout.LayoutParams layout = new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM);
     frame.addView(fullControls, layout);
     fullControls.setVisibility(View.GONE);
+    updateCapabilities();
+  }
+
+  private void updateCapabilities() {
+    if (pauseButton == null) return;
+    pauseButton.setVisibility(playbackSession != null && playbackSession.canSeek() ? View.VISIBLE : View.GONE);
+    epgButton.setVisibility(activeSchedule.current != null || activeSchedule.next != null ? View.VISIBLE : View.GONE);
+    ccButton.setVisibility(playbackSession != null && playbackSession.hasSubtitles() ? View.VISIBLE : View.GONE);
+    recordButton.setVisibility(View.GONE); // Recording is not an advertised LIVE capability until a TS probe succeeds.
   }
 
   private void toggleFavorite() {
@@ -850,6 +861,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   private void renderEpg() {
+    updateCapabilities();
     long now = System.currentTimeMillis();
     EpgSchedule.Program program = activeSchedule.active(now), next = activeSchedule.upcoming(now);
     String currentText = program == null ? "EPG nuk disponohet" : "TANI: " + program.label(),
@@ -959,6 +971,16 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   boolean key(android.view.KeyEvent event) {
+    int code = event.getKeyCode();
+    if (event.getAction() == KeyEvent.ACTION_UP) return consumedKeys.remove(code);
+    if (event.getAction() != KeyEvent.ACTION_DOWN) return false;
+    if (consumedKeys.contains(code)) return true;
+    boolean handled = keyDown(event);
+    if (handled) consumedKeys.add(code);
+    return handled;
+  }
+
+  private boolean keyDown(android.view.KeyEvent event) {
     if (playerView == null) return false;
     if (event.getAction() != android.view.KeyEvent.ACTION_DOWN) return false;
     int key = event.getKeyCode();
@@ -1067,6 +1089,16 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   void start() {
+    if (closed) return;
+    boolean restarting = stopped;
+    stopped = false;
+    if (worker.isShutdown()) worker = Executors.newSingleThreadExecutor();
+    if (epgWorker.isShutdown()) epgWorker = Executors.newFixedThreadPool(2);
+    if (imageWorker.isShutdown()) imageWorker = Executors.pool(2, 32);
+    mainUi.removeCallbacks(epgTick);
+    mainUi.post(epgTick);
+    if (restarting && catalog == null) load();
+    if (restarting && pendingSelection != null) playChannel(pendingSelection, false);
     if (playerView != null) playerView.onResume();
     if (playbackSession != null) playbackSession.resumeFromBackground();
   }
@@ -1080,12 +1112,25 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   void stop() {
+    if (stopped) return;
+    stopped = true;
+    consumedKeys.clear();
+    catalogGeneration++;
+    playbackGeneration++;
+    viewGeneration++;
+    epgLoading = false;
+    mainUi.removeCallbacksAndMessages(null);
+    worker.shutdownNow();
+    epgWorker.shutdownNow();
+    imageWorker.shutdownNow();
     if (recorder != null) recorder.stop();
     if (playbackSession != null) playbackSession.pauseForBackground();
     if (playerView != null) playerView.onPause();
   }
 
   void close() {
+    closed = true;
+    stop();
     if (recorder != null) recorder.close();
     android.util.Log.i("LazyTV-Lifecycle", getClass().getSimpleName() + " destroy");
     catalogGeneration++;

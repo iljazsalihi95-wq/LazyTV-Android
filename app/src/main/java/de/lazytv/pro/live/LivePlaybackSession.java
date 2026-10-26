@@ -27,7 +27,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Fire-TV safe playback core.
  *
- * <p>One Activity owns one ExoPlayer for its whole lifetime. Fullscreen/list UI may change around
+ * <p>One foreground Activity owns one ExoPlayer; background releases it completely. Fullscreen/list UI may change around
  * it, but the decoder/player is not replaced and there is no VLC/IJK hand-off. This mirrors the
  * proven IBO-model behaviour used by the old working ChannelsActivity while keeping LazyTV provider
  * resolution and fresh-link retry.
@@ -43,6 +43,8 @@ final class LivePlaybackSession {
 
     void onReady();
 
+    default void onCapabilitiesChanged() {}
+
     void onFatalPlaybackError(String message);
   }
 
@@ -53,19 +55,16 @@ final class LivePlaybackSession {
   private boolean recovered458;
   private String provider = "SELECTED_PROVIDER";
   private final java.util.Set<String> refused458 = new java.util.LinkedHashSet<>();
-  private final ExoPlayer player;
+  private ExoPlayer player;
+  private final Context context;
+  private long savedPosition;
+  private java.util.concurrent.Future<?> retryTask;
   private final DefaultHttpDataSource.Factory http;
   private final RetryResolver retryResolver;
   private final Listener listener;
   private final Handler main = new Handler(Looper.getMainLooper());
-  private final ThreadPoolExecutor retryWorker =
-      new ThreadPoolExecutor(
-          1,
-          1,
-          0L,
-          TimeUnit.MILLISECONDS,
-          new ArrayBlockingQueue<>(1),
-          new ThreadPoolExecutor.DiscardOldestPolicy());
+  private ThreadPoolExecutor retryWorker =
+      Executors.pool(1, 1);
 
   private volatile boolean freshLinkRefusals;
   private volatile boolean released;
@@ -85,6 +84,7 @@ final class LivePlaybackSession {
 
   LivePlaybackSession(
       Context context, PlayerView initialView, RetryResolver retryResolver, Listener listener) {
+    this.context = context.getApplicationContext();
     this.playerView = initialView;
     this.retryResolver = retryResolver;
     this.listener = listener;
@@ -95,6 +95,11 @@ final class LivePlaybackSession {
             .setReadTimeoutMs(60000)
             .setAllowCrossProtocolRedirects(true)
             .setKeepPostFor302Redirects(true);
+    createPlayer();
+  }
+
+  private void createPlayer() {
+    if (released || !foreground || player != null) return;
     DefaultDataSource.Factory dataSource = new DefaultDataSource.Factory(context, http);
 
     // Deliberately use ExoPlayer defaults for decoder/load-control selection.
@@ -115,8 +120,15 @@ final class LivePlaybackSession {
 
     player.addListener(
         new Player.Listener() {
+          @Override public void onTracksChanged(androidx.media3.common.Tracks tracks) {
+            if (!released && foreground) listener.onCapabilitiesChanged();
+          }
+          @Override public void onEvents(Player source, Player.Events events) {
+            if (!released && foreground) listener.onCapabilitiesChanged();
+          }
           @Override
           public void onIsPlayingChanged(boolean playing) {
+            if (released || !foreground || player == null) return;
             playerView.setKeepScreenOn(
                 !released
                     && foreground
@@ -126,7 +138,7 @@ final class LivePlaybackSession {
 
           @Override
           public void onPlaybackStateChanged(int state) {
-            if (released || !belongsToCurrent()) return;
+            if (released || !foreground || player == null || !belongsToCurrent()) return;
             playerView.setKeepScreenOn(
                 foreground
                     && player.getPlayWhenReady()
@@ -144,7 +156,7 @@ final class LivePlaybackSession {
 
           @Override
           public void onPlayerError(PlaybackException error) {
-            if (released || !belongsToCurrent()) return;
+            if (released || !foreground || player == null || !belongsToCurrent()) return;
             cancelStableReset();
             lastHttpStatus = ProviderPlaybackPolicy.status(error);
             backgroundFailure = !foreground;
@@ -175,6 +187,7 @@ final class LivePlaybackSession {
     target.setPlayer(player);
     target.setKeepScreenOn(
         foreground
+            && player != null
             && player.getPlayWhenReady()
             && (player.getPlaybackState() == Player.STATE_READY
                 || player.getPlaybackState() == Player.STATE_BUFFERING));
@@ -230,34 +243,77 @@ final class LivePlaybackSession {
 
   void pauseForBackground() {
     if (released || !foreground) return;
-    foreground = false;
-    playerView.setKeepScreenOn(false);
-    resumePlayback = player.getPlayWhenReady();
-    backgroundFailure = player.getPlayerError() != null;
-    needsPrepare = currentStream != null;
+    generation++;
+    if (retryRunning && lastHttpStatus == 458) recovered458 = false;
+    foreground = false; // Fence callbacks BEFORE detaching/releasing native resources.
+    resumePlayback = player != null && player.getPlayWhenReady();
+    backgroundFailure = player != null && player.getPlayerError() != null;
+    savedPosition = player != null && player.isCurrentMediaItemSeekable()
+        ? player.getCurrentPosition() : 0L;
     cancelStableReset();
-    // pause() alone keeps the loader, buffered media and decoder resources alive.
-    // stop() cancels loading/releases renderer resources, retaining this player and position.
-    player.pause();
-    player.stop();
+    if (retryTask != null) retryTask.cancel(true);
+    retryWorker.shutdownNow();
+    retryRunning = false;
+    main.removeCallbacksAndMessages(null);
+    playerView.setKeepScreenOn(false);
+    playerView.setPlayer(null);
+    ExoPlayer old = player;
+    player = null;
+    if (old != null) old.release();
+    Log.i("LazyTV-Lifecycle", "background: view detached, ExoPlayer released");
   }
 
   void resumeFromBackground() {
     if (released || foreground) return;
     foreground = true;
+    if (retryWorker.isShutdown()) retryWorker = Executors.pool(1, 1);
+    createPlayer();
     boolean shouldPlay = resumePlayback;
     resumePlayback = false;
-    if (currentStream == null || retryRunning) return;
+    if (currentStream == null) return;
     if (backgroundFailure || refused458.contains(currentStream.url)) {
       backgroundFailure = false;
       retryCurrent(generation, currentItem);
       return;
     }
-    if (needsPrepare) {
-      needsPrepare = false;
-      player.prepare();
+    apply(generation, currentItem, currentStream, true);
+    if (savedPosition > 0) player.seekTo(savedPosition);
+    player.setPlayWhenReady(shouldPlay);
+  }
+
+  boolean canSeek() { return player != null && player.isCurrentMediaItemSeekable(); }
+
+  private java.util.List<androidx.media3.common.TrackSelectionOverride> textTracks() {
+    java.util.List<androidx.media3.common.TrackSelectionOverride> result = new java.util.ArrayList<>();
+    if (player != null) for (androidx.media3.common.Tracks.Group group : player.getCurrentTracks().getGroups()) {
+      if (group.getType() != androidx.media3.common.C.TRACK_TYPE_TEXT) continue;
+      for (int i = 0; i < group.length; i++) if (group.isTrackSupported(i))
+        result.add(new androidx.media3.common.TrackSelectionOverride(group.getMediaTrackGroup(), i));
     }
-    if (shouldPlay) player.play();
+    return result;
+  }
+
+  boolean hasSubtitles() { return !textTracks().isEmpty(); }
+
+  void chooseSubtitles(android.app.Activity owner) {
+    java.util.List<androidx.media3.common.TrackSelectionOverride> tracks = textTracks();
+    if (tracks.isEmpty() || player == null) return;
+    ExoPlayer expected = player;
+    String[] labels = new String[tracks.size() + 1];
+    labels[0] = "OFF";
+    for (int i = 0; i < tracks.size(); i++) {
+      androidx.media3.common.Format f = tracks.get(i).mediaTrackGroup.getFormat(tracks.get(i).trackIndices.get(0));
+      labels[i + 1] = f.label != null ? f.label : f.language != null ? f.language : "Titrat " + (i + 1);
+    }
+    new android.app.AlertDialog.Builder(owner).setTitle("Subtitles / CC")
+        .setItems(labels, (dialog, which) -> {
+          if (player != expected || !foreground) return;
+          androidx.media3.common.TrackSelectionParameters.Builder parameters = player.getTrackSelectionParameters().buildUpon()
+              .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_TEXT)
+              .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, which == 0);
+          if (which > 0) parameters.setOverrideForType(tracks.get(which - 1));
+          player.setTrackSelectionParameters(parameters.build());
+        }).show();
   }
 
   ResolvedStream recordingStream() {
@@ -265,7 +321,7 @@ final class LivePlaybackSession {
   }
 
   boolean togglePause() {
-    if (released || currentStream == null || !player.isCurrentMediaItemSeekable()) return false;
+    if (released || player == null || currentStream == null || !player.isCurrentMediaItemSeekable()) return false;
     if (player.getPlayWhenReady()) player.pause();
     else player.play();
     return true;
@@ -276,7 +332,7 @@ final class LivePlaybackSession {
   }
 
   boolean isBuffering() {
-    return !released && player.getPlaybackState() == Player.STATE_BUFFERING;
+    return !released && player != null && player.getPlaybackState() == Player.STATE_BUFFERING;
   }
 
   boolean isActive() {
@@ -286,6 +342,7 @@ final class LivePlaybackSession {
   }
 
   private boolean belongsToCurrent() {
+    if (player == null) return false;
     MediaItem media = player.getCurrentMediaItem();
     if (media == null || media.localConfiguration == null) return false;
     Object tag = media.localConfiguration.tag;
@@ -329,6 +386,7 @@ final class LivePlaybackSession {
 
   private void retryCurrent(long expectedGeneration, StreamItem expectedItem) {
     if (released
+        || !foreground
         || expectedGeneration != generation
         || expectedItem == null
         || expectedItem != currentItem
@@ -358,14 +416,14 @@ final class LivePlaybackSession {
     if (status == 458) recovered458 = true;
     RecoveryLog.event(provider, currentItem, rejected, status, attempt, null);
     retryRunning = true;
-    retryWorker.execute(
+    retryTask = retryWorker.submit(
         () -> {
           try {
             Thread.sleep(status == 429 ? 10000L : Math.min(1800L, 350L * attempt));
-            if (released || expectedGeneration != generation || expectedItem != currentItem) return;
+            if (released || !foreground || expectedGeneration != generation || expectedItem != currentItem) return;
             ResolvedStream refreshed =
                 retryResolver == null ? null : retryResolver.refresh(expectedItem);
-            if (released || expectedGeneration != generation || expectedItem != currentItem) return;
+            if (released || !foreground || expectedGeneration != generation || expectedItem != currentItem) return;
             if (!valid(refreshed)) throw new IllegalStateException("Fresh playback URL missing");
             if (refused458.contains(refreshed.url)
                 || !ProviderPlaybackPolicy.usableRefresh(status, rejected.url, refreshed.url))
@@ -375,7 +433,7 @@ final class LivePlaybackSession {
                 ProviderPlaybackPolicy.retryHeaders(refreshed, expectedItem, status, attempt);
             main.post(
                 () -> {
-                  if (released || expectedGeneration != generation || expectedItem != currentItem)
+                  if (released || !foreground || expectedGeneration != generation || expectedItem != currentItem)
                     return;
                   retryRunning = false;
                   apply(expectedGeneration, expectedItem, result, false);
@@ -384,12 +442,12 @@ final class LivePlaybackSession {
             Thread.currentThread().interrupt();
             main.post(
                 () -> {
-                  if (!released && expectedGeneration == generation) retryRunning = false;
+                  if (!released && foreground && expectedGeneration == generation) retryRunning = false;
                 });
           } catch (Exception failure) {
             main.post(
                 () -> {
-                  if (released || expectedGeneration != generation || expectedItem != currentItem)
+                  if (released || !foreground || expectedGeneration != generation || expectedItem != currentItem)
                     return;
                   retryRunning = false;
                   int code = ProviderPlaybackPolicy.status(failure);
@@ -428,6 +486,10 @@ final class LivePlaybackSession {
         || url.contains("extension=mp4")
         || type.equals("mp4")) media.setMimeType(MimeTypes.VIDEO_MP4);
 
+    if (!foreground || player == null) {
+      resumePlayback = true;
+      return;
+    }
     if (playerView.getPlayer() != player) playerView.setPlayer(player);
     player.setMediaItem(media.build(), resetPosition);
     backgroundFailure = false;
@@ -467,6 +529,6 @@ final class LivePlaybackSession {
     retryWorker.shutdownNow();
     playerView.setKeepScreenOn(false);
     playerView.setPlayer(null);
-    player.release();
+    if (player != null) { player.release(); player = null; }
   }
 }

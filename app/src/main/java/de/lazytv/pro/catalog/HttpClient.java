@@ -6,12 +6,18 @@ public final class HttpClient {
   return get(u,headers,null);
  }
  public static String get(String u,Map<String,String> headers,CookieManager cookies)throws CatalogException{
+  return get(u,headers,cookies,0);
+ }
+ public static String get(String u,Map<String,String> headers,CookieManager cookies,int budgetMs)throws CatalogException{
+  final long deadline=budgetMs>0?System.nanoTime()+budgetMs*1000000L:Long.MAX_VALUE;
   URL url;try{String raw=u==null?"":u.trim().replace("&amp;","&").replace(" ","%20");url=new URL(raw);}catch(Exception e){throw new CatalogException("URL nuk është valide",e);}
   URL initial=url;int dnsRetries=0,conflictRetries=0,forbiddenRetries=0;
   for(int redirect=0;redirect<=8;redirect++){
+   if(Thread.currentThread().isInterrupted())throw new CatalogException("Lidhja u ndërpre");
    HttpURLConnection c=null;
    try{
     c=(HttpURLConnection)url.openConnection();
+    RequestCancellation.register(c);
     // Xtream catalogs and remote M3U files can be very large. Give only those provider
     // endpoints a longer response window; managed LazyTV/Sheets/Stalker traffic keeps the
     // existing timeouts so already-working server paths are not changed.
@@ -19,6 +25,7 @@ public final class HttpClient {
     boolean largePlaylistRequest=requestPath.endsWith("/player_api.php")||requestPath.endsWith("/get.php");
     c.setConnectTimeout(largePlaylistRequest?35000:20000);
     c.setReadTimeout(largePlaylistRequest?180000:45000);
+    if(budgetMs>0){long remaining=(deadline-System.nanoTime())/1000000L;if(remaining<=0)throw new SocketTimeoutException();int timeout=(int)Math.max(1,Math.min(remaining,Integer.MAX_VALUE));c.setConnectTimeout(timeout);c.setReadTimeout(timeout);}
     c.setInstanceFollowRedirects(false);
     c.setRequestMethod("GET");c.setUseCaches(false);c.setDoInput(true);
     boolean stalker=headers!=null&&headers.containsKey("X-User-Agent");
@@ -66,7 +73,7 @@ public final class HttpClient {
    catch(CatalogException e){throw e;}
    catch(SSLException e){String m=e.getClass().getSimpleName();Log.e("LazyTV-HTTP","TLS FAIL host="+url.getHost());if("https".equalsIgnoreCase(url.getProtocol())&&url.getPort()>0&&url.getPort()!=443){try{URL retry=new URL("http",url.getHost(),url.getPort(),url.getFile());Log.w("LazyTV-HTTP","Retrying custom-port provider over HTTP host="+url.getHost()+" port="+url.getPort());url=retry;continue;}catch(Exception ignored){}}throw new CatalogException("Lidhja TLS/SSL dështoi: "+(m==null?e.getClass().getSimpleName():m),e);}
    catch(Exception e){throw new CatalogException("Serveri nuk mund të arrihet: "+e.getClass().getSimpleName(),e);}
-   finally{if(c!=null)c.disconnect();}
+   finally{if(c!=null){RequestCancellation.unregister(c);c.disconnect();}}
   }
   throw new CatalogException("Shumë redirects nga serveri");
  }

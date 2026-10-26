@@ -149,7 +149,8 @@ public class PopulatedLiveNavigationTest {
       screen.configuration(new Configuration(activity.getResources().getConfiguration()));
       layout();
       ReferenceFullscreenHost host = (ReferenceFullscreenHost) field("fullscreenHost");
-      assertSame(player, host.activeView().getPlayer());
+      assertNotNull(host.activeView().getPlayer());
+      assertNotSame(player, host.activeView().getPlayer());
       screen.back();
       screen.back();
       assertFalse(activity.isFinishing());

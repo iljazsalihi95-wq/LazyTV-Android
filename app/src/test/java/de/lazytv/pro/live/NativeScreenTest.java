@@ -13,7 +13,7 @@ import org.robolectric.*;
 import org.robolectric.annotation.*;
 import java.lang.reflect.Field;
 import static org.junit.Assert.*;
-@RunWith(RobolectricTestRunner.class) @Config(sdk={25,28},application=android.app.Application.class)
+@RunWith(RobolectricTestRunner.class) @Config(sdk={25,28,30},application=android.app.Application.class)
 @LooperMode(LooperMode.Mode.PAUSED)
 public class NativeScreenTest {
  private Activity activity;private NativeLiveScreen screen;
@@ -33,7 +33,7 @@ public class NativeScreenTest {
    assertSame(player,host.activeView().getPlayer());assertNull(preview.getPlayer());assertFalse(activity.isFinishing());
    assertTrue(screen.key(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_CENTER)));
    assertTrue(screen.back());assertTrue(screen.back());assertSame(player,preview.getPlayer());assertNull(host.fullscreenView().getPlayer());
-   screen.stop();screen.start();assertSame(player,preview.getPlayer());screen.close();screen=null;
+   screen.stop();assertNull(preview.getPlayer());assertNull(host.fullscreenView().getPlayer());screen.start();assertNotNull(preview.getPlayer());assertNotSame(player,preview.getPlayer());screen.close();screen=null;
   }
  }
  @Test public void configurationRebindKeepsSessionAndPlayer()throws Exception{
