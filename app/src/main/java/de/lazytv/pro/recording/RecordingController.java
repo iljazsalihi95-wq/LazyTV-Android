@@ -39,14 +39,32 @@ public final class RecordingController {
  private void start(ResolvedStream stream,Uri target){
   if(closed||busy)return;recording=true;busy=true;attachBadge();status.accept("● STOP RECORDING");worker.execute(()->copy(stream,target));
  }
+ private HttpURLConnection open(ResolvedStream stream)throws IOException{
+  URL initial=new URL(stream.url),url=initial;
+  for(int redirect=0;redirect<6;redirect++){
+   if(closed||!recording)throw new InterruptedIOException();
+   HttpURLConnection cn=(HttpURLConnection)url.openConnection();connection=cn;
+   cn.setInstanceFollowRedirects(false);cn.setConnectTimeout(10000);cn.setReadTimeout(5000);
+   boolean sameOrigin=initial.getProtocol().equalsIgnoreCase(url.getProtocol())&&initial.getAuthority().equalsIgnoreCase(url.getAuthority());
+   for(java.util.Map.Entry<String,String> h:stream.headers.entrySet())if(h.getKey()!=null&&h.getValue()!=null&&!h.getValue().contains("\r")&&!h.getValue().contains("\n")){
+    boolean secret=h.getKey().equalsIgnoreCase("Cookie")||h.getKey().equalsIgnoreCase("Authorization");
+    if(sameOrigin||!secret)cn.setRequestProperty(h.getKey(),h.getValue());
+   }
+   int status=cn.getResponseCode();
+   if(status==200)return cn;
+   String location=cn.getHeaderField("Location");cn.disconnect();
+   if((status==301||status==302||status==303||status==307||status==308)&&location!=null){
+    url=new URL(url,location);if(!url.getProtocol().equals("http")&&!url.getProtocol().equals("https"))throw new IOException();
+   }else throw new IOException();
+  }
+  throw new IOException("Redirect limit");
+ }
  private void copy(ResolvedStream stream,Uri target){
   String message="Regjistrimi u ruajt.";long bytes=0;
   try{
-   HttpURLConnection cn=(HttpURLConnection)new URL(stream.url).openConnection();connection=cn;cn.setInstanceFollowRedirects(false);cn.setConnectTimeout(10000);cn.setReadTimeout(5000);
-   for(java.util.Map.Entry<String,String> h:stream.headers.entrySet())if(h.getKey()!=null&&h.getValue()!=null&&!h.getValue().contains("\r")&&!h.getValue().contains("\n"))cn.setRequestProperty(h.getKey(),h.getValue());
-   if(cn.getResponseCode()!=200)throw new IOException();
+   HttpURLConnection cn=open(stream);
    String type=cn.getContentType();if(type!=null&&(type.contains("mpegurl")||type.contains("dash")||type.contains("text/")||type.contains("json")))throw new IOException();
-   try(InputStream input=new BufferedInputStream(cn.getInputStream());OutputStream output=activity.getContentResolver().openOutputStream(target,"w")){
+   try(InputStream input=new BufferedInputStream(cn.getInputStream());OutputStream output="file".equals(target.getScheme())?new FileOutputStream(new File(target.getPath())):activity.getContentResolver().openOutputStream(target,"w")){
     if(output==null)throw new IOException();byte[] packet=new byte[188];
     while(recording&&!closed){int offset=0;while(offset<188&&recording&&!closed){int n=input.read(packet,offset,188-offset);if(n<0)break;offset+=n;}
      if(offset!=188)break;if(!RecordingPolicy.clearPacket(packet))throw new IOException();output.write(packet);bytes+=188;
