@@ -122,6 +122,18 @@ public class BackgroundResourceTest {
   }
 
   @Test
+  public void duplicateChannelCallbackAfterStopCannotDereferenceReleasedPlayer() {
+    ResolvedStream resolved = stream(item.streamUrl);
+    session.play(item, resolved);
+    session.pauseForBackground();
+    session.play(item, resolved);
+    assertNull(view.getPlayer());
+    session.resumeFromBackground();
+    assertNotNull(view.getPlayer());
+    assertNotSame(player, view.getPlayer());
+  }
+
+  @Test
   public void userPausedStateStaysPausedAcrossBackground() {
     session.play(item, stream(item.streamUrl));
     player.pause();

@@ -234,7 +234,7 @@ final class LivePlaybackSession {
   }
 
   private boolean sameActive(StreamItem item, ResolvedStream stream) {
-    if (currentItem == null || currentStream == null || currentItem.id == null || item.id == null)
+    if (player == null || currentItem == null || currentStream == null || currentItem.id == null || item.id == null)
       return false;
     if (!currentItem.id.equals(item.id) || !currentStream.url.equals(stream.url)) return false;
     int state = player.getPlaybackState();
@@ -394,6 +394,7 @@ final class LivePlaybackSession {
         || retryRunning
         || !retryAllowed(lastHttpStatus, retryCount)) {
       if (!released
+          && foreground
           && expectedGeneration == generation
           && expectedItem == currentItem
           && !retryAllowed(lastHttpStatus, retryCount)
