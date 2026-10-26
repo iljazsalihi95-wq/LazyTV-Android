@@ -29,6 +29,10 @@ public class NativeScreenTest {
   activity=Robolectric.buildActivity(Activity.class).setup().get();
   for(int layout:new int[]{R.layout.activity_premium_player,R.layout.activity_xtream_player,R.layout.activity_m3u_player,R.layout.activity_servers_player}){
    screen=new NativeLiveScreen(activity,fixture(layout));screen.create();PlayerView preview=activity.findViewById(R.id.live_player);Object player=preview.getPlayer();assertNotNull(player);
+   assertNotNull(activity.findViewById(R.id.live_record));assertNotNull(activity.findViewById(R.id.live_fullscreen));
+   assertEquals(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM,preview.getResizeMode());
+   activity.findViewById(R.id.live_fit).performClick();assertEquals(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT,preview.getResizeMode());
+   assertTrue((activity.getWindow().getDecorView().getSystemUiVisibility()&View.SYSTEM_UI_FLAG_HIDE_NAVIGATION)!=0);
    preview.performClick();ReferenceFullscreenHost host=(ReferenceFullscreenHost)field("fullscreenHost");
    assertSame(player,host.activeView().getPlayer());assertNull(preview.getPlayer());assertFalse(activity.isFinishing());
    assertTrue(screen.key(new KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_CENTER)));

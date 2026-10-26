@@ -66,7 +66,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
   }
 
   private de.lazytv.pro.recording.RecordingController recorder;
-  private Button recordButton;
+  private Button recordButton, previewRecord;
   private ExecutorService epgWorker = Executors.newFixedThreadPool(2);
   private final Handler mainUi = new Handler(Looper.getMainLooper());
   private final Map<String, EpgSchedule> schedules = new HashMap<>();
@@ -146,6 +146,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
             owner,
             text -> {
               if (recordButton != null) recordButton.setText(text);
+              if (previewRecord != null) previewRecord.setText(text);
             });
     favorites = new FavoritesStore(this);
     bind();
@@ -267,6 +268,11 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     epg.setOnClickListener(v -> showEpg());
     fullscreenHost = new ReferenceFullscreenHost(owner, playerView);
     buildControls();
+    previewRecord = findViewById(R.id.live_record);
+    previewRecord.setOnClickListener(v -> recorder.toggle(playbackSession == null ? null : playbackSession.recordingStream()));
+    findViewById(R.id.live_fit).setOnClickListener(v -> fullscreenHost.toggleFit());
+    findViewById(R.id.live_fullscreen).setOnClickListener(v -> setFullscreen(true));
+    updateCapabilities();
     fullscreenHost.fullscreenView().setOnClickListener(v -> toggleControls());
     if (playbackSession != null) playbackSession.attach(playerView);
   }
@@ -585,7 +591,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     }
     playbackSession.play(item, r);
     title.setText(item.name);
-    activeSchedule = schedules.getOrDefault(sourceId() + "|" + item.id, EpgSchedule.empty());
+    activeSchedule = schedules.getOrDefault(sourceId() + "|" + item.id, EpgSchedule.fromMetadata(r.metadata));
     epgLoading = false;
     lastEpgRequest = 0;
     renderEpg();
@@ -756,9 +762,9 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     LinearLayout actions = new LinearLayout(this);
     actions.setOrientation(android.widget.LinearLayout.HORIZONTAL);
     fullControls.addView(actions);
-    Button[] buttons = new Button[9];
+    Button[] buttons = new Button[10];
     String[] labels = {
-      "CH−", "CH+", "☆ Favorite", "EPG", "Lista", "Back", "Play/Pause", "● RECORD", "CC"
+      "CH−", "CH+", "☆ Favorite", "EPG", "Lista", "Back", "Play/Pause", "● RECORD", "CC", "Mbush / Original"
     };
     for (int n = 0; n < buttons.length; n++) {
       Button button = new Button(this);
@@ -802,6 +808,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
         });
     pauseButton = buttons[6];
     epgButton = buttons[3];
+    buttons[9].setOnClickListener(v -> fullscreenHost.toggleFit());
     ccButton = buttons[8];
     ccButton.setOnClickListener(v -> { if (playbackSession != null) playbackSession.chooseSubtitles(owner); });
     recordButton = buttons[7];
@@ -818,7 +825,10 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     pauseButton.setVisibility(playbackSession != null && playbackSession.canSeek() ? View.VISIBLE : View.GONE);
     epgButton.setVisibility(activeSchedule.current != null || activeSchedule.next != null ? View.VISIBLE : View.GONE);
     ccButton.setVisibility(playbackSession != null && playbackSession.hasSubtitles() ? View.VISIBLE : View.GONE);
-    recordButton.setVisibility(View.GONE); // Recording is not an advertised LIVE capability until a TS probe succeeds.
+    ResolvedStream stream = playbackSession == null ? null : playbackSession.recordingStream();
+    boolean canRecord = stream != null && de.lazytv.pro.recording.RecordingPolicy.candidate(stream.url, stream.metadata);
+    recordButton.setVisibility(canRecord ? View.VISIBLE : View.GONE);
+    if (previewRecord != null) { previewRecord.setVisibility(View.VISIBLE); previewRecord.setEnabled(canRecord); }
   }
 
   private void toggleFavorite() {
@@ -852,7 +862,10 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
                     || !item.id.equals(current.id)
                     || !provider.equals(sourceId())) return;
                 epgLoading = false;
-                activeSchedule = schedule;
+                if (schedule.current == null && schedule.next == null && playbackSession != null
+                    && playbackSession.recordingStream() != null) {
+                  activeSchedule = EpgSchedule.fromMetadata(playbackSession.recordingStream().metadata);
+                } else activeSchedule = schedule;
                 schedules.put(provider + "|" + item.id, schedule);
                 renderEpg();
                 channelsView.invalidateViews();
@@ -1090,6 +1103,7 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
 
   void start() {
     if (closed) return;
+    if (fullscreenHost != null) fullscreenHost.immersive();
     boolean restarting = stopped;
     stopped = false;
     if (worker.isShutdown()) worker = Executors.newSingleThreadExecutor();
@@ -1102,6 +1116,8 @@ final class NativeLiveScreen extends android.view.ContextThemeWrapper {
     if (playerView != null) playerView.onResume();
     if (playbackSession != null) playbackSession.resumeFromBackground();
   }
+
+  void windowFocus(boolean focused) { if (focused && fullscreenHost != null) fullscreenHost.immersive(); }
 
   void result(int request, int result, Intent data) {
     if (recorder != null) recorder.result(request, result, data);

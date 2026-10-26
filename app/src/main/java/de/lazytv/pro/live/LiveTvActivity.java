@@ -59,6 +59,11 @@ public final class LiveTvActivity extends Activity {
     if (screen != null) screen.start();
   }
 
+  @Override public void onWindowFocusChanged(boolean focused) {
+    super.onWindowFocusChanged(focused);
+    if (screen != null) screen.windowFocus(focused);
+  }
+
   @Override protected void onResume() {
     super.onResume();
     if (screen != null) screen.start();

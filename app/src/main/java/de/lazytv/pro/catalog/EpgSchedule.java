@@ -12,6 +12,11 @@ public final class EpgSchedule {
  }
  public final Program current,next;
  EpgSchedule(Program current,Program next){this.current=current;this.next=next;}
+ public static EpgSchedule fromMetadata(Map<String,String> metadata){
+  String now=metadata.get("epg_now"),next=metadata.get("epg_next");
+  return new EpgSchedule(now==null||now.trim().isEmpty()?null:new Program(now,metadata.getOrDefault("epg_now_description",""),0,0),
+   next==null||next.trim().isEmpty()?null:new Program(next,metadata.getOrDefault("epg_next_description",""),0,0));
+ }
  public static EpgSchedule empty(){return new EpgSchedule(null,null);}
  public Program active(long now){if(current!=null&&(!current.timed()||current.start<=now&&now<current.end))return current;if(next!=null&&next.timed()&&next.start<=now&&now<next.end)return next;return null;}
  public Program upcoming(long now){return next!=null&&(!next.timed()||next.start>now)?next:null;}

@@ -18,23 +18,24 @@ final class M3uXmltv {
     if (!url.equals(cachedUrl) || System.currentTimeMillis() - loaded > 300000) {
       try {
         Request.Builder request = new Request.Builder().url(url);
-        try (Response response =
-            new OkHttpClient.Builder()
-                .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
-                .build()
-                .newCall(request.build())
-                .execute()) {
+        if(item instanceof M3uHeaders)for(Map.Entry<String,String> header:((M3uHeaders)item).requestHeaders().entrySet())request.header(header.getKey(),header.getValue());
+        okhttp3.Call call = new OkHttpClient.Builder().connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS).callTimeout(30, java.util.concurrent.TimeUnit.SECONDS).build().newCall(request.build());
+        RequestCancellation.register(call);
+        try (Response response = call.execute()) {
           if (!response.isSuccessful() || response.body() == null) throw new IOException();
           cache = parse(response.body().byteStream(), System.currentTimeMillis());
           cachedUrl = url;
           loaded = System.currentTimeMillis();
-        }
+        } finally { RequestCancellation.unregister(call); }
       } catch (Exception unavailable) {
         throw new CatalogException("EPG/XMLTV nuk mund të ngarkohet.");
       }
     }
-    return cache.getOrDefault(item.tvgId, EpgSchedule.empty());
+    EpgSchedule exact=cache.get(item.tvgId.trim());
+    if(exact!=null)return exact;
+    for(Map.Entry<String,EpgSchedule> entry:cache.entrySet())if(entry.getKey().equalsIgnoreCase(item.tvgId.trim()))return entry.getValue();
+    return EpgSchedule.empty();
   }
 
   static Map<String, EpgSchedule> parse(InputStream input, long now) throws Exception {
@@ -64,7 +65,15 @@ final class M3uXmltv {
             return n;
           }
         };
-    parser.setInput(bounded, null);
+    PushbackInputStream probe=new PushbackInputStream(bounded,2);
+    int first=probe.read(),second=probe.read();if(second>=0)probe.unread(second);if(first>=0)probe.unread(first);
+    InputStream decoded=first==0x1f&&second==0x8b?new java.util.zip.GZIPInputStream(probe):probe;
+    parser.setInput(new FilterInputStream(decoded){
+      private long size;
+      private int count(int n)throws IOException{if(n>0&&(size+=n)>64L*1024*1024)throw new IOException("XMLTV limit");return n;}
+      @Override public int read()throws IOException{int n=in.read();count(n<0?0:1);return n;}
+      @Override public int read(byte[] b,int off,int len)throws IOException{return count(in.read(b,off,len));}
+    }, null);
     Map<String, EpgSchedule.Program[]> pairs = new HashMap<>();
     String channel = "", title = "", description = "";
     long start = 0, end = 0;

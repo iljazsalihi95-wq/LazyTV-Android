@@ -70,12 +70,13 @@ public final class SheetServerCatalogSource {
                 }
                 String itemId = value(values, idCol).trim(); if (itemId.isEmpty()) itemId = serverId + "_" + row;
                 Map<String,String> metadata=new LinkedHashMap<>();
+                for(String field:new String[]{"XMLTV_URL","EPG_NOW","EPG_NEXT","EPG_CHANNEL_ID"})put(metadata,field.toLowerCase(Locale.ROOT),value(values,firstColumn(headers,field)));
                 put(metadata,"server10_portal",value(values,portalCol));
                 put(metadata,"server10_mac",value(values,macCol));
                 put(metadata,"stalker_original_cmd",value(values,cmdCol));
                 boolean completeMag=metadata.containsKey("server10_portal")&&metadata.containsKey("server10_mac")&&metadata.containsKey("stalker_original_cmd");
                 if(useDirectPlayback(serverId,streamUrl,completeMag))metadata.put("managed_direct","true");
-                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, "", CatalogType.LIVE, new ArrayList<String>(), metadata));
+                out.items.add(new StreamItem(itemId, name, categoryId, value(values, logoCol).trim(), streamUrl, value(values,firstColumn(headers,"TVG_ID","EPG_ID","XMLTV_ID")).trim(), CatalogType.LIVE, new ArrayList<String>(), metadata));
             }
             if (out.items.isEmpty()) throw new CatalogException("Serveri Premium nuk ka kanale aktive.");
             synchronized(SheetServerCatalogSource.class){cachedCatalog=out;cachedKey=key;cachedAt=System.currentTimeMillis();}

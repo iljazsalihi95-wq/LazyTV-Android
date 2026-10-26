@@ -31,6 +31,11 @@
       <Button android:id="@+id/live_next" android:text="CH+" android:textAllCaps="false" android:focusable="true" android:layout_marginStart="3dp" android:layout_width="0dp" android:layout_weight="1" android:layout_height="42dp" />
      </LinearLayout>
     </LinearLayout>
+    <LinearLayout android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal" android:background="#071522">
+     <Button android:id="@+id/live_record" android:text="● RECORD" android:textSize="11sp" android:textAllCaps="false" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
+     <Button android:id="@+id/live_fit" android:text="Mbush / Original" android:textSize="11sp" android:textAllCaps="false" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
+     <Button android:id="@+id/live_fullscreen" android:text="⛶ Fullscreen" android:textSize="11sp" android:textAllCaps="false" android:textColor="#FFFFFF" android:background="@drawable/bg_player_button" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" />
+    </LinearLayout>
     <View android:id="@+id/live_info" android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
    </LinearLayout>
    <LinearLayout android:id="@+id/live_browser_panels" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1.2" android:orientation="horizontal" android:layout_marginTop="5dp">

@@ -24,13 +24,20 @@ public final class RecordingController {
   if(recording){stop();return;}if(pending!=null||closed||busy)return;
   if(stream==null||!RecordingPolicy.candidate(stream.url,stream.metadata)){message(UNSUPPORTED);return;}
   pending=stream;Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("video/mp2t").putExtra(Intent.EXTRA_TITLE,RecordingPolicy.filename(stream.title,System.currentTimeMillis()));
-  try{activity.startActivityForResult(intent,REQUEST);}catch(android.content.ActivityNotFoundException unavailable){pending=null;message("Pajisja nuk ofron zgjedhjen e skedarit për regjistrim.");}
+  try{activity.startActivityForResult(intent,REQUEST);}catch(android.content.ActivityNotFoundException unavailable){pending=null;
+   new android.app.AlertDialog.Builder(activity).setTitle("Regjistro në pajisje")
+    .setMessage("Zgjedhësi i skedarëve nuk është i disponueshëm. Ta ruaj regjistrimin në dosjen Movies të LazyTV?")
+    .setPositiveButton("Regjistro",(d,w)->{File dir=activity.getExternalFilesDir(Environment.DIRECTORY_MOVIES);if(dir==null)dir=new File(activity.getFilesDir(),"recordings");if(!dir.exists()&&!dir.mkdirs()){message("Dosja nuk mund të krijohet");return;}start(stream,Uri.fromFile(new File(dir,RecordingPolicy.filename(stream.title,System.currentTimeMillis()))));})
+    .setNegativeButton("Anulo",null).show();
+  }
  }
  public boolean result(int request,int result,Intent data){
   if(request!=REQUEST)return false;ResolvedStream stream=pending;pending=null;
   if(result!=Activity.RESULT_OK||data==null||data.getData()==null||stream==null||closed)return true;
-  Uri target=data.getData();recording=true;busy=true;attachBadge();status.accept("● STOP RECORDING");
-  worker.execute(()->copy(stream,target));return true;
+  start(stream,data.getData());return true;
+ }
+ private void start(ResolvedStream stream,Uri target){
+  if(closed||busy)return;recording=true;busy=true;attachBadge();status.accept("● STOP RECORDING");worker.execute(()->copy(stream,target));
  }
  private void copy(ResolvedStream stream,Uri target){
   String message="Regjistrimi u ruajt.";long bytes=0;

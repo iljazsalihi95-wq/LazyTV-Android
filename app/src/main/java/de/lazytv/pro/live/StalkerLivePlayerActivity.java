@@ -28,7 +28,10 @@ import de.lazytv.pro.playlist.PlaylistType;
 @UnstableApi
 public final class StalkerLivePlayerActivity extends Activity {
     private ExecutorService worker = Executors.newSingleThreadExecutor();
-    private final StalkerCatalogSource source = new StalkerCatalogSource();
+    private final StalkerNativePortalClient source = new StalkerNativePortalClient();
+    private ExecutorService epgWorker = Executors.newSingleThreadExecutor();
+    private de.lazytv.pro.recording.RecordingController recorder;
+    private Button recordButton;
     private Playlist playlist;
     private PlayerView playerView;
     private LivePlaybackSession playbackSession;
@@ -61,6 +64,7 @@ public final class StalkerLivePlayerActivity extends Activity {
             finish(); return;
         }
         setContentView(R.layout.activity_live_tv);
+        recorder=new de.lazytv.pro.recording.RecordingController(this,text->{if(recordButton!=null)recordButton.setText(text);((Button)findViewById(R.id.live_record)).setText(text);});
         bind(); createPlayer(); loadPortal();
     }
 
@@ -80,6 +84,10 @@ public final class StalkerLivePlayerActivity extends Activity {
         fullscreenHost=new ReferenceFullscreenHost(this,playerView);
         fullscreenHost.fullscreenView().setOnClickListener(v->setFullscreen(false));
         buildNativeControls();
+        findViewById(R.id.live_fit).setOnClickListener(v->fullscreenHost.toggleFit());
+        findViewById(R.id.live_fullscreen).setOnClickListener(v->setFullscreen(true));
+        findViewById(R.id.live_record).setEnabled(false);
+        findViewById(R.id.live_record).setOnClickListener(v->recorder.toggle(playbackSession==null?null:playbackSession.recordingStream()));
         playerView.setUseController(false); playerView.setFocusable(true); playerView.setOnClickListener(v->setFullscreen(!fullscreen));
         findViewById(R.id.live_player_panel).setOnClickListener(v->setFullscreen(!fullscreen)); findViewById(R.id.live_nav_live).setOnClickListener(v->countriesView.requestFocus());
         findViewById(R.id.live_nav_movies).setOnClickListener(v->openCatalog(CatalogType.MOVIES)); findViewById(R.id.live_nav_series).setOnClickListener(v->openCatalog(CatalogType.SERIES));
@@ -98,7 +106,7 @@ public final class StalkerLivePlayerActivity extends Activity {
     private void buildNativeControls(){
         LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
         row.setBackgroundColor(0xcc081c30);
-        String[] labels={"CH−","CH+","☆ Favorite","Lista","Back","CC"};
+        String[] labels={"CH−","CH+","☆ Favorite","Lista","Back","CC","● RECORD","Mbush / Original"};
         Button[] buttons=new Button[labels.length];
         for(int n=0;n<labels.length;n++){
             Button button=new Button(this);button.setId(View.generateViewId());button.setText(labels[n]);button.setAllCaps(false);button.setTextColor(android.graphics.Color.WHITE);button.setBackgroundResource(R.drawable.bg_player_button);
@@ -109,6 +117,8 @@ public final class StalkerLivePlayerActivity extends Activity {
         buttons[3].setOnClickListener(v->{setFullscreen(false);channelsView.requestFocus();});
         buttons[4].setOnClickListener(v->setFullscreen(false));
         ccButton=buttons[5];ccButton.setVisibility(View.GONE);ccButton.setOnClickListener(v->{if(playbackSession!=null)playbackSession.chooseSubtitles(this);});
+        recordButton=buttons[6];recordButton.setVisibility(View.GONE);recordButton.setOnClickListener(v->recorder.toggle(playbackSession==null?null:playbackSession.recordingStream()));
+        buttons[7].setOnClickListener(v->fullscreenHost.toggleFit());
         fullscreenHost.fullscreenView().setNextFocusDownId(buttons[0].getId());
         fullscreenHost.container().addView(row,new FrameLayout.LayoutParams(-1,-2,android.view.Gravity.BOTTOM));
     }
@@ -147,10 +157,23 @@ public final class StalkerLivePlayerActivity extends Activity {
         worker.execute(()->{try{
             StalkerCatalogSource.LinkResult link=source.resolve(playlist,item);
             ResolvedStream stream=resolved(item,link);
-            runOnUiThread(()->{if(ticket!=selectionGeneration||isFinishing()||playbackSession==null)return;current=item;idle.setVisibility(View.GONE);playbackSession.play(item,stream);});
+            runOnUiThread(()->{if(ticket!=selectionGeneration||isFinishing()||playbackSession==null)return;current=item;idle.setVisibility(View.GONE);playbackSession.play(item,stream);
+                boolean canRecord=de.lazytv.pro.recording.RecordingPolicy.candidate(stream.url,stream.metadata);
+                findViewById(R.id.live_record).setEnabled(canRecord);recordButton.setVisibility(canRecord?View.VISIBLE:View.GONE);
+                loadEpg(item,ticket);});
         }catch(Exception e){runOnUiThread(()->{if(ticket!=selectionGeneration||isFinishing())return;loading.setVisibility(View.GONE);status.setVisibility(View.VISIBLE);status.setText("LAZY STB • Kanali nuk u hap");Toast.makeText(this,safe(e),Toast.LENGTH_LONG).show();});}});
     }
 
+    private void loadEpg(StreamItem item,long ticket){
+        ((TextView)findViewById(R.id.live_epg)).setText("EPG po ngarkohet…");
+        epgWorker.execute(()->{String text;try{EpgSchedule epg=EpgSchedule.parse(source.loadEpg(playlist,item.id),item.id,System.currentTimeMillis());
+            text=(epg.current==null?"": "TANI: "+epg.current.label())+(epg.next==null?"":"\nMË PAS: "+epg.next.label());if(text.isEmpty())text="Provider-i nuk dha EPG për këtë kanal";
+        }catch(Exception e){text="EPG nuk u ngarkua nga provider-i";}
+        final String result=text;runOnUiThread(()->{if(ticket==selectionGeneration&&!isFinishing())((TextView)findViewById(R.id.live_epg)).setText(result);});});
+    }
+
+    @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(recorder!=null)recorder.result(request,result,data);}
+    @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused&&fullscreenHost!=null)fullscreenHost.immersive();}
     private ArrayAdapter<String> adapter(List<String> data){return new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1,data);}
     private String safe(Exception e){String s=e.getMessage();if(s==null||s.trim().isEmpty())return "Lazy STB: portal nuk u përgjigj";s=s.replaceAll("(?i)(mac|token|authorization|cookie|password|username)\\s*[=:]\\s*[^\\s,;]+","$1=[redacted]");return s.length()>180?s.substring(0,180):s;}
     private void setFullscreen(boolean value){
@@ -174,7 +197,7 @@ public final class StalkerLivePlayerActivity extends Activity {
         return super.dispatchKeyEvent(event);
     }
     @Override public void onBackPressed(){if(fullscreen){setFullscreen(false);return;}super.onBackPressed();}
-    @Override protected void onStop(){selectionGeneration++;consumedKeys.clear();worker.shutdownNow();if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
-    @Override protected void onStart(){super.onStart();if(worker.isShutdown()){worker=Executors.newSingleThreadExecutor();if(current==null&&playlist!=null)loadPortal();}if(playbackSession!=null)playbackSession.resumeFromBackground();}
-    @Override protected void onDestroy(){selectionGeneration++;worker.shutdownNow();source.clear();if(playbackSession!=null){playbackSession.release();playbackSession=null;}if(fullscreenHost!=null)fullscreenHost.close();super.onDestroy();}
+    @Override protected void onStop(){selectionGeneration++;consumedKeys.clear();worker.shutdownNow();epgWorker.shutdownNow();if(recorder!=null)recorder.stop();if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
+    @Override protected void onStart(){super.onStart();if(epgWorker.isShutdown())epgWorker=Executors.newSingleThreadExecutor();if(fullscreenHost!=null)fullscreenHost.immersive();if(worker.isShutdown()){worker=Executors.newSingleThreadExecutor();if(current==null&&playlist!=null)loadPortal();}if(playbackSession!=null)playbackSession.resumeFromBackground();}
+    @Override protected void onDestroy(){selectionGeneration++;worker.shutdownNow();epgWorker.shutdownNow();if(recorder!=null)recorder.close();source.clear();if(playbackSession!=null){playbackSession.release();playbackSession=null;}if(fullscreenHost!=null)fullscreenHost.close();super.onDestroy();}
 }

@@ -18,7 +18,25 @@ public class CatalogEngine {
     public SeriesDetails loadSeries(Playlist p,Series s)throws CatalogException{if(s instanceof M3uSeries)return((M3uSeries)s).details();if(p.getType()==PlaylistType.XTREAM_CODES)return new XtreamCatalogSource().loadSeries(p,s.id);if(p.getType()==PlaylistType.STALKER_PORTAL)return stalker(p).loadSeries(p,s);throw new CatalogException("Ky burim nuk ekspozon seasons/episodes të strukturuara");}
     public ResolvedStream resolveLiveStream(Playlist playlist,StreamItem item)throws CatalogException{return new StreamResolver(playlist.getType()==PlaylistType.STALKER_PORTAL?stalker(playlist):null,null,false).resolve(playlist,item);}
     private final M3uXmltv xmltv=new M3uXmltv();
-    public EpgSchedule loadLiveSchedule(Playlist playlist,StreamItem item)throws CatalogException{if(playlist==null||item==null)return EpgSchedule.empty();String body;if(playlist.getType()==PlaylistType.STALKER_PORTAL){StalkerCatalogSource source=stalker(playlist);if(!(source instanceof StalkerNativePortalClient))return EpgSchedule.empty();body=((StalkerNativePortalClient)source).loadEpg(playlist,item.id);}else if(playlist.getType()==PlaylistType.XTREAM_CODES&&!(item instanceof M3uStreamItem)){body=xtreamScheduleGet(playlist,"get_short_epg",item.id);try{EpgSchedule compact=EpgSchedule.parse(body,item.id,System.currentTimeMillis());if(compact.current!=null||compact.next!=null)return compact;}catch(CatalogException ignored){}body=xtreamScheduleGet(playlist,"get_simple_data_table",item.id);}else if(item instanceof M3uStreamItem)return xmltv.schedule(item);else return EpgSchedule.empty();return EpgSchedule.parse(body,item.id,System.currentTimeMillis());}
+    public EpgSchedule loadLiveSchedule(Playlist playlist,StreamItem item)throws CatalogException{if(item==null)return EpgSchedule.empty();
+      EpgSchedule supplied=EpgSchedule.fromMetadata(item.metadata);
+      if(supplied.current!=null||supplied.next!=null)return supplied;
+      if(!item.meta("xmltv_url").isEmpty())return xmltv.schedule(item);
+      if(playlist==null){
+        ServerTenPlaybackResolver.Reference ref=ServerTenPlaybackResolver.reference(item);
+        if(ref!=null){
+          String channel=item.meta("epg_channel_id");
+          java.util.regex.Matcher match=java.util.regex.Pattern.compile("/ch/([0-9]+)").matcher(ref.command);
+          if(channel.isEmpty()&&match.find())channel=match.group(1);
+          if(channel.isEmpty())channel=item.meta("managed_source_id");
+          if(channel.isEmpty())channel=item.id;
+          Playlist portal=new Playlist("epg|"+item.meta("managed_server"),"Managed EPG",PlaylistType.STALKER_PORTAL,ref.portal,"","",ref.mac,0);
+          String response=((StalkerNativePortalClient)stalker(portal)).loadEpg(portal,channel);
+          return EpgSchedule.parse(response,channel,System.currentTimeMillis());
+        }
+        return EpgSchedule.empty();
+      }
+      String body;if(playlist.getType()==PlaylistType.STALKER_PORTAL){StalkerCatalogSource source=stalker(playlist);if(!(source instanceof StalkerNativePortalClient))return EpgSchedule.empty();body=((StalkerNativePortalClient)source).loadEpg(playlist,item.id);}else if(playlist.getType()==PlaylistType.XTREAM_CODES&&!(item instanceof M3uStreamItem)){body=xtreamScheduleGet(playlist,"get_short_epg",item.id);try{EpgSchedule compact=EpgSchedule.parse(body,item.id,System.currentTimeMillis());if(compact.current!=null||compact.next!=null)return compact;}catch(CatalogException ignored){}body=xtreamScheduleGet(playlist,"get_simple_data_table",item.id);}else if(item instanceof M3uStreamItem)return xmltv.schedule(item);else return EpgSchedule.empty();return EpgSchedule.parse(body,item.id,System.currentTimeMillis());}
     private String xtreamScheduleGet(Playlist p,String action,String streamId)throws CatalogException{String url=XtreamUrlBuilder.api(p,action,"stream_id",streamId);try{return HttpClient.get(url,null);}catch(CatalogException first){String m=first.getMessage()==null?"":first.getMessage();boolean network=m.contains("ConnectException")||m.contains("TLS/SSL")||m.contains("brenda afatit");if(!network)throw first;String alt;if(url.regionMatches(true,0,"https://",0,8))alt="http://"+url.substring(8);else if(url.regionMatches(true,0,"http://",0,7))alt="https://"+url.substring(7);else throw first;try{return HttpClient.get(alt,null);}catch(CatalogException ignored){throw first;}}}
     public ResolvedStream resolveStream(Playlist p,StreamItem i)throws CatalogException{ResolvedStream r=new StreamResolver(p!=null&&p.getType()==PlaylistType.STALKER_PORTAL?stalker(p):null,null,false).resolve(p,i);return enrichXtreamSelection(p,i,r);}
     public ResolvedStream resolveStream(Context c,Playlist p,StreamItem i)throws CatalogException{ResolvedStream r=new StreamResolver(p!=null&&p.getType()==PlaylistType.STALKER_PORTAL?stalker(p):null,c,false).resolve(p,i);return enrichXtreamSelection(p,i,r);}
