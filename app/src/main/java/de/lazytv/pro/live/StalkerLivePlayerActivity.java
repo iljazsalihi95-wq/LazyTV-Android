@@ -47,6 +47,7 @@ public final class StalkerLivePlayerActivity extends Activity {
     private boolean fullscreen;
     private ReferenceFullscreenHost fullscreenHost;
     private FavoritesStore favorites;
+    private Button ccButton, fullFavorite;
     private final Set<Integer> consumedKeys = new HashSet<>();
 
     @Override protected void onCreate(Bundle state) {
@@ -75,9 +76,10 @@ public final class StalkerLivePlayerActivity extends Activity {
         countriesView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> p,View v,int pos,long id){selectCountry(pos);}public void onNothingSelected(AdapterView<?> p){}});
         categoriesView.setOnItemClickListener((p,v,pos,id)->selectCategory(pos)); channelsView.setOnItemClickListener((p,v,pos,id)->selectChannel(pos));
         favorites=new FavoritesStore(this);
-        findViewById(R.id.live_favorite).setOnClickListener(v->{if(current==null)return;boolean saved=favorites.toggle(playlist.getId(),current);((Button)v).setText(saved?"★ Favorite":"☆ Favorite");});
+        findViewById(R.id.live_favorite).setOnClickListener(v->toggleFavorite());
         fullscreenHost=new ReferenceFullscreenHost(this,playerView);
         fullscreenHost.fullscreenView().setOnClickListener(v->setFullscreen(false));
+        buildNativeControls();
         playerView.setUseController(false); playerView.setFocusable(true); playerView.setOnClickListener(v->setFullscreen(!fullscreen));
         findViewById(R.id.live_player_panel).setOnClickListener(v->setFullscreen(!fullscreen)); findViewById(R.id.live_nav_live).setOnClickListener(v->countriesView.requestFocus());
         findViewById(R.id.live_nav_movies).setOnClickListener(v->openCatalog(CatalogType.MOVIES)); findViewById(R.id.live_nav_series).setOnClickListener(v->openCatalog(CatalogType.SERIES));
@@ -85,12 +87,39 @@ public final class StalkerLivePlayerActivity extends Activity {
 
     private void openCatalog(CatalogType type){Intent intent=new Intent(this,CatalogActivity.class);intent.putExtra(CatalogActivity.EXTRA_PLAYLIST_ID,playlist.getId());intent.putExtra(CatalogActivity.EXTRA_TYPE,type==CatalogType.SERIES?"SERIES":"MOVIES");startActivity(intent);}
 
+    private void toggleFavorite(){
+        if(current==null)return;
+        boolean saved=favorites.toggle(playlist.getId(),current);
+        String label=saved?"★ Favorite":"☆ Favorite";
+        ((Button)findViewById(R.id.live_favorite)).setText(label);
+        if(fullFavorite!=null)fullFavorite.setText(label);
+    }
+
+    private void buildNativeControls(){
+        LinearLayout row=new LinearLayout(this);row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setBackgroundColor(0xcc081c30);
+        String[] labels={"CH−","CH+","☆ Favorite","Lista","Back","CC"};
+        Button[] buttons=new Button[labels.length];
+        for(int n=0;n<labels.length;n++){
+            Button button=new Button(this);button.setId(View.generateViewId());button.setText(labels[n]);button.setAllCaps(false);button.setTextColor(android.graphics.Color.WHITE);button.setBackgroundResource(R.drawable.bg_player_button);
+            row.addView(button,new LinearLayout.LayoutParams(0,(int)(48*getResources().getDisplayMetrics().density),1));buttons[n]=button;
+        }
+        buttons[0].setOnClickListener(v->adjacent(-1));buttons[1].setOnClickListener(v->adjacent(1));
+        fullFavorite=buttons[2];fullFavorite.setOnClickListener(v->toggleFavorite());
+        buttons[3].setOnClickListener(v->{setFullscreen(false);channelsView.requestFocus();});
+        buttons[4].setOnClickListener(v->setFullscreen(false));
+        ccButton=buttons[5];ccButton.setVisibility(View.GONE);ccButton.setOnClickListener(v->{if(playbackSession!=null)playbackSession.chooseSubtitles(this);});
+        fullscreenHost.fullscreenView().setNextFocusDownId(buttons[0].getId());
+        fullscreenHost.container().addView(row,new FrameLayout.LayoutParams(-1,-2,android.view.Gravity.BOTTOM));
+    }
+
     private void createPlayer(){
         playbackSession=new LivePlaybackSession(this,playerView,item->{
             StalkerCatalogSource.LinkResult link=source.resolve(playlist,item);
             return resolved(item,link);
         },new LivePlaybackSession.Listener(){
             public void onBuffering(boolean buffering){loading.setVisibility(buffering?View.VISIBLE:View.GONE);if(buffering){status.setText("LAZY STB • Loading stream…");status.setVisibility(View.VISIBLE);}}
+            public void onCapabilitiesChanged(){if(ccButton!=null)ccButton.setVisibility(playbackSession!=null&&playbackSession.hasSubtitles()?View.VISIBLE:View.GONE);}
             public void onReady(){loading.setVisibility(View.GONE);status.setVisibility(View.GONE);}
             public void onFatalPlaybackError(String message){loading.setVisibility(View.GONE);status.setVisibility(View.VISIBLE);status.setText("LAZY STB • Kanali nuk u hap");Toast.makeText(StalkerLivePlayerActivity.this,message,Toast.LENGTH_LONG).show();}
         });
@@ -139,7 +168,7 @@ public final class StalkerLivePlayerActivity extends Activity {
             else if(key==android.view.KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);handled=true;}
             else if(key==android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);handled=true;}
             else if(fullscreen&&key==android.view.KeyEvent.KEYCODE_MENU){setFullscreen(false);channelsView.requestFocus();handled=true;}
-            else if((key==android.view.KeyEvent.KEYCODE_DPAD_CENTER||key==android.view.KeyEvent.KEYCODE_ENTER||key==android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)&&((fullscreen)||(playerView!=null&&playerView.hasFocus()&&current!=null))){setFullscreen(!fullscreen);handled=true;}
+            else if((key==android.view.KeyEvent.KEYCODE_DPAD_CENTER||key==android.view.KeyEvent.KEYCODE_ENTER||key==android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)&&((fullscreen&&fullscreenHost.fullscreenView().hasFocus())||(!fullscreen&&playerView!=null&&playerView.hasFocus()&&current!=null))){setFullscreen(!fullscreen);handled=true;}
             if(handled){consumedKeys.add(key);return true;}
         }
         return super.dispatchKeyEvent(event);
