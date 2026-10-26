@@ -119,8 +119,18 @@ final class LivePlaybackSession {
 
     // Deliberately use ExoPlayer defaults for decoder/load-control selection.
     // The old Fire-TV working player did the same instead of forcing a second engine.
+    android.app.ActivityManager memory = (android.app.ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+    boolean lowMemory = memory != null && (memory.isLowRamDevice() || memory.getMemoryClass() <= 128);
+    // Same startup/rebuffer timing as the owner's working IBO-style reference,
+    // with a byte ceiling so a low-memory TV cannot grow the default video buffer unboundedly.
+    androidx.media3.exoplayer.DefaultLoadControl loadControl = new androidx.media3.exoplayer.DefaultLoadControl.Builder()
+        .setBufferDurationsMs(10000, 40000, 900, 1800)
+        .setBackBuffer(lowMemory ? 0 : 5000, true)
+        .setTargetBufferBytes((lowMemory ? 16 : 32) * 1024 * 1024)
+        .setPrioritizeTimeOverSizeThresholds(false).build();
     player =
         new ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(
                 new DefaultMediaSourceFactory(dataSource)
                     .setLoadErrorHandlingPolicy(
