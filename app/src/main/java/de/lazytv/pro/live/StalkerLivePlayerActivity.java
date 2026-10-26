@@ -37,8 +37,6 @@ public final class StalkerLivePlayerActivity extends Activity {
     private ListView categoriesView, channelsView;
     private View leftPanel, channelPanel, topBar, bottomBar, contentRow, info;
     private View idle, loading;
-    private ViewGroup playerColumn;
-    private LinearLayout.LayoutParams previewColumnParams;
     private final Map<String,List<StreamItem>> byCategory = new LinkedHashMap<>();
     private final Map<String,Integer> counts = new LinkedHashMap<>();
     private List<CountryGroup> countries = new ArrayList<>();
@@ -47,6 +45,9 @@ public final class StalkerLivePlayerActivity extends Activity {
     private StreamItem current;
     private long selectionGeneration;
     private boolean fullscreen;
+    private ReferenceFullscreenHost fullscreenHost;
+    private FavoritesStore favorites;
+    private final Set<Integer> consumedKeys = new HashSet<>();
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -66,14 +67,17 @@ public final class StalkerLivePlayerActivity extends Activity {
         playerView=findViewById(R.id.live_player); status=findViewById(R.id.live_status); title=findViewById(R.id.live_title);
         countriesView=findViewById(R.id.live_country_spinner); categoriesView=findViewById(R.id.live_categories); channelsView=findViewById(R.id.live_channels);
         leftPanel=findViewById(R.id.live_left_panel); channelPanel=findViewById(R.id.live_channel_panel); topBar=findViewById(R.id.live_top_bar); bottomBar=findViewById(R.id.live_bottom_bar);
-        contentRow=findViewById(R.id.live_content_row); info=findViewById(R.id.live_info); playerColumn=findViewById(R.id.live_player_column);
-        previewColumnParams=new LinearLayout.LayoutParams((LinearLayout.LayoutParams)playerColumn.getLayoutParams());
+        contentRow=findViewById(R.id.live_content_row); info=findViewById(R.id.live_info);
         idle=findViewById(R.id.live_idle); loading=findViewById(R.id.live_loading_logo);
         title.setText("LAZY STB"); status.setVisibility(View.VISIBLE); status.setText("LAZY STB • Loading portal…");
         findViewById(R.id.live_refresh).setOnClickListener(v->{ source.clear(); loadPortal(); });
         findViewById(R.id.live_prev).setOnClickListener(v->adjacent(-1)); findViewById(R.id.live_next).setOnClickListener(v->adjacent(1));
         countriesView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> p,View v,int pos,long id){selectCountry(pos);}public void onNothingSelected(AdapterView<?> p){}});
         categoriesView.setOnItemClickListener((p,v,pos,id)->selectCategory(pos)); channelsView.setOnItemClickListener((p,v,pos,id)->selectChannel(pos));
+        favorites=new FavoritesStore(this);
+        findViewById(R.id.live_favorite).setOnClickListener(v->{if(current==null)return;boolean saved=favorites.toggle(playlist.getId(),current);((Button)v).setText(saved?"★ Favorite":"☆ Favorite");});
+        fullscreenHost=new ReferenceFullscreenHost(this,playerView);
+        fullscreenHost.fullscreenView().setOnClickListener(v->setFullscreen(false));
         playerView.setUseController(false); playerView.setFocusable(true); playerView.setOnClickListener(v->setFullscreen(!fullscreen));
         findViewById(R.id.live_player_panel).setOnClickListener(v->setFullscreen(!fullscreen)); findViewById(R.id.live_nav_live).setOnClickListener(v->countriesView.requestFocus());
         findViewById(R.id.live_nav_movies).setOnClickListener(v->openCatalog(CatalogType.MOVIES)); findViewById(R.id.live_nav_series).setOnClickListener(v->openCatalog(CatalogType.SERIES));
@@ -123,18 +127,25 @@ public final class StalkerLivePlayerActivity extends Activity {
     private void setFullscreen(boolean value){
         if(fullscreen==value)return;
         fullscreen=value;
-        int visibility=value?View.GONE:View.VISIBLE;
-        leftPanel.setVisibility(visibility); channelPanel.setVisibility(visibility); topBar.setVisibility(visibility); bottomBar.setVisibility(visibility); info.setVisibility(visibility);
-        LinearLayout.LayoutParams params=value?new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT):new LinearLayout.LayoutParams(previewColumnParams);
-        params.weight=0; params.setMargins(0,0,0,0); playerColumn.setLayoutParams(params);
-        contentRow.setPadding(0,0,0,0); playerView.setResizeMode(AspectRatioFrameLayout.RESIZE_MODE_FIT);
-        if(value){getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,WindowManager.LayoutParams.FLAG_FULLSCREEN);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);}
-        else{getWindow().clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_VISIBLE);}
-        playerView.requestFocus();
+        if(fullscreenHost!=null)fullscreenHost.show(value,playbackSession);
     }
-    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){if(event.getAction()==android.view.KeyEvent.ACTION_DOWN&&!fullscreen&&(event.getKeyCode()==android.view.KeyEvent.KEYCODE_DPAD_CENTER||event.getKeyCode()==android.view.KeyEvent.KEYCODE_ENTER)&&playerView.hasFocus()&&current!=null){setFullscreen(true);return true;}return super.dispatchKeyEvent(event);}
+    @Override public boolean dispatchKeyEvent(android.view.KeyEvent event){
+        int key=event.getKeyCode();
+        if(event.getAction()==android.view.KeyEvent.ACTION_UP&&consumedKeys.remove(key))return true;
+        if(event.getAction()==android.view.KeyEvent.ACTION_DOWN){
+            if(consumedKeys.contains(key))return true;
+            boolean handled=false;
+            if(key==android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE||key==android.view.KeyEvent.KEYCODE_MEDIA_PLAY||key==android.view.KeyEvent.KEYCODE_MEDIA_PAUSE||key==android.view.KeyEvent.KEYCODE_MEDIA_STOP){handled=true;}
+            else if(key==android.view.KeyEvent.KEYCODE_MEDIA_NEXT){adjacent(1);handled=true;}
+            else if(key==android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS){adjacent(-1);handled=true;}
+            else if(fullscreen&&key==android.view.KeyEvent.KEYCODE_MENU){setFullscreen(false);channelsView.requestFocus();handled=true;}
+            else if((key==android.view.KeyEvent.KEYCODE_DPAD_CENTER||key==android.view.KeyEvent.KEYCODE_ENTER||key==android.view.KeyEvent.KEYCODE_NUMPAD_ENTER)&&((fullscreen)||(playerView!=null&&playerView.hasFocus()&&current!=null))){setFullscreen(!fullscreen);handled=true;}
+            if(handled){consumedKeys.add(key);return true;}
+        }
+        return super.dispatchKeyEvent(event);
+    }
     @Override public void onBackPressed(){if(fullscreen){setFullscreen(false);return;}super.onBackPressed();}
-    @Override protected void onStop(){selectionGeneration++;worker.shutdownNow();if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
+    @Override protected void onStop(){selectionGeneration++;consumedKeys.clear();worker.shutdownNow();if(playbackSession!=null)playbackSession.pauseForBackground();super.onStop();}
     @Override protected void onStart(){super.onStart();if(worker.isShutdown()){worker=Executors.newSingleThreadExecutor();if(current==null&&playlist!=null)loadPortal();}if(playbackSession!=null)playbackSession.resumeFromBackground();}
-    @Override protected void onDestroy(){selectionGeneration++;worker.shutdownNow();source.clear();if(playbackSession!=null){playbackSession.release();playbackSession=null;}super.onDestroy();}
+    @Override protected void onDestroy(){selectionGeneration++;worker.shutdownNow();source.clear();if(playbackSession!=null){playbackSession.release();playbackSession=null;}if(fullscreenHost!=null)fullscreenHost.close();super.onDestroy();}
 }
