@@ -89,13 +89,19 @@ jobs:
           curl -sv --connect-timeout 10 --max-time 20 -o /dev/null https://euiptv.live:8080/get.php 2>&1 | head -35
           echo "HTTPS_RC=${PIPESTATUS[0]}"
       - name: Provider session and HTTP regression tests
-        run: gradle --no-daemon testDebugUnitTest
+        run: ./gradlew --no-daemon test
+      - name: Upload Android test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: LazyTV-Android-test-results
+          path: app/build/test-results/
       - name: Assemble debug APK
         env:
           LAZYTV_SIGNING_STORE_PASSWORD: ${{ secrets.LAZYTV_SIGNING_STORE_PASSWORD }}
           LAZYTV_SIGNING_KEY_ALIAS: ${{ secrets.LAZYTV_SIGNING_KEY_ALIAS }}
           LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
-        run: gradle --no-daemon assembleDebug
+        run: ./gradlew --no-daemon assembleDebug
       - name: Verify debug/release activation policy
         run: |
           grep -q "DEV_ACTIVATION_BYPASS = true" app/build/generated/source/buildConfig/debug/de/lazytv/pro/BuildConfig.java

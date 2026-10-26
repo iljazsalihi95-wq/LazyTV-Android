@@ -19,7 +19,7 @@ import org.robolectric.annotation.*;
 /** Exercise real entry points, not only the screen inside a bare Activity. */
 @RunWith(RobolectricTestRunner.class)
 @Config(
-    sdk = {25, 28},
+    sdk = {25, 28, 30},
     application = android.app.Application.class)
 @LooperMode(LooperMode.Mode.PAUSED)
 public class ProviderActivityEntryTest {
@@ -72,6 +72,11 @@ public class ProviderActivityEntryTest {
       }
       ActivityController<? extends Activity> controller = Robolectric.buildActivity(type, intent);
       Activity activity = controller.create().start().resume().visible().get();
+      if (!de.lazytv.pro.BuildConfig.DEBUG) {
+        assertTrue("Production entry must enforce activation", activity.isFinishing());
+        controller.pause().stop().destroy();
+        continue;
+      }
       try {
         PlayerView preview = activity.findViewById(R.id.live_player);
         assertNotNull(type.getSimpleName(), preview);
