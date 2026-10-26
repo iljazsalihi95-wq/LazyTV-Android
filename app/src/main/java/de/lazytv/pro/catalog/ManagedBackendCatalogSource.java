@@ -7,7 +7,17 @@ public final class ManagedBackendCatalogSource {
  private static List<String> cachedServers;private static Map<String,String> cachedLabels;private static long cachedServersAt;
  private static final Map<String,Catalog> cachedCatalogs=new LinkedHashMap<>();private static final Map<String,Long> cachedCatalogAt=new LinkedHashMap<>();
  private String registryError="";public String registryError(){return registryError;}private final String endpoint; private final ManagedSheetCatalogSource sheets=new ManagedSheetCatalogSource();
- public ManagedBackendCatalogSource(Context context)throws CatalogException {try(InputStream in=context.getAssets().open("lazytv_managed_backend.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);endpoint=new JSONObject(bytes.toString("UTF-8")).getString("catalog_url");}catch(Exception invalid){throw new CatalogException("Konfigurimi i katalogut LazyTV nuk mund të lexohet");}}
+ public ManagedBackendCatalogSource(Context context)throws CatalogException {seedRegistryCache(context);try(InputStream in=context.getAssets().open("lazytv_managed_backend.json")){ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buffer=new byte[4096];int n;while((n=in.read(buffer))!=-1)bytes.write(buffer,0,n);endpoint=new JSONObject(bytes.toString("UTF-8")).getString("catalog_url");}catch(Exception invalid){throw new CatalogException("Konfigurimi i katalogut LazyTV nuk mund të lexohet");}}
+ private static void seedRegistryCache(Context context){
+  synchronized(CACHE_LOCK){
+   if(cachedServers!=null)return;
+   try{JSONObject saved=new JSONObject(context.getSharedPreferences("server_registry",Context.MODE_PRIVATE).getString("snapshot","{}"));
+    List<String> servers=new ArrayList<>();Map<String,String> names=new LinkedHashMap<>();
+    Iterator<String> keys=saved.keys();while(keys.hasNext()){String id=keys.next();servers.add(id);names.put(id,saved.getString(id));}
+    if(!servers.isEmpty()){cachedServers=servers;cachedLabels=names;cachedServersAt=0;}
+   }catch(Exception invalid){/* A damaged snapshot never blocks the local Servers menu. */}
+  }
+ }
  private final Map<String,String> labels=new LinkedHashMap<>();
  public Map<String,String> serverLabels(){return new LinkedHashMap<>(labels);}
  public List<String> servers()throws CatalogException { return servers(false); }
