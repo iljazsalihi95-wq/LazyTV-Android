@@ -25,7 +25,17 @@ public final class IptvLivePlayerActivity extends Activity {
       screen = new NativeLiveScreen(this, new M3uModule(this));
       screen.create();
     } catch (CatalogException invalid) {
+      android.util.Log.e("LazyTV-IPTV", "IPTV catalog initialization failed", invalid);
       LiveModule.error(this, invalid.getMessage());
+    } catch (RuntimeException startup) {
+      android.util.Log.e("LazyTV-IPTV", "IPTV screen initialization failed", startup);
+      screen = null;
+      new android.app.AlertDialog.Builder(this)
+          .setTitle("IPTV nuk u hap")
+          .setMessage("Gabim gjatë krijimit të ekranit IPTV. Shiko log-un LazyTV-IPTV për shkakun.")
+          .setPositiveButton("Kthehu", (dialog, which) -> finish())
+          .setOnCancelListener(dialog -> finish())
+          .show();
     }
   }
 
