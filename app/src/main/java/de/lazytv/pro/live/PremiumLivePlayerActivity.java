@@ -25,7 +25,18 @@ public final class PremiumLivePlayerActivity extends Activity {
       screen = new NativeLiveScreen(this, new PremiumModule(this));
       screen.create();
     } catch (CatalogException invalid) {
+      android.util.Log.e("LazyTV-Premium", "Premium catalog initialization failed", invalid);
+      screen = null;
       LiveModule.error(this, invalid.getMessage());
+    } catch (RuntimeException startup) {
+      android.util.Log.e("LazyTV-Premium", "Premium native screen initialization failed", startup);
+      screen = null;
+      new android.app.AlertDialog.Builder(this)
+          .setTitle("Premium nuk u hap")
+          .setMessage("Gabim gjatë hapjes së Premium. Kontrollo raportin e gabimit në pajisje.")
+          .setPositiveButton("Kthehu", (dialog, which) -> finish())
+          .setOnCancelListener(dialog -> finish())
+          .show();
     }
   }
 
