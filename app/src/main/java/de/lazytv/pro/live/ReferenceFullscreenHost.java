@@ -90,10 +90,20 @@ final class ReferenceFullscreenHost {
       params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
       window.setAttributes(params);
     }
-    androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false);
-    androidx.core.view.WindowInsetsControllerCompat controller = androidx.core.view.WindowCompat.getInsetsController(window, window.getDecorView());
-    controller.setSystemBarsBehavior(androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-    controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+    // Fire OS devices vary in WindowInsets implementation. Fullscreen must never
+    // prevent Premium from opening when a system-bars API is unavailable.
+    try {
+      androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false);
+      androidx.core.view.WindowInsetsControllerCompat controller =
+          androidx.core.view.WindowCompat.getInsetsController(window, window.getDecorView());
+      if (controller != null) {
+        controller.setSystemBarsBehavior(
+            androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars());
+      }
+    } catch (RuntimeException | LinkageError fireOsInsetsUnavailable) {
+      android.util.Log.w("LazyTV-FireTV", "Using legacy immersive mode", fireOsInsetsUnavailable);
+    }
     window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
         | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
