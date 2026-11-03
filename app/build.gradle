@@ -26,8 +26,8 @@ android {
         }
         minSdk 23
         targetSdk 35
-        versionCode 621
-        versionName '621'
+        versionCode 622
+        versionName '622'
         buildConfigField 'String', 'ACTIVATION_BASE_URL', escBuildConfig(activationBaseUrl)
         buildConfigField 'boolean', 'DEV_ACTIVATION_BYPASS', 'false'
     }
