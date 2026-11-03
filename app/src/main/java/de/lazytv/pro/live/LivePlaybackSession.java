@@ -128,14 +128,21 @@ final class LivePlaybackSession {
         .setBackBuffer(lowMemory ? 0 : 5000, true)
         .setTargetBufferBytes((lowMemory ? 16 : 32) * 1024 * 1024)
         .setPrioritizeTimeOverSizeThresholds(false).build();
-    player =
-        new ExoPlayer.Builder(context)
-            .setLoadControl(loadControl)
-            .setMediaSourceFactory(
-                new DefaultMediaSourceFactory(dataSource)
-                    .setLoadErrorHandlingPolicy(
-                        new FreshLinkLoadErrorPolicy(() -> freshLinkRefusals)))
-            .build();
+    // Some Fire TV / Fire OS firmware rejects customized player initialization.
+    // Retry once with Media3 defaults rather than crashing the Premium Activity.
+    try {
+      player =
+          new ExoPlayer.Builder(context)
+              .setLoadControl(loadControl)
+              .setMediaSourceFactory(
+                  new DefaultMediaSourceFactory(dataSource)
+                      .setLoadErrorHandlingPolicy(
+                          new FreshLinkLoadErrorPolicy(() -> freshLinkRefusals)))
+              .build();
+    } catch (RuntimeException | LinkageError devicePlayerFailure) {
+      Log.w("LazyTV-FireTV", "Retrying player initialization with defaults", devicePlayerFailure);
+      player = new ExoPlayer.Builder(context).build();
+    }
 
     playerView.setUseController(false);
     playerView.setClickable(true);
