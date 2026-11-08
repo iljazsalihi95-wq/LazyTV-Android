@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   signed-apk:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -14,10 +14,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install required Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          # Use the runner's supported command-line tools, not the removed `tools` package.
+          "$sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
       - name: Restore stable signing keystore
         env:
-          KEYSTORE_B64: ${{ secrets.LAZYTV_KEYSTORE_BASE64 }}
+          KEYSTORE_B64: ${{ secrets.LAZYTV_SIGNING_KEYSTORE_B64 || secrets.LAZYTV_KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_B64" ]; then
             echo "::error::Stable signing keystore missing. Refusing to produce a non-updatable APK."
@@ -32,11 +39,17 @@ jobs:
           LAZYTV_SIGNING_KEY_PASSWORD: ${{ secrets.LAZYTV_SIGNING_KEY_PASSWORD }}
           ACTIVATION_BASE_URL: ${{ secrets.ACTIVATION_BASE_URL }}
         run: |
+          test -n "$ACTIVATION_BASE_URL" || { echo "::error::ACTIVATION_BASE_URL is required for an activated release"; exit 1; }
           test -n "$LAZYTV_SIGNING_STORE_PASSWORD"
           test -n "$LAZYTV_SIGNING_KEY_ALIAS"
           test -n "$LAZYTV_SIGNING_KEY_PASSWORD"
           chmod +x gradlew
-          ./gradlew :app:assembleRelease --stacktrace
+          ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleRelease --stacktrace
+      - name: Verify release signature and activation policy
+        shell: bash
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose app/build/outputs/apk/release/app-release.apk
+          grep -q 'DEV_ACTIVATION_BYPASS = false' app/build/generated/source/buildConfig/release/de/lazytv/pro/BuildConfig.java
       - name: Upload installable APK
         uses: actions/upload-artifact@v4
         with:
